@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <!-- macOS-style squircle, flat fill — no gradient, no glow. -->
-  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="#000000"/>
-  <!--
-    Halftone orb: same coordinates as the in-pill SVG (relative to a
-    centered viewBox), translated and scaled here. Pure white dots on a
-    pure black plate.
-  -->
+  <!-- macOS-style squircle. Fill matches the main app window background
+       (oklch(0.20 0.012 257) ≈ #13161c) so the pill, icon, and main
+       window all read as the same surface. -->
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="#13161c"/>
+
+  <!-- Halftone orb: same coordinates as the in-pill SVG, scaled to fill
+       most of the squircle. -->
   <g fill="#ffffff" transform="translate(512 512) scale(11)">
     <!-- center -->
     <circle cx="0" cy="0" r="3.5"/>

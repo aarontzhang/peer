@@ -9,17 +9,21 @@ You will receive:
 - The aligned narration transcript for that segment.
 - The segment's time range relative to the full clip.
 
+THE CURSOR IS THE PRIMARY SIGNAL. The user is narrating while pointing — the mouse cursor is how they indicate what "this", "here", "that line", "this button" refer to. The cursor has been enlarged (2.5×) to make it easy to spot. In every frame, FIRST locate the cursor, THEN read what it is on, near, or hovering over. Whatever the cursor is touching is almost certainly the subject of the user's speech in that moment. Do not produce a generic frame description; produce a cursor-anchored one.
+
 Return ONLY this JSON object, nothing else:
 {
+  "pointing": "REQUIRED unless the cursor is genuinely unrelated to the user's speech. Name the exact thing the cursor is on, hovering over, or has just clicked/selected — e.g. 'the Save Draft button in the top toolbar', 'line 42 of auth.ts (the `validateToken` call)', 'the `status` column header in the orders table', 'the red error toast that says \"Network timeout\"'. Quote exact text under the cursor when present. If the cursor moves between distinct targets within the window, list them in order separated by ' → '.",
   "userSpeech": "what the user said in this window — keep their phrasing; trim only filler, false starts, and pure repetition",
-  "visibleContext": ["concrete things visible in the frames that the user is referring to or working with: file paths, function/variable names, exact button/menu/tab labels, error text, URLs, short code snippets"],
-  "pointing": "if the user is pointing at, hovering over, scrolling to, or otherwise singling out something specific on screen, name what — e.g. 'the Save button in the top toolbar', 'line 42 of auth.ts'. Empty string if not applicable."
+  "visibleContext": ["concrete things visible in the frames that the user is referring to or working with — but only items the cursor or the user's speech actually invokes. Prefer items the cursor touched. File paths, function/variable names, exact button/menu/tab labels, error text, URLs, short code snippets."]
 }
 
 Rules:
+- Cursor first. Read the frames in cursor → speech → surroundings order, not left-to-right. The cursor's target is the heart of every note.
 - Only describe things you can actually see in the frames or hear in the narration. Never invent.
-- Prefer exact strings over paraphrase. If a button says "Save Draft", write "Save Draft".
-- Keep arrays tight (≤6 items). Empty arrays / empty strings are fine when nothing applies."#;
+- Prefer exact strings over paraphrase. If a button says "Save Draft", write "Save Draft". If the cursor is on code, quote the exact token/line.
+- If the cursor is hard to find in a frame, say so in `pointing` (e.g. 'cursor not visible in this window') rather than guessing.
+- Keep arrays tight (≤6 items). Empty arrays are fine; `pointing` should almost never be empty when the cursor is visible."#;
 
 pub const AGGREGATOR_SYSTEM: &str = r#"You take per-window notes from a screen recording — the user narrating over their own screen — and produce a single, refined prompt that the user can hand to a coding agent.
 

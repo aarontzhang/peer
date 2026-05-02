@@ -40,6 +40,10 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
 
   return (
     <aside className="sidebar">
+      <div className="sidebar__brand" data-tauri-drag-region>
+        <BrandMark />
+        <span className="sidebar__brandName">Hummingbird</span>
+      </div>
       <div className="sidebar__head">
         <span className="sidebar__title">History</span>
         <button
@@ -101,6 +105,37 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
         })}
       </div>
     </aside>
+  );
+}
+
+/** Halftone-orb brand mark. Coordinates match the pill logo and the macOS
+ *  app icon so the brand reads consistently across surfaces. */
+function BrandMark() {
+  const dots: Array<[number, number, number]> = [
+    [0, 0, 3.5],
+    // ring 1
+    [0, -9, 3.0], [7.794, -4.5, 2.2], [7.794, 4.5, 3.0],
+    [0, 9, 2.2], [-7.794, 4.5, 3.0], [-7.794, -4.5, 2.2],
+    // ring 2
+    [6.123, -14.782, 2.4], [14.782, -6.123, 1.6], [14.782, 6.123, 2.4],
+    [6.123, 14.782, 1.6], [-6.123, 14.782, 2.4], [-14.782, 6.123, 1.6],
+    [-14.782, -6.123, 2.4], [-6.123, -14.782, 1.6],
+    // ring 3
+    [3.519, -22.222, 1.8], [15.910, -15.910, 1.2], [22.222, -3.519, 1.8],
+    [20.048, 10.215, 1.2], [10.215, 20.048, 1.8], [-3.519, 22.222, 1.2],
+    [-15.910, 15.910, 1.8], [-22.222, 3.519, 1.2], [-20.048, -10.215, 1.8],
+    [-10.215, -20.048, 1.2],
+  ];
+  return (
+    <svg
+      viewBox="-30 -30 60 60"
+      aria-hidden
+      className="sidebar__brandOrb"
+    >
+      {dots.map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="currentColor" />
+      ))}
+    </svg>
   );
 }
 

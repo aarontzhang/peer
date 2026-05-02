@@ -20,7 +20,9 @@ html, body, #root {
   gap: 6px;
   border-radius: 22px;
 
-  background: oklch(0 0 0 / 0.92);
+  /* Same gray as the main app window background — keeps the pill, the
+     main window, and the macOS app icon visually unified. */
+  background: oklch(0.20 0.012 257 / 0.94);
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
@@ -161,6 +163,6 @@ html, body, #root {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: oklch(0.78 0.16 156);
+  background: oklch(1 0 0);
   opacity: 0.85;
 }
