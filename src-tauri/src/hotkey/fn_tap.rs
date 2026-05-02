@@ -11,43 +11,13 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::mpsc;
 
 use crate::hotkey::HotkeyStatus;
-use crate::recording::{self, RecordingPhase};
 use crate::state::AppState;
 
 /// Max gap between Fn-down and Fn-up to count as a "tap". Longer presses
 /// are treated as the user using Fn as a modifier (F-row, brightness, etc.).
 const TAP_THRESHOLD: Duration = Duration::from_millis(350);
 
-pub fn install(app: AppHandle, state: Arc<AppState>) {
-    let (tx, mut rx) = mpsc::unbounded_channel::<()>();
-
-    // Toggle task: each tap signal flips recording on/off based on current state.
-    {
-        let app = app.clone();
-        let state = state.clone();
-        tauri::async_runtime::spawn(async move {
-            while rx.recv().await.is_some() {
-                let phase_kind = {
-                    let cur = state.current.lock();
-                    match &*cur {
-                        Some(RecordingPhase::Active(_)) => Phase::Active,
-                        Some(RecordingPhase::Review(_)) => Phase::Review,
-                        None => Phase::Idle,
-                    }
-                };
-                let res = match phase_kind {
-                    Phase::Active => recording::stop(app.clone(), state.clone()).await,
-                    Phase::Idle => recording::start(app.clone(), state.clone()).await.map(|_| ()),
-                    // Awaiting send/cancel — ignore the tap so we don't lose review state.
-                    Phase::Review => Ok(()),
-                };
-                if let Err(err) = res {
-                    tracing::warn!(?err, "fn-tap toggle failed");
-                }
-            }
-        });
-    }
-
+pub fn install(app: AppHandle, state: Arc<AppState>, tx: mpsc::UnboundedSender<()>) {
     let app_for_thread = app.clone();
     let state_for_thread = state.clone();
     std::thread::Builder::new()
@@ -68,12 +38,6 @@ fn publish_status(app: &AppHandle, state: &AppState, status: HotkeyStatus) {
         eprintln!("[hummingbird] Fn hotkey UNAVAILABLE: {reason}");
     }
     let _ = app.emit("hotkey:status", &status);
-}
-
-enum Phase {
-    Idle,
-    Active,
-    Review,
 }
 
 fn run_tap(app: AppHandle, app_state: Arc<AppState>, tx: mpsc::UnboundedSender<()>) {

@@ -9,6 +9,13 @@ rust-version = "1.77"
 name = "hummingbird_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# Override the binary filename so `tauri dev` launches `Hummingbird`
+# (capital H) — that's what the macOS Dock uses as the display name when
+# running the raw binary, since dev runs don't produce an .app bundle.
+[[bin]]
+name = "Hummingbird"
+path = "src/main.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -16,6 +23,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+tauri-plugin-global-shortcut = "2"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
