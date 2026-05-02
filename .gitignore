@@ -1,0 +1,11 @@
+node_modules/
+dist/
+target/
+.DS_Store
+*.log
+src-tauri/gen/
+src-tauri/target/
+src-tauri/bin/HummingbirdCapture*
+capture-sidecar/.build/
+.env
+.env.local

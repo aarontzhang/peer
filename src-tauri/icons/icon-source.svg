@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c2230"/>
+      <stop offset="100%" stop-color="#0e1218"/>
+    </linearGradient>
+    <linearGradient id="dot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#dfe6f2"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.45" r="0.55">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.32"/>
+      <stop offset="60%" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- macOS-style squircle background -->
+  <rect x="80" y="80" width="864" height="864" rx="200" ry="200" fill="url(#bg)"/>
+  <rect x="80" y="80" width="864" height="864" rx="200" ry="200" fill="url(#glow)"/>
+
+  <!-- Triangle of three circles. Equilateral, centered.
+       Top circle at (512, 360); bottom-left and bottom-right form the base. -->
+  <g>
+    <circle cx="512" cy="360" r="120" fill="url(#dot)"/>
+    <circle cx="368" cy="610" r="120" fill="url(#dot)"/>
+    <circle cx="656" cy="610" r="120" fill="url(#dot)"/>
+  </g>
+</svg>

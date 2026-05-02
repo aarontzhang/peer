@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- macOS-style squircle, flat fill — no gradient, no glow. -->
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="#000000"/>
+  <!--
+    Halftone orb: same coordinates as the in-pill SVG (relative to a
+    centered viewBox), translated and scaled here. Pure white dots on a
+    pure black plate.
+  -->
+  <g fill="#ffffff" transform="translate(512 512) scale(11)">
+    <!-- center -->
+    <circle cx="0" cy="0" r="3.5"/>
+
+    <!-- ring 1 (r=9, 6 dots) -->
+    <circle cx="0"        cy="-9"        r="3.0"/>
+    <circle cx="7.794"    cy="-4.500"    r="2.2"/>
+    <circle cx="7.794"    cy="4.500"     r="3.0"/>
+    <circle cx="0"        cy="9"         r="2.2"/>
+    <circle cx="-7.794"   cy="4.500"     r="3.0"/>
+    <circle cx="-7.794"   cy="-4.500"    r="2.2"/>
+
+    <!-- ring 2 (r=16, 8 dots) -->
+    <circle cx="6.123"    cy="-14.782"   r="2.4"/>
+    <circle cx="14.782"   cy="-6.123"    r="1.6"/>
+    <circle cx="14.782"   cy="6.123"     r="2.4"/>
+    <circle cx="6.123"    cy="14.782"    r="1.6"/>
+    <circle cx="-6.123"   cy="14.782"    r="2.4"/>
+    <circle cx="-14.782"  cy="6.123"     r="1.6"/>
+    <circle cx="-14.782"  cy="-6.123"    r="2.4"/>
+    <circle cx="-6.123"   cy="-14.782"   r="1.6"/>
+
+    <!-- ring 3 (r=22.5, 10 dots) -->
+    <circle cx="3.519"    cy="-22.222"   r="1.8"/>
+    <circle cx="15.910"   cy="-15.910"   r="1.2"/>
+    <circle cx="22.222"   cy="-3.519"    r="1.8"/>
+    <circle cx="20.048"   cy="10.215"    r="1.2"/>
+    <circle cx="10.215"   cy="20.048"    r="1.8"/>
+    <circle cx="-3.519"   cy="22.222"    r="1.2"/>
+    <circle cx="-15.910"  cy="15.910"    r="1.8"/>
+    <circle cx="-22.222"  cy="3.519"     r="1.2"/>
+    <circle cx="-20.048"  cy="-10.215"   r="1.8"/>
+    <circle cx="-10.215"  cy="-20.048"   r="1.2"/>
+  </g>
+</svg>

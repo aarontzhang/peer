@@ -1,0 +1,166 @@
+/* Pill window — small pill-shaped capsule. Top is the action area
+   (logo to start/stop, or cancel/send buttons after a stop), bottom
+   is the 3-dot drag handle. Granola-style. */
+
+html, body, #root {
+  background: transparent;
+  margin: 0;
+}
+
+.pill {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0 8px 0;
+  gap: 6px;
+  border-radius: 22px;
+
+  background: oklch(0 0 0 / 0.92);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
+              0 0 0 0.5px oklch(1 0 0 / 0.08) inset;
+
+  user-select: none;
+  transition: background var(--dur-fast) var(--ease-spring),
+              box-shadow var(--dur-fast) var(--ease-spring);
+}
+
+/* Recording: faint red rim around the pill so the user can tell at a
+   glance, even though the orb itself stays white. */
+.pill[data-state='recording'] {
+  box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
+              0 0 0 0.5px oklch(1 0 0 / 0.08) inset,
+              0 0 0 1.5px oklch(0.66 0.22 22 / 0.55),
+              0 0 16px oklch(0.66 0.22 22 / 0.35);
+}
+.pill[data-state='processing'] {
+  box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
+              0 0 0 0.5px oklch(1 0 0 / 0.08) inset,
+              0 0 0 1.5px oklch(0.78 0.16 245 / 0.45);
+}
+
+/* ─── Top area: logo button (idle / recording / processing / done) ─────── */
+
+.pill__core {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.pill__core:hover  { transform: scale(1.06); }
+.pill__core:active { transform: scale(0.94); }
+
+/* ─── Halftone-orb logo ────────────────────────────────────────────────── */
+
+.logo {
+  /* viewBox is centered on (0,0); rotation/scale should pivot there. */
+  overflow: visible;
+}
+.logo circle {
+  fill: oklch(1 0 0); /* pure white — flat, no gradient */
+  transition: fill var(--dur-base) var(--ease-spring);
+}
+
+/* Spin while recording. Group rotates around the SVG origin (0,0). */
+.logo__group {
+  transform-origin: 0 0;
+  transform-box: view-box;
+}
+.logo[data-state='recording'] .logo__group {
+  animation: logo-spin 4s linear infinite;
+}
+.logo[data-state='recording'] circle {
+  /* Stay white per design — the spin alone reads as "recording". */
+  fill: oklch(1 0 0);
+}
+.logo[data-state='processing'] .logo__group {
+  animation: logo-spin 6s linear infinite;
+}
+.logo[data-state='processing'] circle {
+  animation: logo-pulse 1.6s ease-in-out infinite;
+}
+.logo[data-state='done'] circle {
+  fill: oklch(0.84 0.14 156);
+}
+
+@keyframes logo-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes logo-pulse {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 1; }
+}
+
+/* ─── Stopped (review) state: cancel + send ────────────────────────────── */
+
+.pill__review {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pill__review-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transition: transform var(--dur-fast) var(--ease-spring),
+              background var(--dur-fast) var(--ease-spring);
+}
+.pill__review-btn:hover  { transform: scale(1.08); }
+.pill__review-btn:active { transform: scale(0.92); }
+
+.pill__review-btn--cancel {
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(0.92 0.005 257);
+}
+.pill__review-btn--cancel:hover {
+  background: oklch(0.66 0.22 22 / 0.32);
+}
+
+.pill__review-btn--send {
+  background: oklch(0.78 0.16 245);
+  color: oklch(0.16 0.012 257);
+  box-shadow: 0 2px 6px oklch(0.78 0.16 245 / 0.32);
+}
+.pill__review-btn--send:hover {
+  background: oklch(0.84 0.16 245);
+}
+
+/* ─── Bottom: drag handle (3 dots) ─────────────────────────────────────── */
+
+.pill__handle {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px 2px 8px;
+  cursor: grab;
+}
+.pill__handle:active { cursor: grabbing; }
+
+.pill__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: oklch(0.78 0.16 156);
+  opacity: 0.85;
+}
