@@ -2,15 +2,15 @@
 import PackageDescription
 
 let package = Package(
-  name: "HummingbirdCapture",
+  name: "PeerCapture",
   platforms: [.macOS(.v13)],
   products: [
-    .executable(name: "HummingbirdCapture", targets: ["HummingbirdCapture"]),
+    .executable(name: "PeerCapture", targets: ["PeerCapture"]),
   ],
   targets: [
     .executableTarget(
-      name: "HummingbirdCapture",
-      path: "Sources/HummingbirdCapture"
+      name: "PeerCapture",
+      path: "Sources/PeerCapture"
     ),
   ]
 )

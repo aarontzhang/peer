@@ -16,8 +16,8 @@
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
   <key>NSScreenCaptureUsageDescription</key>
-  <string>Hummingbird records your screen so it can describe what you're showing to a Claude Code agent.</string>
+  <string>Peer records your screen so it can describe what you're showing to a Claude Code agent.</string>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Hummingbird captures your narration so it can transcribe what you're describing.</string>
+  <string>Peer captures your narration so it can transcribe what you're describing.</string>
 </dict>
 </plist>

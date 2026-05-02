@@ -93,7 +93,7 @@ impl HotkeyStatus {
         Self {
             installed: false,
             reason: Some(
-                "Hotkey is initializing. If this persists, grant Hummingbird \
+                "Hotkey is initializing. If this persists, grant Peer \
                  Accessibility access in System Settings → Privacy & Security \
                  → Accessibility."
                     .into(),

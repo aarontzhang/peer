@@ -1,19 +1,19 @@
 [package]
-name = "hummingbird"
+name = "peer"
 version = "0.1.0"
 description = "Screen-recording → Claude instruction set."
 edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "hummingbird_lib"
+name = "peer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-# Override the binary filename so `tauri dev` launches `Hummingbird`
+# Override the binary filename so `tauri dev` launches `Peer`
 # (capital H) — that's what the macOS Dock uses as the display name when
 # running the raw binary, since dev runs don't produce an .app bundle.
 [[bin]]
-name = "Hummingbird"
+name = "Peer"
 path = "src/main.rs"
 
 [build-dependencies]

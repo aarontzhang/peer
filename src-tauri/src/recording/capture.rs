@@ -1,4 +1,4 @@
-//! Drives the bundled Swift `HummingbirdCapture` sidecar over stdin/stdout.
+//! Drives the bundled Swift `PeerCapture` sidecar over stdin/stdout.
 //! Falls back to `ffmpeg avfoundation` capture if the sidecar is missing —
 //! useful in `pnpm tauri dev` before the sidecar has been built.
 
@@ -24,15 +24,15 @@ pub async fn start(bin_dir: &Path, output: &Path) -> Result<CaptureProcess> {
     if let Some(path) = locate_sidecar(bin_dir) {
         return start_sidecar(&path, output).await;
     }
-    tracing::warn!("HummingbirdCapture sidecar not found; falling back to ffmpeg avfoundation");
+    tracing::warn!("PeerCapture sidecar not found; falling back to ffmpeg avfoundation");
     start_ffmpeg(output).await
 }
 
 fn locate_sidecar(bin_dir: &Path) -> Option<PathBuf> {
     for name in [
-        "HummingbirdCapture-aarch64-apple-darwin",
-        "HummingbirdCapture-x86_64-apple-darwin",
-        "HummingbirdCapture",
+        "PeerCapture-aarch64-apple-darwin",
+        "PeerCapture-x86_64-apple-darwin",
+        "PeerCapture",
     ] {
         let p = bin_dir.join(name);
         if p.exists() { return Some(p); }
@@ -40,7 +40,7 @@ fn locate_sidecar(bin_dir: &Path) -> Option<PathBuf> {
     // Dev-mode lookup
     let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("bin")
-        .join("HummingbirdCapture-aarch64-apple-darwin");
+        .join("PeerCapture-aarch64-apple-darwin");
     if dev.exists() { return Some(dev); }
     None
 }

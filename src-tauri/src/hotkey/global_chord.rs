@@ -45,11 +45,11 @@ pub fn install(app: AppHandle, state: Arc<AppState>, tx: mpsc::UnboundedSender<(
 
     match app.global_shortcut().register(toggle) {
         Ok(()) => {
-            eprintln!("[hummingbird] Cmd+Shift+R hotkey installed.");
+            eprintln!("[peer] Cmd+Shift+R hotkey installed.");
         }
         Err(err) => {
             tracing::warn!(?err, "failed to register Cmd+Shift+R");
-            eprintln!("[hummingbird] Cmd+Shift+R hotkey UNAVAILABLE: {err}");
+            eprintln!("[peer] Cmd+Shift+R hotkey UNAVAILABLE: {err}");
         }
     }
 

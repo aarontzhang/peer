@@ -1,6 +1,6 @@
-# Hummingbird
+# Peer
 
-Screen-recording → Claude-Code instruction set. Tap **Fn** (Globe) to start, tap again to stop, while you talk and point. Hummingbird turns the clip into a copy-paste-ready instruction set in <12 seconds.
+Screen-recording → Claude-Code instruction set. Tap **Fn** (Globe) to start, tap again to stop, while you talk and point. Peer turns the clip into a copy-paste-ready instruction set in <12 seconds.
 
 ## Architecture
 

@@ -15,7 +15,7 @@ pub use state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,hummingbird=debug")))
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,peer=debug")))
         .with(fmt::layer().with_target(false).compact())
         .init();
 
@@ -57,7 +57,7 @@ pub fn run() {
             ipc::move_pill,
         ])
         .build(tauri::generate_context!())
-        .expect("error while building Hummingbird")
+        .expect("error while building Peer")
         .run(|app, event| match event {
             // Closing the result window should hide it, not exit.
             // The pill is the persistent ambient surface; we only quit on

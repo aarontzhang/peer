@@ -46,7 +46,7 @@ impl AppState {
         std::fs::create_dir_all(&data_dir)?;
 
         Ok(Self {
-            db: Db::new(data_dir.join("hummingbird.db")),
+            db: Db::new(data_dir.join("peer.db")),
             recording: RecordingController::default(),
             data_dir,
             recordings_dir,

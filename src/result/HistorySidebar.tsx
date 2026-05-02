@@ -42,7 +42,7 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
     <aside className="sidebar">
       <div className="sidebar__brand" data-tauri-drag-region>
         <BrandMark />
-        <span className="sidebar__brandName">Hummingbird</span>
+        <span className="sidebar__brandName">Peer</span>
       </div>
       <div className="sidebar__head">
         <span className="sidebar__title">History</span>

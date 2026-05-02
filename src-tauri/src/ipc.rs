@@ -115,7 +115,7 @@ pub fn move_pill(app: AppHandle, x: f64, y: f64) -> Result<(), String> {
 
 #[tauri::command]
 pub fn set_api_key(args: SetApiKeyArgs) -> Result<(), String> {
-    let service = "Hummingbird";
+    let service = "Peer";
     let account = match args.provider.as_str() {
         "openai" => "openai-api-key",
         "anthropic" => "anthropic-api-key",
@@ -159,7 +159,7 @@ pub fn read_api_key(app: &AppHandle, provider: &str) -> Option<String> {
         _ => None,
     };
     if from_file.is_some() { return from_file; }
-    keyring::Entry::new("Hummingbird", account)
+    keyring::Entry::new("Peer", account)
         .and_then(|e| e.get_password())
         .ok()
         .filter(|s| !s.is_empty())

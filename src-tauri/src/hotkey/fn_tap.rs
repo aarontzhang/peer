@@ -21,7 +21,7 @@ pub fn install(app: AppHandle, state: Arc<AppState>, tx: mpsc::UnboundedSender<(
     let app_for_thread = app.clone();
     let state_for_thread = state.clone();
     std::thread::Builder::new()
-        .name("hummingbird-fn-tap".into())
+        .name("peer-fn-tap".into())
         .spawn(move || run_tap(app_for_thread, state_for_thread, tx))
         .expect("spawn fn-tap thread");
 }
@@ -33,9 +33,9 @@ fn publish_status(app: &AppHandle, state: &AppState, status: HotkeyStatus) {
     }
     // Loud log so the user sees it in the terminal even without RUST_LOG.
     if status.installed {
-        eprintln!("[hummingbird] Fn hotkey installed — tap Fn to record.");
+        eprintln!("[peer] Fn hotkey installed — tap Fn to record.");
     } else if let Some(reason) = &status.reason {
-        eprintln!("[hummingbird] Fn hotkey UNAVAILABLE: {reason}");
+        eprintln!("[peer] Fn hotkey UNAVAILABLE: {reason}");
     }
     let _ = app.emit("hotkey:status", &status);
 }
@@ -99,9 +99,9 @@ fn run_tap(app: AppHandle, app_state: Arc<AppState>, tx: mpsc::UnboundedSender<(
     );
 
     if res.is_err() {
-        let reason = "Could not create the global event tap. Grant Hummingbird \
+        let reason = "Could not create the global event tap. Grant Peer \
                       Accessibility access in System Settings → Privacy & \
-                      Security → Accessibility, then quit and reopen Hummingbird."
+                      Security → Accessibility, then quit and reopen Peer."
             .to_string();
         tracing::warn!("Fn-tap hotkey disabled: {reason}");
         publish_status(

@@ -148,7 +148,7 @@ export function App() {
           <span className="hotkey-banner__dot" aria-hidden />
           <span className="hotkey-banner__msg">
             <strong>Fn hotkey unavailable.</strong>{' '}
-            {hotkey?.reason ?? 'Grant Hummingbird Accessibility access in System Settings → Privacy & Security → Accessibility, then quit and reopen Hummingbird.'}
+            {hotkey?.reason ?? 'Grant Peer Accessibility access in System Settings → Privacy & Security → Accessibility, then quit and reopen Peer.'}
           </span>
         </div>
       )}

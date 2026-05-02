@@ -1,4 +1,4 @@
-// HummingbirdCapture — minimal ScreenCaptureKit sidecar.
+// PeerCapture — minimal ScreenCaptureKit sidecar.
 //
 // Protocol with the Rust core:
 //   args  : --output <path.mp4>
@@ -18,7 +18,7 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
   private var videoInput: AVAssetWriterInput?
   private var audioInput: AVAssetWriterInput?
   private var sessionStarted = false
-  private let queue = DispatchQueue(label: "dev.aaronzhang.hummingbird.capture")
+  private let queue = DispatchQueue(label: "dev.aaronzhang.peer.capture")
 
   init(output: URL) {
     self.outputURL = output
@@ -28,7 +28,7 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
   func start() async throws {
     let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
     guard let display = content.displays.first else {
-      throw NSError(domain: "Hummingbird", code: 1, userInfo: [NSLocalizedDescriptionKey: "no display"])
+      throw NSError(domain: "Peer", code: 1, userInfo: [NSLocalizedDescriptionKey: "no display"])
     }
     let filter = SCContentFilter(display: display, excludingWindows: [])
 
@@ -90,7 +90,7 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
     self.stream = stream
     try await stream.startCapture()
     if !writer.startWriting() {
-      throw writer.error ?? NSError(domain: "Hummingbird", code: 2, userInfo: [NSLocalizedDescriptionKey: "writer start"])
+      throw writer.error ?? NSError(domain: "Peer", code: 2, userInfo: [NSLocalizedDescriptionKey: "writer start"])
     }
   }
 
