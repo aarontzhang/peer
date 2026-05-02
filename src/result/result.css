@@ -1,104 +1,20 @@
 /* Result window — 760×560. Two-column. Bespoke sidebar + markdown. */
 
 html, body, #root { height: 100%; }
-body {
-  background: linear-gradient(180deg,
-    oklch(0.18 0.012 257 / 0.94) 0%,
-    oklch(0.14 0.014 257 / 0.97) 100%);
-  backdrop-filter: blur(40px) saturate(140%);
+html, body {
+  background: oklch(0.20 0.012 257);
 }
 
 .app {
   position: relative;
   display: grid;
-  grid-template-rows: 64px 1fr;
   grid-template-columns: 218px 1fr;
-  grid-template-areas:
-    "brand   status"
-    "sidebar main";
+  grid-template-areas: "sidebar main";
   height: 100%;
   color: var(--color-fg);
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.65;
-}
-
-/* The header is a two-cell strip: a brand cell over the sidebar column and
-   a status cell over the main column. Only the status cell carries the
-   bottom border, so the brand cell reads as one continuous left rail with
-   the history sidebar below it. */
-.app__header {
-  display: contents;
-}
-.app__brand {
-  grid-area: brand;
-  display: flex;
-  align-items: flex-end;
-  gap: 9px;
-  /* Push the wordmark to the bottom-left of the cell so it sits directly
-     below the macOS traffic-light row (≈28px tall) on the left edge. */
-  padding: 0 12px 12px 16px;
-  user-select: none;
-  z-index: 1;
-}
-.app__brandOrb {
-  color: var(--color-fg);
-  opacity: 0.95;
-  flex: 0 0 auto;
-}
-.app__brandName {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  color: var(--color-fg);
-  line-height: 1;
-  /* Optical alignment with the orb's vertical center. */
-  margin-bottom: 1px;
-}
-
-.app__status {
-  grid-area: status;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--color-line);
-  font-size: 12px;
-  color: var(--color-fg-muted);
-  z-index: 1;
-}
-.app__statusDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-fg-dim);
-  flex: 0 0 auto;
-}
-.app__statusDot[data-status='recording']  { background: var(--color-rec); animation: pip 1.2s var(--ease-spring) infinite; }
-.app__statusDot[data-status='processing'] { background: var(--color-accent); animation: pip 1.2s var(--ease-spring) infinite; }
-.app__statusDot[data-status='stopped']    { background: oklch(0.78 0.14 80); }
-.app__statusDot[data-status='done']       { background: oklch(0.74 0.16 156); }
-.app__statusDot[data-status='failed']     { background: oklch(0.66 0.20 22); }
-.app__statusLabel {
-  font-weight: 600;
-  color: var(--color-fg);
-  letter-spacing: -0.005em;
-  flex: 0 0 auto;
-}
-.app__statusSep { color: var(--color-fg-dim); flex: 0 0 auto; }
-.app__statusSummary {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--color-fg-muted);
-}
-.app__statusMeta {
-  flex: 0 0 auto;
-  color: var(--color-fg-dim);
-  font-variant-numeric: tabular-nums;
 }
 
 /* ─── sidebar ──────────────────────────────────────────────────────────── */
@@ -107,16 +23,39 @@ body {
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--color-line);
-  padding-top: 10px;
   height: 100%;
   min-height: 0;
+}
+
+/* Brand block: orb + wordmark sized together to fill the sidebar's width.
+   Top padding clears the macOS traffic-light row that overlays this corner. */
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 38px 16px 18px 16px;
+  user-select: none;
+  color: var(--color-fg);
+}
+.sidebar__brandOrb {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  opacity: 0.95;
+}
+.sidebar__brandName {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1;
+  color: var(--color-fg);
 }
 
 .sidebar__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px 6px 14px;
+  padding: 4px 10px 6px 14px;
 }
 
 .sidebar__title {
@@ -233,6 +172,7 @@ body {
 .row[data-status='stopped']    .row__pip { background: oklch(0.78 0.14 80); }
 .row[data-status='done']       .row__pip { background: oklch(0.74 0.16 156); }
 .row[data-status='failed']     .row__pip { background: oklch(0.66 0.20 22); }
+.row[data-status='canceled']   .row__pip { background: var(--color-fg-dim); opacity: 0.55; }
 @keyframes pip { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
 
 .row__title {
@@ -262,8 +202,11 @@ body {
   flex-direction: column;
 }
 
+/* Top strip: holds the absolutely-positioned actions and gives the window
+   a draggable region. No bottom border — the divider rule lives only on
+   the sidebar so it reads as one continuous vertical line. */
 .main__bar {
-  height: 44px;
+  height: 56px;
   user-select: none;
   position: relative;
   z-index: 2;
@@ -271,8 +214,8 @@ body {
 
 .main__actions {
   position: absolute;
-  top: 8px;
-  right: 16px;
+  top: 18px;
+  right: 24px;
   display: flex;
   gap: 8px;
   z-index: 3;

@@ -256,18 +256,29 @@ pub async fn cancel(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     };
     let Some(phase) = phase else { return Ok(()) };
 
-    let (id, video_path) = match phase {
+    // Active vs Review cancellations behave differently:
+    //   - Active: capture was still running; nothing the user could "send"
+    //     existed yet, so drop the row entirely.
+    //   - Review: capture finished and the user explicitly chose to discard.
+    //     We keep the row (status = canceled) so it persists in the history
+    //     sidebar, but delete the video file — there's no re-send flow, and
+    //     a kept video would just be dead disk weight.
+    match phase {
         RecordingPhase::Active(mut active) => {
             if let Some(h) = active.auto_stop_handle.take() { h.abort(); }
             cursor::restore();
             let _ = active.capture.cancel().await;
-            (active.id, active.video_path)
+            let _ = tokio::fs::remove_file(&active.video_path).await;
+            let _ = state.db().delete_recording(&active.id).await;
         }
-        RecordingPhase::Review(review) => (review.id, review.video_path),
+        RecordingPhase::Review(review) => {
+            let _ = tokio::fs::remove_file(&review.video_path).await;
+            if let Ok(Some(mut rec)) = state.db().get_recording(&review.id).await {
+                rec.status = RecordingStatus::Canceled;
+                let _ = state.db().update_recording(&rec).await;
+            }
+        }
     };
-
-    let _ = tokio::fs::remove_file(&video_path).await;
-    let _ = state.db().delete_recording(&id).await;
 
     emit(&app, &PillEvent::Idle);
     Ok(())

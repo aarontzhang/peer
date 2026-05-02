@@ -68,6 +68,7 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
             || (rec.status === 'processing' ? 'Analyzing…'
                 : rec.status === 'recording' ? 'Recording…'
                 : rec.status === 'stopped' ? 'Captured (awaiting send)'
+                : rec.status === 'canceled' ? 'Cancelled'
                 : 'Untitled recording');
           return (
             <div

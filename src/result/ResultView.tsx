@@ -40,12 +40,29 @@ export function ResultView({ recording, liveBody, isStreaming }: Props) {
   if (recording.status === 'failed') {
     return (
       <div className="main">
-        <div className="main__bar" />
+        <div className="main__bar" data-tauri-drag-region />
         <div className="main__scroll">
           <div className="md">
             <h1>Recording failed</h1>
             <p style={{ color: 'var(--color-fg-muted)' }}>
               {recording.error ?? 'Unknown error.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (recording.status === 'canceled') {
+    return (
+      <div className="main">
+        <div className="main__bar" data-tauri-drag-region />
+        <div className="main__scroll">
+          <div className="md">
+            <h1 style={{ color: 'var(--color-fg-muted)' }}>Cancelled</h1>
+            <p style={{ color: 'var(--color-fg-dim)' }}>
+              You discarded this capture from the pill. The video has been deleted, but the entry
+              stays here so you have a record of when it happened.
             </p>
           </div>
         </div>
@@ -64,7 +81,7 @@ export function ResultView({ recording, liveBody, isStreaming }: Props) {
         : "The instruction set will stream in here as soon as it's ready.";
     return (
       <div className="main">
-        <div className="main__bar" />
+        <div className="main__bar" data-tauri-drag-region />
         <div className="main__scroll">
           <div className="md">
             <h1 style={{ color: 'var(--color-fg-muted)' }}>{heading}</h1>
@@ -91,7 +108,7 @@ export function ResultView({ recording, liveBody, isStreaming }: Props) {
 
   return (
     <div className="main">
-      <div className="main__bar">
+      <div className="main__bar" data-tauri-drag-region>
         <div className="main__actions">
           <button
             className="icon-btn"

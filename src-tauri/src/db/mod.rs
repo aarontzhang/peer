@@ -29,16 +29,18 @@ impl Db {
             .execute(&*pool)
             .await;
         // Sweep dead rows from prior sessions:
-        //  - 'recording', 'stopped', or 'canceled' have no useful content
-        //    and just clutter the sidebar. ('stopped' = capture finished
-        //    but the user closed the app without sending; treat as
-        //    discarded.)
+        //  - 'recording' or 'stopped' have no useful content and just
+        //    clutter the sidebar. ('stopped' = capture finished but the
+        //    user closed the app without sending; treat as discarded.)
+        //  - 'canceled' rows DO persist across sessions on purpose: the
+        //    user explicitly discarded those from the pill, but they
+        //    asked to keep them visible in history.
         //  - 'processing' rows that never finished similarly aren't
         //    recoverable; if they have a body, downgrade to 'failed'
         //    so the user still sees what was generated; otherwise drop.
         sqlx::query(
             "DELETE FROM recordings
-             WHERE status IN ('recording', 'stopped', 'canceled')
+             WHERE status IN ('recording', 'stopped')
                 OR (status = 'processing' AND COALESCE(body, '') = '')",
         )
         .execute(&*pool)

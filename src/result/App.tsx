@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ipc, formatRelative, type HotkeyStatus, type Recording } from '@/lib/ipc';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
 import { HistorySidebar } from './HistorySidebar';
 import { ResultView } from './ResultView';
 import { EmptyState } from './EmptyState';
 import { Settings } from './Settings';
+
+async function copyBodyToClipboard(text: string) {
+  try {
+    await writeText(text);
+  } catch {
+    try { await navigator.clipboard.writeText(text); } catch { /* best-effort */ }
+  }
+}
 
 export function App() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
@@ -14,6 +23,11 @@ export function App() {
   const liveRef = useRef<{ id: string; body: string } | null>(null);
   const [, force] = useState(0);
   const triggerRender = useCallback(() => force((n) => n + 1), []);
+
+  // Tracks the most recent recording id we've auto-jumped to. The pill emits
+  // a `recording` event on every elapsed-time tick; without this we'd reset
+  // the user's manual sidebar selection on every tick.
+  const autoSelectedRecRef = useRef<string | null>(null);
 
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -42,11 +56,15 @@ export function App() {
     const unsub = ipc.onPillEvent((e) => {
       if (
         e.kind === 'recording' || e.kind === 'stopped' ||
-        e.kind === 'processing' || e.kind === 'done' || e.kind === 'error'
+        e.kind === 'processing' || e.kind === 'done' || e.kind === 'error' ||
+        e.kind === 'idle'
       ) {
         void refreshList();
       }
-      if (e.kind === 'recording') {
+      // Auto-jump to a recording only on the first tick of a new session,
+      // so manual sidebar clicks aren't yanked back on subsequent ticks.
+      if (e.kind === 'recording' && autoSelectedRecRef.current !== e.id) {
+        autoSelectedRecRef.current = e.id;
         setSelectedId(e.id);
       }
     });
@@ -59,7 +77,9 @@ export function App() {
       if (c.kind === 'begin') {
         liveRef.current = { id: c.id, body: '' };
         setStreamingId(c.id);
-        setSelectedId(c.id);
+        // Don't force the selection — if the user is browsing other
+        // history entries, leave them where they are. The streaming
+        // result is still accessible by clicking its row.
         triggerRender();
         return;
       }
@@ -76,6 +96,8 @@ export function App() {
         setStreamingId(null);
         triggerRender();
         void refreshList();
+        // Auto-copy the finished prompt so it's ready to paste into Claude Code.
+        if (c.text) void copyBodyToClipboard(c.text);
       }
     });
     return () => { void unsub.then((fn) => fn()); };
@@ -121,15 +143,6 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="app__header">
-        <div className="app__brand" data-tauri-drag-region>
-          <BrandMark />
-          <span className="app__brandName">Hummingbird</span>
-        </div>
-        <div className="app__status" data-tauri-drag-region>
-          {selected && <RecordingStatusLine recording={selected} />}
-        </div>
-      </header>
       {showHotkeyWarning && (
         <div className="hotkey-banner" role="status">
           <span className="hotkey-banner__dot" aria-hidden />
@@ -163,52 +176,3 @@ export function App() {
   );
 }
 
-/** Halftone-orb brand mark. Coordinates match the pill logo and the macOS
- *  app icon so the brand reads consistently across surfaces. */
-function BrandMark() {
-  const dots: Array<[number, number, number]> = [
-    [0, 0, 3.5],
-    [0, -9, 3.0], [7.794, -4.5, 2.2], [7.794, 4.5, 3.0],
-    [0, 9, 2.2], [-7.794, 4.5, 3.0], [-7.794, -4.5, 2.2],
-    [6.123, -14.782, 2.4], [14.782, -6.123, 1.6], [14.782, 6.123, 2.4],
-    [6.123, 14.782, 1.6], [-6.123, 14.782, 2.4], [-14.782, 6.123, 1.6],
-    [-14.782, -6.123, 2.4], [-6.123, -14.782, 1.6],
-  ];
-  return (
-    <svg
-      viewBox="-22 -22 44 44"
-      width="22"
-      height="22"
-      aria-hidden
-      className="app__brandOrb"
-    >
-      {dots.map(([x, y, r], i) => (
-        <circle key={i} cx={x} cy={y} r={r} fill="currentColor" />
-      ))}
-    </svg>
-  );
-}
-
-function RecordingStatusLine({ recording }: { recording: Recording }) {
-  const label =
-    recording.status === 'recording' ? 'Recording'
-    : recording.status === 'processing' ? 'Analyzing'
-    : recording.status === 'stopped' ? 'Captured'
-    : recording.status === 'failed' ? 'Failed'
-    : recording.status === 'canceled' ? 'Canceled'
-    : 'Done';
-  const summary = recording.summary?.trim() || 'Untitled recording';
-  return (
-    <>
-      <span
-        className="app__statusDot"
-        data-status={recording.status}
-        aria-hidden
-      />
-      <span className="app__statusLabel">{label}</span>
-      <span className="app__statusSep" aria-hidden>·</span>
-      <span className="app__statusSummary" title={summary}>{summary}</span>
-      <span className="app__statusMeta">{formatRelative(recording.createdAt)}</span>
-    </>
-  );
-}
