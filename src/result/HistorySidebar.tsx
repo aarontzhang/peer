@@ -11,21 +11,6 @@ type Props = {
 export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props) {
   const [busy, setBusy] = useState(false);
 
-  const onClearAll = async () => {
-    if (busy || items.length === 0) return;
-    const ok = window.confirm(
-      `Delete all ${items.length} recording${items.length === 1 ? '' : 's'}? This can't be undone.`,
-    );
-    if (!ok) return;
-    setBusy(true);
-    try {
-      await ipc.deleteAllRecordings();
-      onChanged();
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const onDelete = async (rec: Recording, e: React.MouseEvent) => {
     e.stopPropagation();
     if (busy) return;
@@ -46,16 +31,6 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
       </div>
       <div className="sidebar__head">
         <span className="sidebar__title">History</span>
-        <button
-          type="button"
-          className="sidebar__clear"
-          onClick={onClearAll}
-          disabled={busy || items.length === 0}
-          aria-label="Delete all recordings"
-          title="Delete all"
-        >
-          <TrashIcon />
-        </button>
       </div>
       <div className="sidebar__list" role="listbox" aria-label="Recordings">
         {items.length === 0 && (
@@ -109,33 +84,24 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
   );
 }
 
-/** Halftone-orb brand mark. Coordinates match the pill logo and the macOS
- *  app icon so the brand reads consistently across surfaces. */
+/** Face + round glasses, straight-ahead. Same geometry as the in-pill
+ *  logo and the macOS app icon (src-tauri/icons/icon.svg) so the brand
+ *  reads consistently across surfaces. */
 function BrandMark() {
-  const dots: Array<[number, number, number]> = [
-    [0, 0, 3.5],
-    // ring 1
-    [0, -9, 3.0], [7.794, -4.5, 2.2], [7.794, 4.5, 3.0],
-    [0, 9, 2.2], [-7.794, 4.5, 3.0], [-7.794, -4.5, 2.2],
-    // ring 2
-    [6.123, -14.782, 2.4], [14.782, -6.123, 1.6], [14.782, 6.123, 2.4],
-    [6.123, 14.782, 1.6], [-6.123, 14.782, 2.4], [-14.782, 6.123, 1.6],
-    [-14.782, -6.123, 2.4], [-6.123, -14.782, 1.6],
-    // ring 3
-    [3.519, -22.222, 1.8], [15.910, -15.910, 1.2], [22.222, -3.519, 1.8],
-    [20.048, 10.215, 1.2], [10.215, 20.048, 1.8], [-3.519, 22.222, 1.2],
-    [-15.910, 15.910, 1.8], [-22.222, 3.519, 1.2], [-20.048, -10.215, 1.8],
-    [-10.215, -20.048, 1.2],
-  ];
   return (
     <svg
-      viewBox="-30 -30 60 60"
+      viewBox="-50 -50 100 100"
       aria-hidden
       className="sidebar__brandOrb"
     >
-      {dots.map(([x, y, r], i) => (
-        <circle key={i} cx={x} cy={y} r={r} fill="currentColor" />
-      ))}
+      <g fill="none" stroke="currentColor" strokeLinecap="round">
+        <circle cx="0" cy="0" r="37" strokeWidth="3" />
+        <g strokeWidth="2.5">
+          <circle cx="-12" cy="0" r="10" />
+          <circle cx="12"  cy="0" r="10" />
+          <line x1="-3" y1="0" x2="3" y2="0" />
+        </g>
+      </g>
     </svg>
   );
 }

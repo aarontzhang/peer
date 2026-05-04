@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- up-left -->
+  <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="#13161c"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <!-- head -->
+    <circle cx="512" cy="512" r="380" stroke-width="28"/>
+    <!-- glasses (translated as a group) -->
+    <g stroke-width="24">
+      <circle cx="297" cy="427" r="100"/>
+      <circle cx="547" cy="427" r="100"/>
+      <line x1="400" y1="427" x2="444" y2="427"/>
+    </g>
+  </g>
+</svg>

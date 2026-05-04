@@ -258,7 +258,7 @@ function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number 
 
 const GAZE_MAX = 20;          // viewBox-unit cap on offset magnitude
 const GAZE_RANGE_PX = 240;    // distance at which gaze saturates
-const GAZE_LERP = 0.22;       // per-frame damping toward target
+const GAZE_LERP = 0.34;       // per-frame damping toward target
 const GAZE_EPSILON = 0.05;    // stop animating when target is reached
 
 function useCursorGaze(active: boolean): [number, number] {
@@ -302,7 +302,7 @@ function useCursorGaze(active: boolean): [number, number] {
         raf = requestAnimationFrame(tick);
         return;
       }
-      nextPollDue = now + 33; // ~30Hz cursor poll; lerp fills in the rest
+      nextPollDue = now + 16; // ~60Hz cursor poll; lerp fills in the rest
       if (now >= winRefreshDue) {
         winRefreshDue = now + 250;
         try { await refreshWindow(); } catch { /* ignore */ }

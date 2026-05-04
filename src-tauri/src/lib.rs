@@ -49,7 +49,6 @@ pub fn run() {
             ipc::list_recordings,
             ipc::get_recording,
             ipc::delete_recording,
-            ipc::delete_all_recordings,
             ipc::open_result_window,
             ipc::set_api_key,
             ipc::get_api_key_status,

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- straight-bare -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <!-- head -->
+    <circle cx="512" cy="512" r="380" stroke-width="28"/>
+    <!-- glasses (translated as a group) -->
+    <g stroke-width="24">
+      <circle cx="387" cy="512" r="100"/>
+      <circle cx="637" cy="512" r="100"/>
+      <line x1="490" y1="512" x2="534" y2="512"/>
+    </g>
+  </g>
+</svg>

@@ -64,43 +64,38 @@ html, body, #root {
 .pill__core:hover  { transform: scale(1.06); }
 .pill__core:active { transform: scale(0.94); }
 
-/* ─── Halftone-orb logo ────────────────────────────────────────────────── */
+/* ─── Face + glasses logo ──────────────────────────────────────────────── */
 
 .logo {
-  /* viewBox is centered on (0,0); rotation/scale should pivot there. */
+  /* viewBox is centered on (0,0); strokes/transforms pivot there. */
   overflow: visible;
 }
-.logo circle {
-  fill: oklch(1 0 0); /* pure white — flat, no gradient */
-  transition: fill var(--dur-base) var(--ease-spring);
+.logo circle,
+.logo line {
+  stroke: oklch(1 0 0);
+  fill: none;
+  transition: stroke var(--dur-base) var(--ease-spring);
 }
 
-/* Spin while recording. Group rotates around the SVG origin (0,0). */
-.logo__group {
-  transform-origin: 0 0;
-  transform-box: view-box;
+/* The glasses translate to point the gaze. Smooth the move so swapping
+   directions (e.g. when starting/stopping recording) doesn't snap. */
+.logo__glasses {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--dur-base) var(--ease-spring);
 }
-.logo[data-state='recording'] .logo__group {
-  animation: logo-spin 4s linear infinite;
-}
-.logo[data-state='recording'] circle {
-  /* Stay white per design — the spin alone reads as "recording". */
-  fill: oklch(1 0 0);
-}
-.logo[data-state='processing'] .logo__group {
-  animation: logo-spin 6s linear infinite;
-}
-.logo[data-state='processing'] circle {
+
+/* Recording reads via the red rim around the pill (see .pill[data-state]
+   above) plus the gaze change — the face stays still. */
+
+.logo[data-state='processing'] .logo__glasses {
   animation: logo-pulse 1.6s ease-in-out infinite;
 }
-.logo[data-state='done'] circle {
-  fill: oklch(0.84 0.14 156);
+.logo[data-state='done'] circle,
+.logo[data-state='done'] line {
+  stroke: oklch(0.84 0.14 156);
 }
 
-@keyframes logo-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
 @keyframes logo-pulse {
   0%, 100% { opacity: 0.65; }
   50%      { opacity: 1; }

@@ -152,18 +152,6 @@ impl Db {
         Ok(())
     }
 
-    /// Wipe every recording row and return the (id, video_path) pairs so the
-    /// caller can clean up files on disk.
-    pub async fn delete_all_recordings(&self) -> Result<Vec<(String, String)>> {
-        let pool = self.pool().await?;
-        let rows: Vec<(String, String)> = sqlx::query_as(
-            "SELECT id, video_path FROM recordings",
-        )
-        .fetch_all(&*pool)
-        .await?;
-        sqlx::query("DELETE FROM recordings").execute(&*pool).await?;
-        Ok(rows)
-    }
 }
 
 const SCHEMA: &str = r#"

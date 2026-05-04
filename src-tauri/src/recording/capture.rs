@@ -29,13 +29,24 @@ pub async fn start(bin_dir: &Path, output: &Path) -> Result<CaptureProcess> {
 }
 
 fn locate_sidecar(bin_dir: &Path) -> Option<PathBuf> {
-    for name in [
+    let names = [
         "PeerCapture-aarch64-apple-darwin",
         "PeerCapture-x86_64-apple-darwin",
         "PeerCapture",
-    ] {
+    ];
+    for name in names {
         let p = bin_dir.join(name);
         if p.exists() { return Some(p); }
+    }
+    // Bundled-app lookup: Tauri's externalBin places sidecars next to the
+    // main binary in Contents/MacOS/, not in Resources/bin/.
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            for name in names {
+                let p = dir.join(name);
+                if p.exists() { return Some(p); }
+            }
+        }
     }
     // Dev-mode lookup
     let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

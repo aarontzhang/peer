@@ -75,16 +75,6 @@ pub async fn delete_recording(state: State<'_, Arc<AppState>>, id: String) -> Re
     state.db().delete_recording(&id).await.map_err(err_to_string)
 }
 
-#[tauri::command]
-pub async fn delete_all_recordings(state: State<'_, Arc<AppState>>) -> Result<u64, String> {
-    let rows = state.db().delete_all_recordings().await.map_err(err_to_string)?;
-    let count = rows.len() as u64;
-    for (id, video_path) in rows {
-        purge_artifacts(state.inner(), &id, &video_path).await;
-    }
-    Ok(count)
-}
-
 /// Best-effort cleanup of on-disk artifacts: video, sibling mp3, and the
 /// per-recording frames directory. Errors are swallowed — the DB row is
 /// already gone and we don't want orphan files to block deletion.

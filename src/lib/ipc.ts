@@ -47,7 +47,6 @@ export const ipc = {
   listRecordings: () => invoke<Recording[]>('list_recordings'),
   getRecording: (id: string) => invoke<Recording | null>('get_recording', { id }),
   deleteRecording: (id: string) => invoke<void>('delete_recording', { id }),
-  deleteAllRecordings: () => invoke<number>('delete_all_recordings'),
   openResultWindow: () => invoke<void>('open_result_window'),
   movePill: (x: number, y: number) => invoke<void>('move_pill', { x, y }),
   cursorPosition: () => invoke<[number, number]>('cursor_position'),

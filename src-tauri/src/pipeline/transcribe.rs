@@ -69,6 +69,18 @@ pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Resu
     if total_secs <= 0.5 {
         return Ok(Transcript::default());
     }
+    // Guard against silent audio: Whisper hallucinates the word "you" on
+    // pure silence, masking real capture failures (mic permission denied,
+    // no input device, etc.). -80 dB is well below speech and well above
+    // the digital noise floor (~-91 dB).
+    if let Some(max_db) = audio_max_volume_db(&audio_path).await {
+        if max_db <= -80.0 {
+            anyhow::bail!(
+                "audio track is silent ({:.1} dB) — check Microphone permission for Peer in System Settings → Privacy & Security",
+                max_db
+            );
+        }
+    }
     let ranges = build_overlapping_ranges(0.0, total_secs, CHUNK_SECONDS, OVERLAP_SECONDS);
     if ranges.is_empty() {
         return Ok(Transcript::default());
@@ -102,6 +114,27 @@ pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Resu
     }
 
     Ok(Transcript { entries: dedupe_captions(all, DEDUPE_TOLERANCE_SECONDS) })
+}
+
+async fn audio_max_volume_db(audio: &Path) -> Option<f64> {
+    let out = Command::new("ffmpeg")
+        .args(["-hide_banner", "-nostats", "-i"])
+        .arg(audio)
+        .args(["-af", "volumedetect", "-vn", "-sn", "-dn", "-f", "null", "-"])
+        .output()
+        .await
+        .ok()?;
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    for line in stderr.lines() {
+        if let Some(idx) = line.find("max_volume:") {
+            let rest = &line[idx + "max_volume:".len()..];
+            let token = rest.split_whitespace().next()?;
+            if let Ok(v) = token.parse::<f64>() {
+                return Some(v);
+            }
+        }
+    }
+    None
 }
 
 async fn extract_audio(video: &Path) -> Result<PathBuf> {

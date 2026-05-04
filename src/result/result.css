@@ -66,29 +66,6 @@ html, body {
   color: var(--color-fg-dim);
 }
 
-.sidebar__clear {
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  color: var(--color-fg-dim);
-  cursor: pointer;
-  padding: 0;
-  opacity: 0.7;
-  transition: background var(--dur-fast) var(--ease-spring),
-              color var(--dur-fast) var(--ease-spring),
-              opacity var(--dur-fast) var(--ease-spring);
-}
-.sidebar__clear:hover:not(:disabled) {
-  background: oklch(0.66 0.22 22 / 0.18);
-  color: oklch(0.84 0.18 22);
-  opacity: 1;
-}
-.sidebar__clear:disabled { opacity: 0.25; cursor: default; }
-
 .sidebar__list {
   flex: 1;
   overflow-y: auto;
