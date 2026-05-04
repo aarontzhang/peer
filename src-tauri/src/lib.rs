@@ -27,6 +27,9 @@ pub fn run() {
             let state = Arc::new(AppState::new(&handle)?);
             app.manage(state.clone());
 
+            #[cfg(target_os = "macos")]
+            set_app_icon(&handle)?;
+
             position_pill(&handle)?;
 
             hotkey::install(handle.clone(), state.clone());
@@ -126,4 +129,26 @@ fn anchor_default(win: &WebviewWindow) -> tauri::Result<()> {
 
     win.set_position(tauri::LogicalPosition::new(x, y))?;
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn set_app_icon(app: &AppHandle) -> tauri::Result<()> {
+    use cocoa::appkit::{NSApp, NSApplication, NSImage};
+    use cocoa::base::{id, nil};
+    use cocoa::foundation::NSData;
+
+    // When Peer is launched as a raw binary instead of a healthy .app bundle,
+    // macOS does not reliably pick up the branded dock icon from bundle
+    // resources. Set it explicitly so the dock matches the in-app mark.
+    let icon_bytes = include_bytes!("../icons/icon.png");
+    app.run_on_main_thread(move || unsafe {
+        let data = NSData::dataWithBytes_length_(
+            nil,
+            icon_bytes.as_ptr().cast(),
+            icon_bytes.len() as u64,
+        );
+        let image: id = NSImage::initWithData_(NSImage::alloc(nil), data);
+        let ns_app = NSApp();
+        ns_app.setApplicationIconImage_(image);
+    })
 }

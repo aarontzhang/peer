@@ -39,43 +39,33 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
       FileHandle.standardError.write("mic candidate: \(summary(device))\n".data(using: .utf8) ?? Data())
     }
 
-    guard let defaultDevice else {
-      return devices.first(where: { $0.isConnected && !$0.isSuspended })
-    }
-
-    let defaultTransport = defaultDevice.transportType
-    let shouldAvoidDefault =
-      !defaultDevice.isConnected ||
-      defaultDevice.isSuspended ||
-      defaultTransport == kIOAudioDeviceTransportTypeBluetooth ||
-      defaultTransport == kIOAudioDeviceTransportTypeVirtual
-
-    if !shouldAvoidDefault {
-      FileHandle.standardError.write("mic selected default: \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
-      return defaultDevice
-    }
-
     if let builtIn = devices.first(where: {
       $0.isConnected &&
       !$0.isSuspended &&
       $0.transportType == kIOAudioDeviceTransportTypeBuiltIn
     }) {
-      FileHandle.standardError.write(
-        "mic selected built-in over default \(defaultDevice.localizedName): \(summary(builtIn))\n".data(using: .utf8) ?? Data()
-      )
+      FileHandle.standardError.write("mic selected built-in: \(summary(builtIn))\n".data(using: .utf8) ?? Data())
       return builtIn
     }
 
-    if let wired = devices.first(where: {
-      $0.isConnected &&
-      !$0.isSuspended &&
-      $0.transportType != kIOAudioDeviceTransportTypeBluetooth &&
-      $0.transportType != kIOAudioDeviceTransportTypeVirtual
-    }) {
+    guard let defaultDevice else {
+      if let fallback = devices.first(where: { $0.isConnected && !$0.isSuspended }) {
+        FileHandle.standardError.write("mic selected fallback (no default): \(summary(fallback))\n".data(using: .utf8) ?? Data())
+        return fallback
+      }
+      return nil
+    }
+
+    if defaultDevice.isConnected && !defaultDevice.isSuspended {
+      FileHandle.standardError.write("mic selected default: \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
+      return defaultDevice
+    }
+
+    if let builtIn = devices.first(where: { $0.isConnected && !$0.isSuspended }) {
       FileHandle.standardError.write(
-        "mic selected wired fallback over default \(defaultDevice.localizedName): \(summary(wired))\n".data(using: .utf8) ?? Data()
+        "mic selected fallback over unavailable default \(defaultDevice.localizedName): \(summary(builtIn))\n".data(using: .utf8) ?? Data()
       )
-      return wired
+      return builtIn
     }
 
     FileHandle.standardError.write("mic selected default as last resort: \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
