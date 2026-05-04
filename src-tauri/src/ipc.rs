@@ -113,6 +113,21 @@ pub fn move_pill(app: AppHandle, x: f64, y: f64) -> Result<(), String> {
     Ok(())
 }
 
+/// Global cursor position in macOS user-space (top-left origin, points).
+/// Lives in the same coordinate space as `LogicalPosition`, so JS can
+/// subtract the pill window's logical position directly. Polled on rAF
+/// from the pill so the glasses can follow the mouse.
+#[tauri::command]
+pub fn cursor_position() -> Result<[f64; 2], String> {
+    use core_graphics::event::CGEvent;
+    use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+    let src = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+        .map_err(|_| "CGEventSource::new failed".to_string())?;
+    let event = CGEvent::new(src).map_err(|_| "CGEvent::new failed".to_string())?;
+    let loc = event.location();
+    Ok([loc.x, loc.y])
+}
+
 #[tauri::command]
 pub fn set_api_key(args: SetApiKeyArgs) -> Result<(), String> {
     let service = "Peer";

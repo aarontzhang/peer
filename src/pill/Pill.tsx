@@ -46,7 +46,7 @@ export function Pill() {
     : 0;
 
   const dragHandle = useDragHandle(toggleRecording);
-  const gaze = useGazeDirection(state === 'recording');
+  const gaze = useCursorGaze(state === 'recording');
 
   return (
     <div className="pill" data-state={state}>
@@ -83,7 +83,7 @@ export function Pill() {
           aria-label={state === 'recording' ? 'Stop recording' : 'Start recording'}
           title={state === 'recording' ? formatDuration(elapsed) : 'Record'}
         >
-          <GlassesLogo state={state} direction={gaze} />
+          <GlassesLogo state={state} dx={gaze[0]} dy={gaze[1]} />
         </button>
       )}
       <div
@@ -189,35 +189,12 @@ function useDragHandle(onClick: () => void) {
 /* ─── Face + glasses logo ──────────────────────────────────────────────── */
 //
 // A round head with a pair of round glasses inside. The glasses translate
-// as a unit to point the gaze in one of six directions — this is what
-// gives the pill its "looking at you" character while recording. The
-// straight-ahead variant is the same mark used for the macOS app icon
-// (src-tauri/icons/icon.svg), so pill and dock read as the same face.
+// as a unit to follow the cursor while recording — see useCursorGaze.
+// The straight-ahead variant (dx=dy=0) is the same mark used for the
+// macOS app icon (src-tauri/icons/icon.svg), so pill and dock read as
+// the same face.
 
-type GazeDirection =
-  | 'straight'
-  | 'up-left'
-  | 'up-right'
-  | 'down'
-  | 'down-left'
-  | 'down-right';
-
-// Glasses-center offset (in viewBox units) per direction. The viewBox is
-// -50..50, so these are roughly percentage-of-radius offsets. Diagonals
-// push hard enough that the outer lens pokes past the head circle — the
-// mask below clips the head stroke inside the lens so there's no double
-// line where they cross.
-const GAZE_OFFSETS: Record<GazeDirection, [number, number]> = {
-  'straight':   [  0,   0],
-  'up-left':    [-15, -13],
-  'up-right':   [ 15, -13],
-  'down':       [  0,  14],
-  'down-left':  [-13,  12],
-  'down-right': [ 13,  12],
-};
-
-function GlassesLogo({ state, direction }: { state: string; direction: GazeDirection }) {
-  const [dx, dy] = GAZE_OFFSETS[direction];
+function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number }) {
   const maskId = 'pill-head-mask';
   const gazeTransform = `translate(${dx}px, ${dy}px)`;
   return (
@@ -267,60 +244,118 @@ function GlassesLogo({ state, direction }: { state: string; direction: GazeDirec
   );
 }
 
-/* ─── Gaze direction: which way to look so we face the screen center ───── */
+/* ─── Cursor gaze: glasses follow the mouse pointer ────────────────────── */
 //
-// When recording starts, we figure out where on the monitor the pill is
-// sitting and pick a gaze direction that points back toward the middle of
-// the screen. Top-left pill → looks down-right; bottom-right → up-left;
-// roughly centered → straight. Recomputes whenever recording (re)starts.
+// While recording, the pill polls the global cursor position each animation
+// frame and aims the glasses at it. The raw vector (cursor → pill center)
+// is normalised, scaled to viewBox units, then lerped each frame so the
+// motion damps smoothly instead of snapping. Beyond ~RANGE pixels the
+// gaze saturates — the lens is already poking past the head circle and
+// further pulling would just look weird.
+//
+// We pull cursor position from Rust (CGEventSource on macOS) since the
+// pill window only sees mousemove events while the cursor is over it.
 
-function useGazeDirection(active: boolean): GazeDirection {
-  const [dir, setDir] = useState<GazeDirection>('straight');
+const GAZE_MAX = 20;          // viewBox-unit cap on offset magnitude
+const GAZE_RANGE_PX = 240;    // distance at which gaze saturates
+const GAZE_LERP = 0.22;       // per-frame damping toward target
+const GAZE_EPSILON = 0.05;    // stop animating when target is reached
+
+function useCursorGaze(active: boolean): [number, number] {
+  const [gaze, setGaze] = useState<[number, number]>([0, 0]);
+  const target = useRef<[number, number]>([0, 0]);
+  const current = useRef<[number, number]>([0, 0]);
+
+  // Poll the cursor position on rAF and update the gaze target. Window
+  // position/size are fetched async, so we cache and refresh them on a
+  // slower cadence — they only change when the user drags the pill.
   useEffect(() => {
-    if (!active) { setDir('straight'); return; }
+    if (!active) {
+      target.current = [0, 0];
+      return;
+    }
     let cancelled = false;
-    void (async () => {
-      try {
-        const win = getCurrentWindow();
-        const monitor = await currentMonitor();
-        if (!monitor || cancelled) return;
-        const scale = monitor.scaleFactor || 1;
-        const winPos = await win.outerPosition();
-        const winSize = await win.outerSize();
-        const px = (winPos.x + winSize.width / 2) / scale;
-        const py = (winPos.y + winSize.height / 2) / scale;
-        const monW = monitor.size.width / scale;
-        const monH = monitor.size.height / scale;
-        const mx = monitor.position.x / scale + monW / 2;
-        const my = monitor.position.y / scale + monH / 2;
-        const dx = mx - px;   // + → screen center is to the right of pill
-        const dy = my - py;   // + → screen center is below the pill
-        // Dead zones: if the pill is roughly aligned with the center on
-        // an axis, don't bias the gaze along that axis.
-        const hThresh = monW * 0.12;
-        const vThresh = monH * 0.12;
-        if (cancelled) return;
-        let next: GazeDirection;
-        if (dy > vThresh) {
-          // Pill is in the top half → look down.
-          next = dx > hThresh ? 'down-right' : dx < -hThresh ? 'down-left' : 'down';
-        } else if (dy < -vThresh) {
-          // Pill is in the bottom half → look up. We have no plain "up"
-          // icon, so when the pill is bottom-center we still pick a
-          // diagonal toward whichever side dx leans (or up-right by
-          // default if perfectly centered).
-          next = dx >= 0 ? 'up-right' : 'up-left';
-          if (dx > hThresh) next = 'up-right';
-          else if (dx < -hThresh) next = 'up-left';
-        } else {
-          next = 'straight';
-        }
-        setDir(next);
-      } catch {
-        // Tauri APIs occasionally throw during teardown — fall back to straight.
+    let raf = 0;
+    let winCenterLogical: [number, number] | null = null;
+    let winRefreshDue = 0;
+    let nextPollDue = 0;
+    let scale = 1;
+
+    const refreshWindow = async () => {
+      const win = getCurrentWindow();
+      const [pos, size, monitor] = await Promise.all([
+        win.outerPosition(),
+        win.outerSize(),
+        currentMonitor(),
+      ]);
+      scale = monitor?.scaleFactor || 1;
+      winCenterLogical = [
+        (pos.x + size.width / 2) / scale,
+        (pos.y + size.height / 2) / scale,
+      ];
+    };
+    void refreshWindow();
+
+    const tick = async (now: number) => {
+      if (cancelled) return;
+      if (now < nextPollDue) {
+        raf = requestAnimationFrame(tick);
+        return;
       }
-    })();
-    return () => { cancelled = true; };
+      nextPollDue = now + 33; // ~30Hz cursor poll; lerp fills in the rest
+      if (now >= winRefreshDue) {
+        winRefreshDue = now + 250;
+        try { await refreshWindow(); } catch { /* ignore */ }
+      }
+      try {
+        const [cx, cy] = await ipc.cursorPosition();
+        if (cancelled || !winCenterLogical) {
+          raf = requestAnimationFrame(tick);
+          return;
+        }
+        const dxPx = cx - winCenterLogical[0];
+        const dyPx = cy - winCenterLogical[1];
+        const dist = Math.hypot(dxPx, dyPx);
+        if (dist < 1) {
+          target.current = [0, 0];
+        } else {
+          const norm = Math.min(dist / GAZE_RANGE_PX, 1);
+          const k = (GAZE_MAX * norm) / dist;
+          target.current = [dxPx * k, dyPx * k];
+        }
+      } catch {
+        // IPC may fail momentarily during teardown — keep the previous target.
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
   }, [active]);
-  return dir;
+
+  // Damped lerp toward the target. Runs whenever the target diverges from
+  // the rendered gaze, then idles once the spring settles.
+  useEffect(() => {
+    let raf = 0;
+    let stopped = false;
+    const step = () => {
+      const [tx, ty] = target.current;
+      const [cx, cy] = current.current;
+      const nx = cx + (tx - cx) * GAZE_LERP;
+      const ny = cy + (ty - cy) * GAZE_LERP;
+      current.current = [nx, ny];
+      setGaze([
+        Math.abs(nx) < GAZE_EPSILON && tx === 0 ? 0 : nx,
+        Math.abs(ny) < GAZE_EPSILON && ty === 0 ? 0 : ny,
+      ]);
+      if (!stopped) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => { stopped = true; cancelAnimationFrame(raf); };
+  }, []);
+
+  return gaze;
 }

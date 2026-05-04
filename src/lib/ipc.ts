@@ -50,6 +50,7 @@ export const ipc = {
   deleteAllRecordings: () => invoke<number>('delete_all_recordings'),
   openResultWindow: () => invoke<void>('open_result_window'),
   movePill: (x: number, y: number) => invoke<void>('move_pill', { x, y }),
+  cursorPosition: () => invoke<[number, number]>('cursor_position'),
   setApiKey: (provider: 'openai' | 'anthropic', key: string) =>
     invoke<void>('set_api_key', { args: { provider, key } }),
   getApiKeyStatus: () => invoke<ApiKeyStatus>('get_api_key_status'),

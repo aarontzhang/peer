@@ -55,6 +55,7 @@ pub fn run() {
             ipc::get_api_key_status,
             ipc::get_hotkey_status,
             ipc::move_pill,
+            ipc::cursor_position,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Peer")
