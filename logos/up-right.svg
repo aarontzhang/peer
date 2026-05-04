@@ -3,13 +3,22 @@
   <!-- up-right -->
   <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="#13161c"/>
   <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <defs>
+      <mask id="head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+        <rect x="0" y="0" width="1024" height="1024" fill="white"/>
+        <circle cx="497" cy="427" r="80" fill="black"/>
+        <circle cx="707" cy="427" r="80" fill="black"/>
+      </mask>
+    </defs>
     <!-- head -->
-    <circle cx="512" cy="512" r="380" stroke-width="28"/>
+    <circle cx="512" cy="512" r="259" stroke-width="21" mask="url(#head-mask)"/>
     <!-- glasses (translated as a group) -->
-    <g stroke-width="24">
-      <circle cx="477" cy="427" r="100"/>
-      <circle cx="727" cy="427" r="100"/>
-      <line x1="580" y1="427" x2="624" y2="427"/>
+    <g stroke-width="18">
+      <circle cx="497" cy="427" r="61" fill="#13161c" stroke="none"/>
+      <circle cx="707" cy="427" r="61" fill="#13161c" stroke="none"/>
+      <circle cx="497" cy="427" r="70"/>
+      <circle cx="707" cy="427" r="70"/>
+      <line x1="567" y1="427" x2="637" y2="427"/>
     </g>
   </g>
 </svg>

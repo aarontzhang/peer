@@ -6,6 +6,8 @@ Geometry — all coordinates in a 1024x1024 viewBox:
   - head: white-stroked circle, fixed at (512, 512)
   - glasses: two lens-circles + a bridge, translated as a unit by (dx, dy)
     to point the gaze in one of six directions
+  - lens interiors are filled with the background color so the glasses
+    read in front of the face outline instead of intersecting it
 """
 from pathlib import Path
 
@@ -16,13 +18,15 @@ CENTER = CANVAS // 2
 BG = "#13161c"
 FG = "#ffffff"
 
-HEAD_R = 380
-HEAD_STROKE = 28
+HEAD_R = 259
+HEAD_STROKE = 21
 
-LENS_R = 100
-LENS_DX = 125         # half-distance between the two lens centers
-BRIDGE_HALF = 22      # bridge runs from (-22, 0) to (+22, 0) before translation
-GLASSES_STROKE = 24
+LENS_R = 70
+LENS_FILL_R = 61
+LENS_DX = 105         # half-distance between the two lens centers
+BRIDGE_HALF = 35      # bridge runs from (-35, 0) to (+35, 0) before translation
+GLASSES_STROKE = 18
+MASK_R = 80
 
 DIRECTIONS = {
     "straight":   (0,    0),
@@ -44,10 +48,19 @@ def svg(direction: str, dx: int, dy: int, *, with_squircle: bool = True) -> str:
 <svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS}" height="{CANVAS}" viewBox="0 0 {CANVAS} {CANVAS}">
   <!-- {direction} -->
 {bg_layer}  <g fill="none" stroke="{FG}" stroke-linecap="round">
+    <defs>
+      <mask id="head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="{CANVAS}" height="{CANVAS}">
+        <rect x="0" y="0" width="{CANVAS}" height="{CANVAS}" fill="white"/>
+        <circle cx="{gx - LENS_DX}" cy="{gy}" r="{MASK_R}" fill="black"/>
+        <circle cx="{gx + LENS_DX}" cy="{gy}" r="{MASK_R}" fill="black"/>
+      </mask>
+    </defs>
     <!-- head -->
-    <circle cx="{CENTER}" cy="{CENTER}" r="{HEAD_R}" stroke-width="{HEAD_STROKE}"/>
+    <circle cx="{CENTER}" cy="{CENTER}" r="{HEAD_R}" stroke-width="{HEAD_STROKE}" mask="url(#head-mask)"/>
     <!-- glasses (translated as a group) -->
     <g stroke-width="{GLASSES_STROKE}">
+      <circle cx="{gx - LENS_DX}" cy="{gy}" r="{LENS_FILL_R}" fill="{BG}" stroke="none"/>
+      <circle cx="{gx + LENS_DX}" cy="{gy}" r="{LENS_FILL_R}" fill="{BG}" stroke="none"/>
       <circle cx="{gx - LENS_DX}" cy="{gy}" r="{LENS_R}"/>
       <circle cx="{gx + LENS_DX}" cy="{gy}" r="{LENS_R}"/>
       <line x1="{gx - BRIDGE_HALF}" y1="{gy}" x2="{gx + BRIDGE_HALF}" y2="{gy}"/>

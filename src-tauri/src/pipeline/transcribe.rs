@@ -76,7 +76,7 @@ pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Resu
     if let Some(max_db) = audio_max_volume_db(&audio_path).await {
         if max_db <= -80.0 {
             anyhow::bail!(
-                "audio track is silent ({:.1} dB) — check Microphone permission for Peer in System Settings → Privacy & Security",
+                "audio track is silent ({:.1} dB) — check Peer microphone permission and your selected input device in System Settings",
                 max_db
             );
         }

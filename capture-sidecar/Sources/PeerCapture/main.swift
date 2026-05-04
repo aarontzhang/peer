@@ -8,6 +8,7 @@
 import AVFoundation
 import CoreMedia
 import Foundation
+import IOKit.audio
 import ScreenCaptureKit
 
 @available(macOS 13.0, *)
@@ -24,6 +25,61 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
   init(output: URL) {
     self.outputURL = output
     super.init()
+  }
+
+  private func selectMicrophone() -> AVCaptureDevice? {
+    let devices = AVCaptureDevice.devices(for: .audio)
+    let defaultDevice = AVCaptureDevice.default(for: .audio)
+
+    func summary(_ device: AVCaptureDevice) -> String {
+      "\(device.localizedName) transport=\(device.transportType) connected=\(device.isConnected) suspended=\(device.isSuspended)"
+    }
+
+    for device in devices {
+      FileHandle.standardError.write("mic candidate: \(summary(device))\n".data(using: .utf8) ?? Data())
+    }
+
+    guard let defaultDevice else {
+      return devices.first(where: { $0.isConnected && !$0.isSuspended })
+    }
+
+    let defaultTransport = defaultDevice.transportType
+    let shouldAvoidDefault =
+      !defaultDevice.isConnected ||
+      defaultDevice.isSuspended ||
+      defaultTransport == kIOAudioDeviceTransportTypeBluetooth ||
+      defaultTransport == kIOAudioDeviceTransportTypeVirtual
+
+    if !shouldAvoidDefault {
+      FileHandle.standardError.write("mic selected default: \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
+      return defaultDevice
+    }
+
+    if let builtIn = devices.first(where: {
+      $0.isConnected &&
+      !$0.isSuspended &&
+      $0.transportType == kIOAudioDeviceTransportTypeBuiltIn
+    }) {
+      FileHandle.standardError.write(
+        "mic selected built-in over default \(defaultDevice.localizedName): \(summary(builtIn))\n".data(using: .utf8) ?? Data()
+      )
+      return builtIn
+    }
+
+    if let wired = devices.first(where: {
+      $0.isConnected &&
+      !$0.isSuspended &&
+      $0.transportType != kIOAudioDeviceTransportTypeBluetooth &&
+      $0.transportType != kIOAudioDeviceTransportTypeVirtual
+    }) {
+      FileHandle.standardError.write(
+        "mic selected wired fallback over default \(defaultDevice.localizedName): \(summary(wired))\n".data(using: .utf8) ?? Data()
+      )
+      return wired
+    }
+
+    FileHandle.standardError.write("mic selected default as last resort: \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
+    return defaultDevice
   }
 
   func start() async throws {
@@ -91,7 +147,7 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
     self.stream = stream
 
     let session = AVCaptureSession()
-    guard let micDevice = AVCaptureDevice.default(for: .audio) else {
+    guard let micDevice = selectMicrophone() else {
       throw NSError(domain: "Peer", code: 4, userInfo: [NSLocalizedDescriptionKey: "no default microphone"])
     }
     let micInput = try AVCaptureDeviceInput(device: micDevice)

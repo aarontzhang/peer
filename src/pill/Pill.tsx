@@ -235,6 +235,8 @@ function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number 
           strokeWidth="2.5"
           style={{ transform: gazeTransform }}
         >
+          <circle className="logo__lens-fill" cx="-15" cy="0" r="8.75" />
+          <circle className="logo__lens-fill" cx="15" cy="0" r="8.75" />
           <circle cx="-15" cy="0" r="10" />
           <circle cx="15"  cy="0" r="10" />
           <line x1="-5" y1="0" x2="5" y2="0" />

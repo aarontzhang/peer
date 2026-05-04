@@ -88,18 +88,28 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
  *  logo and the macOS app icon (src-tauri/icons/icon.svg) so the brand
  *  reads consistently across surfaces. */
 function BrandMark() {
+  const maskId = 'sidebar-brand-head-mask';
   return (
     <svg
       viewBox="-50 -50 100 100"
       aria-hidden
       className="sidebar__brandOrb"
     >
+      <defs>
+        <mask id={maskId} maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
+          <rect x="-50" y="-50" width="100" height="100" fill="white" />
+          <circle cx="-15" cy="0" r="11.5" fill="black" />
+          <circle cx="15" cy="0" r="11.5" fill="black" />
+        </mask>
+      </defs>
       <g fill="none" stroke="currentColor" strokeLinecap="round">
-        <circle cx="0" cy="0" r="37" strokeWidth="3" />
+        <circle cx="0" cy="0" r="37" strokeWidth="3" mask={`url(#${maskId})`} />
         <g strokeWidth="2.5">
-          <circle cx="-12" cy="0" r="10" />
-          <circle cx="12"  cy="0" r="10" />
-          <line x1="-3" y1="0" x2="3" y2="0" />
+          <circle cx="-15" cy="0" r="8.75" fill="var(--color-bg)" stroke="none" />
+          <circle cx="15" cy="0" r="8.75" fill="var(--color-bg)" stroke="none" />
+          <circle cx="-15" cy="0" r="10" />
+          <circle cx="15"  cy="0" r="10" />
+          <line x1="-5" y1="0" x2="5" y2="0" />
         </g>
       </g>
     </svg>
