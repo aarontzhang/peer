@@ -46,6 +46,7 @@ export function Pill() {
     : 0;
 
   const dragHandle = useDragHandle(toggleRecording);
+  const gaze = useGazeDirection(state === 'recording');
 
   return (
     <div className="pill" data-state={state}>
@@ -82,7 +83,7 @@ export function Pill() {
           aria-label={state === 'recording' ? 'Stop recording' : 'Start recording'}
           title={state === 'recording' ? formatDuration(elapsed) : 'Record'}
         >
-          <TriangleLogo state={state} />
+          <GlassesLogo state={state} direction={gaze} />
         </button>
       )}
       <div
@@ -185,65 +186,141 @@ function useDragHandle(onClick: () => void) {
   };
 }
 
-/* ─── Halftone-orb logo ────────────────────────────────────────────────── */
+/* ─── Face + glasses logo ──────────────────────────────────────────────── */
 //
-// Concentric rings of dots in alternating sizes — the same pattern as the
-// app icon, scaled down. While recording the whole orb spins; while
-// processing the dots gently pulse. Pure SVG, no asset dependency.
+// A round head with a pair of round glasses inside. The glasses translate
+// as a unit to point the gaze in one of six directions — this is what
+// gives the pill its "looking at you" character while recording. The
+// straight-ahead variant is the same mark used for the macOS app icon
+// (src-tauri/icons/icon.svg), so pill and dock read as the same face.
 
-function TriangleLogo({ state }: { state: string }) {
+type GazeDirection =
+  | 'straight'
+  | 'up-left'
+  | 'up-right'
+  | 'down'
+  | 'down-left'
+  | 'down-right';
+
+// Glasses-center offset (in viewBox units) per direction. The viewBox is
+// -50..50, so these are roughly percentage-of-radius offsets. Diagonals
+// push hard enough that the outer lens pokes past the head circle — the
+// mask below clips the head stroke inside the lens so there's no double
+// line where they cross.
+const GAZE_OFFSETS: Record<GazeDirection, [number, number]> = {
+  'straight':   [  0,   0],
+  'up-left':    [-15, -13],
+  'up-right':   [ 15, -13],
+  'down':       [  0,  14],
+  'down-left':  [-13,  12],
+  'down-right': [ 13,  12],
+};
+
+function GlassesLogo({ state, direction }: { state: string; direction: GazeDirection }) {
+  const [dx, dy] = GAZE_OFFSETS[direction];
+  const maskId = 'pill-head-mask';
+  const gazeTransform = `translate(${dx}px, ${dy}px)`;
   return (
     <svg
       className="logo"
-      viewBox="-30 -30 60 60"
+      viewBox="-50 -50 100 100"
       width="26"
       height="26"
       data-state={state}
       aria-hidden
     >
-      <g className="logo__group">
-        {ORB_DOTS.map((d, i) => (
-          <circle key={i} cx={d.x} cy={d.y} r={d.r} />
-        ))}
+      <defs>
+        {/* Punch the lens discs out of the head's stroke so it never shows
+            through where the glasses cross or extend past the face. Hole
+            radius is lens radius + lens stroke so the head stroke is fully
+            erased under the lens stroke too. */}
+        <mask id={maskId} maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
+          <rect x="-50" y="-50" width="100" height="100" fill="white" />
+          <g style={{ transform: gazeTransform }} fill="black">
+            <circle cx="-15" cy="0" r="11.5" />
+            <circle cx="15"  cy="0" r="11.5" />
+          </g>
+        </mask>
+      </defs>
+      <g className="logo__group" fill="none" strokeLinecap="round">
+        {/* head */}
+        <circle
+          className="logo__head"
+          cx="0"
+          cy="0"
+          r="37"
+          strokeWidth="3"
+          mask={`url(#${maskId})`}
+        />
+        {/* glasses — translated so the character "looks" toward dx,dy */}
+        <g
+          className="logo__glasses"
+          strokeWidth="2.5"
+          style={{ transform: gazeTransform }}
+        >
+          <circle cx="-15" cy="0" r="10" />
+          <circle cx="15"  cy="0" r="10" />
+          <line x1="-5" y1="0" x2="5" y2="0" />
+        </g>
       </g>
     </svg>
   );
 }
 
-/** Halftone-orb dot positions. Center + three rings. Sizes alternate
- *  within each ring so the pattern reads as varied rather than gridded.
- *  Coordinates match icons/icon.svg so the pill and the app icon are
- *  visibly the same mark. */
-const ORB_DOTS: Array<{ x: number; y: number; r: number }> = [
-  { x: 0,        y: 0,        r: 3.5 },
+/* ─── Gaze direction: which way to look so we face the screen center ───── */
+//
+// When recording starts, we figure out where on the monitor the pill is
+// sitting and pick a gaze direction that points back toward the middle of
+// the screen. Top-left pill → looks down-right; bottom-right → up-left;
+// roughly centered → straight. Recomputes whenever recording (re)starts.
 
-  // ring 1 (radius 9, 6 dots)
-  { x: 0,        y: -9,       r: 3.0 },
-  { x: 7.794,    y: -4.500,   r: 2.2 },
-  { x: 7.794,    y: 4.500,    r: 3.0 },
-  { x: 0,        y: 9,        r: 2.2 },
-  { x: -7.794,   y: 4.500,    r: 3.0 },
-  { x: -7.794,   y: -4.500,   r: 2.2 },
-
-  // ring 2 (radius 16, 8 dots)
-  { x: 6.123,    y: -14.782,  r: 2.4 },
-  { x: 14.782,   y: -6.123,   r: 1.6 },
-  { x: 14.782,   y: 6.123,    r: 2.4 },
-  { x: 6.123,    y: 14.782,   r: 1.6 },
-  { x: -6.123,   y: 14.782,   r: 2.4 },
-  { x: -14.782,  y: 6.123,    r: 1.6 },
-  { x: -14.782,  y: -6.123,   r: 2.4 },
-  { x: -6.123,   y: -14.782,  r: 1.6 },
-
-  // ring 3 (radius 22.5, 10 dots)
-  { x: 3.519,    y: -22.222,  r: 1.8 },
-  { x: 15.910,   y: -15.910,  r: 1.2 },
-  { x: 22.222,   y: -3.519,   r: 1.8 },
-  { x: 20.048,   y: 10.215,   r: 1.2 },
-  { x: 10.215,   y: 20.048,   r: 1.8 },
-  { x: -3.519,   y: 22.222,   r: 1.2 },
-  { x: -15.910,  y: 15.910,   r: 1.8 },
-  { x: -22.222,  y: 3.519,    r: 1.2 },
-  { x: -20.048,  y: -10.215,  r: 1.8 },
-  { x: -10.215,  y: -20.048,  r: 1.2 },
-];
+function useGazeDirection(active: boolean): GazeDirection {
+  const [dir, setDir] = useState<GazeDirection>('straight');
+  useEffect(() => {
+    if (!active) { setDir('straight'); return; }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const win = getCurrentWindow();
+        const monitor = await currentMonitor();
+        if (!monitor || cancelled) return;
+        const scale = monitor.scaleFactor || 1;
+        const winPos = await win.outerPosition();
+        const winSize = await win.outerSize();
+        const px = (winPos.x + winSize.width / 2) / scale;
+        const py = (winPos.y + winSize.height / 2) / scale;
+        const monW = monitor.size.width / scale;
+        const monH = monitor.size.height / scale;
+        const mx = monitor.position.x / scale + monW / 2;
+        const my = monitor.position.y / scale + monH / 2;
+        const dx = mx - px;   // + → screen center is to the right of pill
+        const dy = my - py;   // + → screen center is below the pill
+        // Dead zones: if the pill is roughly aligned with the center on
+        // an axis, don't bias the gaze along that axis.
+        const hThresh = monW * 0.12;
+        const vThresh = monH * 0.12;
+        if (cancelled) return;
+        let next: GazeDirection;
+        if (dy > vThresh) {
+          // Pill is in the top half → look down.
+          next = dx > hThresh ? 'down-right' : dx < -hThresh ? 'down-left' : 'down';
+        } else if (dy < -vThresh) {
+          // Pill is in the bottom half → look up. We have no plain "up"
+          // icon, so when the pill is bottom-center we still pick a
+          // diagonal toward whichever side dx leans (or up-right by
+          // default if perfectly centered).
+          next = dx >= 0 ? 'up-right' : 'up-left';
+          if (dx > hThresh) next = 'up-right';
+          else if (dx < -hThresh) next = 'up-left';
+        } else {
+          next = 'straight';
+        }
+        setDir(next);
+      } catch {
+        // Tauri APIs occasionally throw during teardown — fall back to straight.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [active]);
+  return dir;
+}

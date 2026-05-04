@@ -5,40 +5,15 @@
        window all read as the same surface. -->
   <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="#13161c"/>
 
-  <!-- Halftone orb: same coordinates as the in-pill SVG, scaled to fill
-       most of the squircle. -->
-  <g fill="#ffffff" transform="translate(512 512) scale(11)">
-    <!-- center -->
-    <circle cx="0" cy="0" r="3.5"/>
-
-    <!-- ring 1 (r=9, 6 dots) -->
-    <circle cx="0"        cy="-9"        r="3.0"/>
-    <circle cx="7.794"    cy="-4.500"    r="2.2"/>
-    <circle cx="7.794"    cy="4.500"     r="3.0"/>
-    <circle cx="0"        cy="9"         r="2.2"/>
-    <circle cx="-7.794"   cy="4.500"     r="3.0"/>
-    <circle cx="-7.794"   cy="-4.500"    r="2.2"/>
-
-    <!-- ring 2 (r=16, 8 dots) -->
-    <circle cx="6.123"    cy="-14.782"   r="2.4"/>
-    <circle cx="14.782"   cy="-6.123"    r="1.6"/>
-    <circle cx="14.782"   cy="6.123"     r="2.4"/>
-    <circle cx="6.123"    cy="14.782"    r="1.6"/>
-    <circle cx="-6.123"   cy="14.782"    r="2.4"/>
-    <circle cx="-14.782"  cy="6.123"     r="1.6"/>
-    <circle cx="-14.782"  cy="-6.123"    r="2.4"/>
-    <circle cx="-6.123"   cy="-14.782"   r="1.6"/>
-
-    <!-- ring 3 (r=22.5, 10 dots) -->
-    <circle cx="3.519"    cy="-22.222"   r="1.8"/>
-    <circle cx="15.910"   cy="-15.910"   r="1.2"/>
-    <circle cx="22.222"   cy="-3.519"    r="1.8"/>
-    <circle cx="20.048"   cy="10.215"    r="1.2"/>
-    <circle cx="10.215"   cy="20.048"    r="1.8"/>
-    <circle cx="-3.519"   cy="22.222"    r="1.2"/>
-    <circle cx="-15.910"  cy="15.910"    r="1.8"/>
-    <circle cx="-22.222"  cy="3.519"     r="1.2"/>
-    <circle cx="-20.048"  cy="-10.215"   r="1.8"/>
-    <circle cx="-10.215"  cy="-20.048"   r="1.2"/>
+  <!-- Face (head outline + round glasses), centered in the squircle.
+       The same mark renders at small sizes inside the pill — see
+       src/pill/Pill.tsx for the gaze-aware variants. -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" transform="translate(512 512)">
+    <circle cx="0" cy="0" r="320" stroke-width="26"/>
+    <g stroke-width="22">
+      <circle cx="-130" cy="0" r="88"/>
+      <circle cx="130"  cy="0" r="88"/>
+      <line x1="-42" y1="0" x2="42" y2="0"/>
+    </g>
   </g>
 </svg>
