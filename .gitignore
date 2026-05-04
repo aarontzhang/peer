@@ -6,6 +6,7 @@ target/
 src-tauri/gen/
 src-tauri/target/
 src-tauri/bin/HummingbirdCapture*
+src-tauri/bin/PeerCapture*
 capture-sidecar/.build/
 .env
 .env.local

@@ -1,4 +1,4 @@
-// PeerCapture — minimal ScreenCaptureKit sidecar.
+// PeerCapture — minimal ScreenCaptureKit + AVCaptureSession sidecar.
 //
 // Protocol with the Rust core:
 //   args  : --output <path.mp4>
@@ -11,7 +11,7 @@ import Foundation
 import ScreenCaptureKit
 
 @available(macOS 13.0, *)
-final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
+final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
   private let outputURL: URL
   private var stream: SCStream?
   private var writer: AVAssetWriter?
@@ -19,6 +19,7 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
   private var audioInput: AVAssetWriterInput?
   private var sessionStarted = false
   private let queue = DispatchQueue(label: "dev.aaronzhang.peer.capture")
+  private var captureSession: AVCaptureSession?
 
   init(output: URL) {
     self.outputURL = output
@@ -26,6 +27,15 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
   }
 
   func start() async throws {
+    // Mic permission. Without an embedded Info.plist with NSMicrophoneUsageDescription
+    // this will return .denied without ever prompting; see Package.swift linker flags.
+    if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+      _ = await AVCaptureDevice.requestAccess(for: .audio)
+    }
+    guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
+      throw NSError(domain: "Peer", code: 3, userInfo: [NSLocalizedDescriptionKey: "microphone access denied"])
+    }
+
     let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
     guard let display = content.displays.first else {
       throw NSError(domain: "Peer", code: 1, userInfo: [NSLocalizedDescriptionKey: "no display"])
@@ -39,9 +49,7 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
     cfg.minimumFrameInterval = CMTime(value: 1, timescale: 30)
     cfg.queueDepth = 6
     cfg.showsCursor = true
-    cfg.capturesAudio = true
-    cfg.sampleRate = 48000
-    cfg.channelCount = 2
+    cfg.capturesAudio = false
     cfg.pixelFormat = kCVPixelFormatType_32BGRA
 
     if FileManager.default.fileExists(atPath: outputURL.path) {
@@ -67,8 +75,8 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
     let audioSettings: [String: Any] = [
       AVFormatIDKey: kAudioFormatMPEG4AAC,
       AVSampleRateKey: 48000,
-      AVNumberOfChannelsKey: 2,
-      AVEncoderBitRateKey: 128_000,
+      AVNumberOfChannelsKey: 1,
+      AVEncoderBitRateKey: 96_000,
     ]
     let audioInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
     audioInput.expectsMediaDataInRealTime = true
@@ -77,26 +85,45 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
     self.writer = writer
 
+    // SCStream — video only. Mic comes from AVCaptureSession below.
     let stream = SCStream(filter: filter, configuration: cfg, delegate: self)
     try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: queue)
-    try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: queue)
-
-    // Mic via AVCaptureSession routed into the asset writer's audio input.
-    // For MVP simplicity we rely on SCStream's system audio capture; the
-    // user's narration is picked up by the system mic loopback if their
-    // mac is configured to do so. A future revision should mux a dedicated
-    // AVCaptureDeviceInput for the mic into a second audio track.
-
     self.stream = stream
-    try await stream.startCapture()
+
+    let session = AVCaptureSession()
+    guard let micDevice = AVCaptureDevice.default(for: .audio) else {
+      throw NSError(domain: "Peer", code: 4, userInfo: [NSLocalizedDescriptionKey: "no default microphone"])
+    }
+    let micInput = try AVCaptureDeviceInput(device: micDevice)
+    if session.canAddInput(micInput) {
+      session.addInput(micInput)
+    } else {
+      throw NSError(domain: "Peer", code: 5, userInfo: [NSLocalizedDescriptionKey: "cannot add mic input"])
+    }
+    let audioOutput = AVCaptureAudioDataOutput()
+    audioOutput.setSampleBufferDelegate(self, queue: queue)
+    if session.canAddOutput(audioOutput) {
+      session.addOutput(audioOutput)
+    } else {
+      throw NSError(domain: "Peer", code: 6, userInfo: [NSLocalizedDescriptionKey: "cannot add audio output"])
+    }
+    self.captureSession = session
+
+    // Writer must be in .writing before any sample arrives, otherwise the
+    // first delegate callback hits startSession on an .unknown writer and
+    // throws NSInternalInconsistencyException.
     if !writer.startWriting() {
       throw writer.error ?? NSError(domain: "Peer", code: 2, userInfo: [NSLocalizedDescriptionKey: "writer start"])
     }
+    try await stream.startCapture()
+    session.startRunning()
   }
 
   func stop() async {
-    guard let stream = stream else { return }
-    try? await stream.stopCapture()
+    self.captureSession?.stopRunning()
+    if let stream = stream {
+      try? await stream.stopCapture()
+    }
     self.videoInput?.markAsFinished()
     self.audioInput?.markAsFinished()
     if let writer = writer {
@@ -104,29 +131,32 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate {
     }
     self.stream = nil
     self.writer = nil
+    self.captureSession = nil
   }
+
+  // MARK: SCStreamOutput (video)
 
   func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
     guard CMSampleBufferDataIsReady(sampleBuffer), let writer = writer else { return }
 
-    if !sessionStarted {
+    if type == .screen, !sessionStarted {
       let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
       writer.startSession(atSourceTime: pts)
       sessionStarted = true
     }
 
-    switch type {
-    case .screen:
-      if let videoInput = videoInput, videoInput.isReadyForMoreMediaData {
-        videoInput.append(sampleBuffer)
-      }
-    case .audio:
-      if let audioInput = audioInput, audioInput.isReadyForMoreMediaData {
-        audioInput.append(sampleBuffer)
-      }
-    @unknown default:
-      break
+    if type == .screen, let videoInput = videoInput, videoInput.isReadyForMoreMediaData {
+      videoInput.append(sampleBuffer)
     }
+  }
+
+  // MARK: AVCaptureAudioDataOutputSampleBufferDelegate (mic)
+
+  func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+    guard CMSampleBufferDataIsReady(sampleBuffer) else { return }
+    // Anchor the file timeline to video; drop early mic buffers until video PTS is set.
+    guard sessionStarted, let audioInput = audioInput, audioInput.isReadyForMoreMediaData else { return }
+    audioInput.append(sampleBuffer)
   }
 
   func stream(_ stream: SCStream, didStopWithError error: Error) {
@@ -160,13 +190,10 @@ struct CLI {
     print("READY")
     fflush(stdout)
 
-    // Wait for STOP on stdin.
-    let stdin = FileHandle.standardInput
     while true {
       guard let line = readLine(strippingNewline: true) else { break }
       if line == "STOP" { break }
     }
-    _ = stdin // silence unused warning
 
     await recorder.stop()
     print("DONE")

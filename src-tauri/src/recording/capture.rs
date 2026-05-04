@@ -54,7 +54,15 @@ async fn start_sidecar(path: &Path, output: &Path) -> Result<CaptureProcess> {
         .kill_on_drop(true)
         .spawn()?;
 
-    // Wait for "READY" on stdout so we don't stop before capture has started.
+    if let Some(stderr) = child.stderr.take() {
+        tokio::spawn(async move {
+            let mut reader = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                tracing::warn!(target: "capture", "sidecar stderr: {line}");
+            }
+        });
+    }
+
     if let Some(stdout) = child.stdout.take() {
         let mut reader = BufReader::new(stdout).lines();
         let timeout = tokio::time::timeout(std::time::Duration::from_secs(5), async {

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>dev.aaronzhang.peer.capture</string>
+    <key>CFBundleName</key>
+    <string>PeerCapture</string>
+    <key>CFBundleExecutable</key>
+    <string>PeerCapture</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Peer captures your narration so it can transcribe what you're describing.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Peer records your screen so it can describe what you're showing to a Claude Code agent.</string>
+</dict>
+</plist>
