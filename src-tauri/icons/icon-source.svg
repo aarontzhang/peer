@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- macOS-style squircle background in the brand color -->
-  <rect x="80" y="80" width="864" height="864" rx="200" ry="200" fill="#13161b"/>
+  <!-- Full-bleed background. macOS Tahoe applies its own squircle mask in the
+       dock; our own inner squircle leaves a transparent gutter that shows the
+       OS's light tile behind it as a thin white ring. Filling to the edges
+       prevents that. The rx still matches the OS curve closely enough that
+       any unmasked corners (Finder list view, etc.) still read as a squircle. -->
+  <rect x="0" y="0" width="1024" height="1024" rx="232" ry="232" fill="#13161b"/>
 
   <!-- Same face/glasses geometry as the pill and sidebar brand mark. -->
   <defs>
