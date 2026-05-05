@@ -11,12 +11,22 @@ use crate::state::AppState;
 /// Read API keys from `<app_data_dir>/keys.json` if present. Returns
 /// `(openai, anthropic)`. Either may be `None`.
 fn read_keys_file(app: &AppHandle) -> (Option<String>, Option<String>) {
-    let Ok(dir) = app.path().app_data_dir() else { return (None, None); };
+    let Ok(dir) = app.path().app_data_dir() else {
+        return (None, None);
+    };
     let path = dir.join("keys.json");
-    let Ok(bytes) = std::fs::read(&path) else { return (None, None); };
-    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else { return (None, None); };
+    let Ok(bytes) = std::fs::read(&path) else {
+        return (None, None);
+    };
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+        return (None, None);
+    };
     let pick = |k: &str| {
-        value.get(k).and_then(|v| v.as_str()).map(str::to_string).filter(|s| !s.is_empty())
+        value
+            .get(k)
+            .and_then(|v| v.as_str())
+            .map(str::to_string)
+            .filter(|s| !s.is_empty())
     };
     (pick("openai"), pick("anthropic"))
 }
@@ -35,26 +45,42 @@ pub struct SetApiKeyArgs {
     pub key: String,
 }
 
-fn err_to_string(e: impl std::fmt::Display) -> String { e.to_string() }
+fn err_to_string(e: impl std::fmt::Display) -> String {
+    e.to_string()
+}
 
 #[tauri::command]
-pub async fn start_recording(app: AppHandle, state: State<'_, Arc<AppState>>) -> Result<String, String> {
-    recording::start(app, state.inner().clone()).await.map_err(err_to_string)
+pub async fn start_recording(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<String, String> {
+    recording::start(app, state.inner().clone())
+        .await
+        .map_err(err_to_string)
 }
 
 #[tauri::command]
 pub async fn stop_recording(app: AppHandle, state: State<'_, Arc<AppState>>) -> Result<(), String> {
-    recording::stop(app, state.inner().clone()).await.map_err(err_to_string)
+    recording::stop(app, state.inner().clone())
+        .await
+        .map_err(err_to_string)
 }
 
 #[tauri::command]
-pub async fn cancel_recording(app: AppHandle, state: State<'_, Arc<AppState>>) -> Result<(), String> {
-    recording::cancel(app, state.inner().clone()).await.map_err(err_to_string)
+pub async fn cancel_recording(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<(), String> {
+    recording::cancel(app, state.inner().clone())
+        .await
+        .map_err(err_to_string)
 }
 
 #[tauri::command]
 pub async fn send_recording(app: AppHandle, state: State<'_, Arc<AppState>>) -> Result<(), String> {
-    recording::send(app, state.inner().clone()).await.map_err(err_to_string)
+    recording::send(app, state.inner().clone())
+        .await
+        .map_err(err_to_string)
 }
 
 #[tauri::command]
@@ -63,7 +89,10 @@ pub async fn list_recordings(state: State<'_, Arc<AppState>>) -> Result<Vec<Reco
 }
 
 #[tauri::command]
-pub async fn get_recording(state: State<'_, Arc<AppState>>, id: String) -> Result<Option<Recording>, String> {
+pub async fn get_recording(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<Option<Recording>, String> {
     state.db().get_recording(&id).await.map_err(err_to_string)
 }
 
@@ -72,7 +101,11 @@ pub async fn delete_recording(state: State<'_, Arc<AppState>>, id: String) -> Re
     if let Some(rec) = state.db().get_recording(&id).await.map_err(err_to_string)? {
         purge_artifacts(state.inner(), &rec.id, &rec.video_path).await;
     }
-    state.db().delete_recording(&id).await.map_err(err_to_string)
+    state
+        .db()
+        .delete_recording(&id)
+        .await
+        .map_err(err_to_string)
 }
 
 /// Best-effort cleanup of on-disk artifacts: video, sibling mp3, and the
@@ -145,27 +178,33 @@ pub fn get_api_key_status(app: AppHandle) -> Result<ApiKeyStatus, String> {
 }
 
 /// Resolve an API key for `provider`. Order:
-///   1. Process env (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`)
-///   2. `<app_data>/keys.json` — the canonical local store
-///   3. macOS Keychain — legacy / Settings dialog
+///   1. `<app_data>/keys.json` — what the user typed in Settings, authoritative
+///   2. macOS Keychain — legacy Settings dialog
+///   3. Process env (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) — dev fallback
+///
+/// Settings wins over env so a stale `ANTHROPIC_API_KEY` in a user's shell
+/// can't silently override the key they just entered in the app.
 pub fn read_api_key(app: &AppHandle, provider: &str) -> Option<String> {
     let (env_var, account) = match provider {
         "openai" => ("OPENAI_API_KEY", "openai-api-key"),
         "anthropic" => ("ANTHROPIC_API_KEY", "anthropic-api-key"),
         _ => return None,
     };
-    if let Ok(v) = std::env::var(env_var) {
-        if !v.is_empty() { return Some(v); }
-    }
     let (openai, anthropic) = read_keys_file(app);
     let from_file = match provider {
         "openai" => openai,
         "anthropic" => anthropic,
         _ => None,
     };
-    if from_file.is_some() { return from_file; }
-    keyring::Entry::new("Peer", account)
+    if from_file.is_some() {
+        return from_file;
+    }
+    if let Some(v) = keyring::Entry::new("Peer", account)
         .and_then(|e| e.get_password())
         .ok()
         .filter(|s| !s.is_empty())
+    {
+        return Some(v);
+    }
+    std::env::var(env_var).ok().filter(|s| !s.is_empty())
 }
