@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ipc, type Recording, formatDuration, formatRelative } from '@/lib/ipc';
 
 type Props = {
@@ -84,11 +84,14 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
   );
 }
 
-/** Face + round glasses, straight-ahead. Same geometry as the in-pill
- *  logo and the macOS app icon (src-tauri/icons/icon.svg) so the brand
- *  reads consistently across surfaces. */
+/** Face + round glasses. Geometry matches the in-pill logo and the macOS
+ *  app icon (src-tauri/icons/icon.svg) so the brand reads consistently
+ *  across surfaces. The glasses translate as a unit on a random timer
+ *  so the character idly glances around — see useRandomGaze. */
 function BrandMark() {
   const maskId = 'sidebar-brand-head-mask';
+  const [dx, dy] = useRandomGaze();
+  const gazeTransform = `translate(${dx}px, ${dy}px)`;
   return (
     <svg
       viewBox="-50 -50 100 100"
@@ -98,13 +101,15 @@ function BrandMark() {
       <defs>
         <mask id={maskId} maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
           <rect x="-50" y="-50" width="100" height="100" fill="white" />
-          <circle cx="-15" cy="0" r="11.5" fill="black" />
-          <circle cx="15" cy="0" r="11.5" fill="black" />
+          <g style={{ transform: gazeTransform }} fill="black">
+            <circle cx="-15" cy="0" r="11.5" />
+            <circle cx="15" cy="0" r="11.5" />
+          </g>
         </mask>
       </defs>
       <g fill="none" stroke="currentColor" strokeLinecap="round">
         <circle cx="0" cy="0" r="37" strokeWidth="3" mask={`url(#${maskId})`} />
-        <g strokeWidth="2.5">
+        <g strokeWidth="2.5" style={{ transform: gazeTransform }}>
           <circle cx="-15" cy="0" r="8.75" fill="var(--color-bg)" stroke="none" />
           <circle cx="15" cy="0" r="8.75" fill="var(--color-bg)" stroke="none" />
           <circle cx="-15" cy="0" r="10" />
@@ -114,6 +119,70 @@ function BrandMark() {
       </g>
     </svg>
   );
+}
+
+/* ─── Random gaze: glasses idly glance around ──────────────────────────── */
+//
+// Mirrors the cursor-gaze rig in src/pill/Pill.tsx, but the target is
+// repicked from a random direction on a jittered timer instead of being
+// derived from the mouse. Same lerp-each-frame damping so the saccade
+// glides into place rather than snapping. Saturates short of GAZE_MAX
+// so the lenses don't poke past the head outline.
+
+const GAZE_MAX = 16;            // viewBox-unit cap on offset magnitude
+const GAZE_LERP = 0.16;         // per-frame damping toward target
+const GAZE_EPSILON = 0.05;      // snap to target once close enough
+const HOLD_MIN_MS = 1400;       // min time to dwell on a target
+const HOLD_MAX_MS = 3200;       // max dwell — randomised each pick
+const REST_PROBABILITY = 0.25;  // chance the next pick is "look ahead"
+
+function useRandomGaze(): [number, number] {
+  const [gaze, setGaze] = useState<[number, number]>([0, 0]);
+  const target = useRef<[number, number]>([0, 0]);
+  const current = useRef<[number, number]>([0, 0]);
+
+  // Repick the target on a jittered interval. A fraction of the time we
+  // aim at the centre so the eyes occasionally rest instead of perpetually
+  // ping-ponging around the rim.
+  useEffect(() => {
+    let timer: number | undefined;
+    const pick = () => {
+      if (Math.random() < REST_PROBABILITY) {
+        target.current = [0, 0];
+      } else {
+        const angle = Math.random() * Math.PI * 2;
+        // Bias toward the outer half of the range so motions read as
+        // deliberate glances rather than tiny jitters.
+        const r = GAZE_MAX * (0.55 + Math.random() * 0.45);
+        target.current = [Math.cos(angle) * r, Math.sin(angle) * r];
+      }
+      const hold = HOLD_MIN_MS + Math.random() * (HOLD_MAX_MS - HOLD_MIN_MS);
+      timer = window.setTimeout(pick, hold);
+    };
+    pick();
+    return () => { if (timer !== undefined) window.clearTimeout(timer); };
+  }, []);
+
+  // Damped lerp toward target.
+  useEffect(() => {
+    let raf = 0;
+    let stopped = false;
+    const step = () => {
+      const [tx, ty] = target.current;
+      const [cx, cy] = current.current;
+      const nx = cx + (tx - cx) * GAZE_LERP;
+      const ny = cy + (ty - cy) * GAZE_LERP;
+      current.current = [nx, ny];
+      const settledX = Math.abs(nx - tx) < GAZE_EPSILON;
+      const settledY = Math.abs(ny - ty) < GAZE_EPSILON;
+      setGaze([settledX ? tx : nx, settledY ? ty : ny]);
+      if (!stopped) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => { stopped = true; cancelAnimationFrame(raf); };
+  }, []);
+
+  return gaze;
 }
 
 function TrashIcon() {
