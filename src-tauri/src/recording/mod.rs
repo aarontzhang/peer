@@ -58,15 +58,34 @@ impl RecordingPhase {
 }
 
 #[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "kind"
+)]
 pub enum PillEvent {
     Idle,
-    Recording { id: String, elapsed_ms: u64 },
+    Recording {
+        id: String,
+        elapsed_ms: u64,
+    },
     /// Capture stopped; waiting for the user to send or cancel.
-    Stopped { id: String, duration_ms: u64 },
-    Processing { id: String, label: String, progress: f32 },
-    Done { id: String },
-    Error { id: Option<String>, message: String },
+    Stopped {
+        id: String,
+        duration_ms: u64,
+    },
+    Processing {
+        id: String,
+        label: String,
+        progress: f32,
+    },
+    Done {
+        id: String,
+    },
+    Error {
+        id: Option<String>,
+        message: String,
+    },
 }
 
 pub fn emit(app: &AppHandle, event: &PillEvent) {
@@ -127,7 +146,13 @@ pub async fn start(app: AppHandle, state: Arc<AppState>) -> Result<String> {
         }));
     }
 
-    emit(&app, &PillEvent::Recording { id: id.clone(), elapsed_ms: 0 });
+    emit(
+        &app,
+        &PillEvent::Recording {
+            id: id.clone(),
+            elapsed_ms: 0,
+        },
+    );
 
     // Tick timer for the pill UI at 10Hz.
     {
@@ -139,11 +164,23 @@ pub async fn start(app: AppHandle, state: Arc<AppState>) -> Result<String> {
             loop {
                 interval.tick().await;
                 let cur = state2.current.lock();
-                let Some(RecordingPhase::Active(active)) = cur.as_ref() else { break };
-                if active.id != id2 { break }
+                let Some(RecordingPhase::Active(active)) = cur.as_ref() else {
+                    break;
+                };
+                if active.id != id2 {
+                    break;
+                }
                 let elapsed = active.started_at.elapsed().as_millis() as u64;
-                emit(&app2, &PillEvent::Recording { id: id2.clone(), elapsed_ms: elapsed });
-                if elapsed >= MAX_DURATION_MS { break }
+                emit(
+                    &app2,
+                    &PillEvent::Recording {
+                        id: id2.clone(),
+                        elapsed_ms: elapsed,
+                    },
+                );
+                if elapsed >= MAX_DURATION_MS {
+                    break;
+                }
             }
         });
     }
@@ -196,7 +233,13 @@ pub async fn stop(app: AppHandle, state: Arc<AppState>) -> Result<()> {
         }));
     }
 
-    emit(&app, &PillEvent::Stopped { id: active.id, duration_ms });
+    emit(
+        &app,
+        &PillEvent::Stopped {
+            id: active.id,
+            duration_ms,
+        },
+    );
     Ok(())
 }
 
@@ -215,7 +258,14 @@ pub async fn send(app: AppHandle, state: Arc<AppState>) -> Result<()> {
         return Err(anyhow!("no recording awaiting send"));
     };
 
-    emit(&app, &PillEvent::Processing { id: review.id.clone(), label: "Preparing video".into(), progress: 0.05 });
+    emit(
+        &app,
+        &PillEvent::Processing {
+            id: review.id.clone(),
+            label: "Preparing video".into(),
+            progress: 0.05,
+        },
+    );
 
     // Open result window so the user sees the streamed instructions.
     if let Some(win) = app.get_webview_window("result") {
@@ -229,7 +279,15 @@ pub async fn send(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     let video_path = review.video_path.clone();
     let duration_ms = review.duration_ms;
     tokio::spawn(async move {
-        match pipeline::run(app2.clone(), state2.clone(), id.clone(), video_path, duration_ms).await {
+        match pipeline::run(
+            app2.clone(),
+            state2.clone(),
+            id.clone(),
+            video_path,
+            duration_ms,
+        )
+        .await
+        {
             Ok(()) => {
                 emit(&app2, &PillEvent::Done { id: id.clone() });
             }
@@ -241,12 +299,52 @@ pub async fn send(app: AppHandle, state: Arc<AppState>) -> Result<()> {
                     rec.error = Some(msg.clone());
                     let _ = state2.db().update_recording(&rec).await;
                 }
-                emit(&app2, &PillEvent::Error { id: Some(id), message: msg });
+                emit(
+                    &app2,
+                    &PillEvent::Error {
+                        id: Some(id),
+                        message: msg,
+                    },
+                );
             }
         }
     });
 
     Ok(())
+}
+
+/// Graceful capture flush for process shutdown (SIGTERM/SIGINT/SIGHUP).
+///
+/// The Swift sidecar / ffmpeg writes the trailing `moov` atom only when
+/// asked to stop cleanly. With `kill_on_drop(true)` on the Child, dropping
+/// the handle SIGKILLs the writer and you get a moov-less mp4 that ffprobe
+/// rejects. Dev-mode rebuilds in particular SIGTERM the app between
+/// recompiles, so without this hook every "save while recording" produces
+/// a corrupt file.
+///
+/// Skips pill events: the app is on its way out and the UI is gone.
+pub async fn shutdown(state: Arc<AppState>) {
+    let phase = {
+        let mut cur = state.current.lock();
+        cur.take()
+    };
+    let Some(RecordingPhase::Active(mut active)) = phase else {
+        // Review: file already finalized. None: nothing to flush.
+        return;
+    };
+    if let Some(h) = active.auto_stop_handle.take() {
+        h.abort();
+    }
+    cursor::restore();
+    let duration_ms = active.started_at.elapsed().as_millis() as u64;
+    if let Err(err) = active.capture.stop().await {
+        tracing::warn!(?err, "capture stop failed during shutdown");
+    }
+    if let Ok(Some(mut rec)) = state.db().get_recording(&active.id).await {
+        rec.status = RecordingStatus::Stopped;
+        rec.duration_ms = duration_ms;
+        let _ = state.db().update_recording(&rec).await;
+    }
 }
 
 pub async fn cancel(app: AppHandle, state: Arc<AppState>) -> Result<()> {
@@ -265,7 +363,9 @@ pub async fn cancel(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     //     a kept video would just be dead disk weight.
     match phase {
         RecordingPhase::Active(mut active) => {
-            if let Some(h) = active.auto_stop_handle.take() { h.abort(); }
+            if let Some(h) = active.auto_stop_handle.take() {
+                h.abort();
+            }
             cursor::restore();
             let _ = active.capture.cancel().await;
             let _ = tokio::fs::remove_file(&active.video_path).await;
@@ -283,4 +383,3 @@ pub async fn cancel(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     emit(&app, &PillEvent::Idle);
     Ok(())
 }
-

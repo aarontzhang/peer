@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindow, WindowEvent};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
+mod binpath;
 mod db;
 mod hotkey;
 mod ipc;
@@ -15,7 +16,9 @@ pub use state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,peer=debug")))
+        .with(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,peer=debug")),
+        )
         .with(fmt::layer().with_target(false).compact())
         .init();
 
@@ -42,6 +45,13 @@ pub fn run() {
                 }
             });
 
+            // Graceful shutdown on SIGTERM/SIGINT/SIGHUP. Without this, dev-mode
+            // rebuilds (which SIGTERM the running app between recompiles) drop
+            // the capture Child mid-recording — kill_on_drop SIGKILLs the
+            // sidecar and the resulting mp4 has no moov atom.
+            #[cfg(unix)]
+            install_shutdown_hook(state.clone());
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -65,9 +75,11 @@ pub fn run() {
             // Closing the result window should hide it, not exit.
             // The pill is the persistent ambient surface; we only quit on
             // explicit Cmd-Q or tray "Quit".
-            RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { api, .. }, .. }
-                if label == "result" =>
-            {
+            RunEvent::WindowEvent {
+                label,
+                event: WindowEvent::CloseRequested { api, .. },
+                ..
+            } if label == "result" => {
                 api.prevent_close();
                 if let Some(win) = app.get_webview_window("result") {
                     let _ = win.hide();
@@ -77,7 +89,10 @@ pub fn run() {
             // visible windows, restore the result window. `Reopen` fires
             // on dock activation.
             #[cfg(target_os = "macos")]
-            RunEvent::Reopen { has_visible_windows, .. } => {
+            RunEvent::Reopen {
+                has_visible_windows,
+                ..
+            } => {
                 if !has_visible_windows {
                     if let Some(win) = app.get_webview_window("result") {
                         let _ = win.show();
@@ -91,6 +106,45 @@ pub fn run() {
             }
             _ => {}
         });
+}
+
+/// Listen for the standard termination signals and flush any active capture
+/// before exiting. Tauri's `RunEvent::Exit` never fires here because we
+/// `prevent_exit()` unconditionally — signals are the real shutdown path.
+#[cfg(unix)]
+fn install_shutdown_hook(state: Arc<AppState>) {
+    use tokio::signal::unix::{signal, SignalKind};
+    tauri::async_runtime::spawn(async move {
+        let mut sigterm = match signal(SignalKind::terminate()) {
+            Ok(s) => s,
+            Err(err) => {
+                tracing::warn!(?err, "failed to install SIGTERM handler");
+                return;
+            }
+        };
+        let mut sigint = match signal(SignalKind::interrupt()) {
+            Ok(s) => s,
+            Err(err) => {
+                tracing::warn!(?err, "failed to install SIGINT handler");
+                return;
+            }
+        };
+        let mut sighup = match signal(SignalKind::hangup()) {
+            Ok(s) => s,
+            Err(err) => {
+                tracing::warn!(?err, "failed to install SIGHUP handler");
+                return;
+            }
+        };
+        let signal_name = tokio::select! {
+            _ = sigterm.recv() => "SIGTERM",
+            _ = sigint.recv()  => "SIGINT",
+            _ = sighup.recv()  => "SIGHUP",
+        };
+        tracing::info!(signal = signal_name, "shutdown signal received");
+        recording::shutdown(state).await;
+        std::process::exit(0);
+    });
 }
 
 /// First-run default position for the pill: nestled in the right edge,
@@ -108,8 +162,12 @@ fn position_pill(app: &AppHandle) -> tauri::Result<()> {
 }
 
 fn anchor_default(win: &WebviewWindow) -> tauri::Result<()> {
-    let monitor = win.current_monitor()?.or_else(|| win.primary_monitor().ok().flatten());
-    let Some(monitor) = monitor else { return Ok(()) };
+    let monitor = win
+        .current_monitor()?
+        .or_else(|| win.primary_monitor().ok().flatten());
+    let Some(monitor) = monitor else {
+        return Ok(());
+    };
     let scale = monitor.scale_factor();
     let m_size = monitor.size();
     let m_pos = monitor.position();
@@ -142,11 +200,8 @@ fn set_app_icon(app: &AppHandle) -> tauri::Result<()> {
     // resources. Set it explicitly so the dock matches the in-app mark.
     let icon_bytes = include_bytes!("../icons/icon.png");
     app.run_on_main_thread(move || unsafe {
-        let data = NSData::dataWithBytes_length_(
-            nil,
-            icon_bytes.as_ptr().cast(),
-            icon_bytes.len() as u64,
-        );
+        let data =
+            NSData::dataWithBytes_length_(nil, icon_bytes.as_ptr().cast(), icon_bytes.len() as u64);
         let image: id = NSImage::initWithData_(NSImage::alloc(nil), data);
         let ns_app = NSApp();
         ns_app.setApplicationIconImage_(image);
