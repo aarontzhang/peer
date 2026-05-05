@@ -56,3 +56,16 @@ capture-sidecar/            # Swift package — ScreenCaptureKit → mp4
 ## Permissions
 
 First run will prompt for **Screen Recording**, **Microphone**, and **Accessibility** (the last one is required for the global Fn-tap detector). All three need to be granted in System Settings → Privacy & Security.
+
+### TCC reset (only if you've been running older builds)
+
+If you ever ran a pre-stable-signing build of Peer, macOS may have cached a TCC entry against an old code signature. Symptoms: the screen-recording prompt fires every time you press record even though Peer is toggled on in System Settings. To clear it:
+
+1. Open *System Settings → Privacy & Security → Screen & System Audio Recording* and *Microphone*. If `Peer` (or `PeerCapture`) is listed, select it and click **−** to remove it.
+2. From a terminal:
+   ```sh
+   tccutil reset ScreenCapture dev.aaronzhang.peer
+   tccutil reset Microphone dev.aaronzhang.peer
+   tccutil reset Microphone dev.aaronzhang.peer.capture
+   ```
+3. Quit Peer, run `pnpm tauri:dev` again, and grant fresh on the next prompt. The grant now sticks across rebuilds because the dev binary is re-signed with stable identifier `dev.aaronzhang.peer` (see `src-tauri/.cargo/config.toml` and `src-tauri/bin/dev-runner.sh`).

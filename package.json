@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
+    "tauri:dev": "pnpm sidecar && tauri dev",
     "tauri:build": "tauri build",
     "sidecar": "swift build --package-path capture-sidecar -c release && mkdir -p src-tauri/bin && cp capture-sidecar/.build/release/PeerCapture src-tauri/bin/PeerCapture-aarch64-apple-darwin && codesign --force --sign - src-tauri/bin/PeerCapture-aarch64-apple-darwin"
   },

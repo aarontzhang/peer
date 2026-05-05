@@ -1,0 +1,13 @@
+# Re-sign the dev binary with a stable identity after every link.
+#
+# Cargo's default macOS link is adhoc-signed by ld with a hash-derived
+# identifier (e.g. `Peer-d93d19f4f15b27de`) that changes per build, which
+# blows away TCC grants for screen recording and microphone every rebuild.
+# The runner shim below replaces that identity with `dev.aaronzhang.peer`
+# and applies entitlements.plist before exec'ing the binary, so a single
+# user grant in System Settings sticks across rebuilds.
+[target.aarch64-apple-darwin]
+runner = "bash bin/dev-runner.sh"
+
+[target.x86_64-apple-darwin]
+runner = "bash bin/dev-runner.sh"

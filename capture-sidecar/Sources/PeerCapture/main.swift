@@ -28,6 +28,10 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
   }
 
   private func selectMicrophone() -> AVCaptureDevice? {
+    // Match what the user picked in System Settings → Sound → Input. Anything
+    // smarter (preferring built-in, filtering by transport type) ends up
+    // picking the wrong device when AirPods/USB mics are active and produces
+    // a silent track. The default device is the one wired to system audio.
     let devices = AVCaptureDevice.devices(for: .audio)
     let defaultDevice = AVCaptureDevice.default(for: .audio)
 
@@ -39,37 +43,28 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
       FileHandle.standardError.write("mic candidate: \(summary(device))\n".data(using: .utf8) ?? Data())
     }
 
-    if let builtIn = devices.first(where: {
-      $0.isConnected &&
-      !$0.isSuspended &&
-      $0.transportType == kIOAudioDeviceTransportTypeBuiltIn
-    }) {
-      FileHandle.standardError.write("mic selected built-in: \(summary(builtIn))\n".data(using: .utf8) ?? Data())
-      return builtIn
-    }
-
-    guard let defaultDevice else {
-      if let fallback = devices.first(where: { $0.isConnected && !$0.isSuspended }) {
-        FileHandle.standardError.write("mic selected fallback (no default): \(summary(fallback))\n".data(using: .utf8) ?? Data())
-        return fallback
-      }
-      return nil
-    }
-
-    if defaultDevice.isConnected && !defaultDevice.isSuspended {
+    if let defaultDevice, defaultDevice.isConnected, !defaultDevice.isSuspended {
       FileHandle.standardError.write("mic selected default: \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
       return defaultDevice
     }
 
-    if let builtIn = devices.first(where: { $0.isConnected && !$0.isSuspended }) {
-      FileHandle.standardError.write(
-        "mic selected fallback over unavailable default \(defaultDevice.localizedName): \(summary(builtIn))\n".data(using: .utf8) ?? Data()
-      )
+    if let builtIn = devices.first(where: {
+      $0.isConnected && !$0.isSuspended && $0.transportType == kIOAudioDeviceTransportTypeBuiltIn
+    }) {
+      FileHandle.standardError.write("mic selected built-in (default unavailable): \(summary(builtIn))\n".data(using: .utf8) ?? Data())
       return builtIn
     }
 
-    FileHandle.standardError.write("mic selected default as last resort: \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
-    return defaultDevice
+    if let any = devices.first(where: { $0.isConnected && !$0.isSuspended }) {
+      FileHandle.standardError.write("mic selected first connected: \(summary(any))\n".data(using: .utf8) ?? Data())
+      return any
+    }
+
+    if let defaultDevice {
+      FileHandle.standardError.write("mic selected default as last resort: \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
+      return defaultDevice
+    }
+    return nil
   }
 
   func start() async throws {
@@ -153,6 +148,10 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
     } else {
       throw NSError(domain: "Peer", code: 6, userInfo: [NSLocalizedDescriptionKey: "cannot add audio output"])
     }
+    let nc = NotificationCenter.default
+    nc.addObserver(self, selector: #selector(captureSessionRuntimeError(_:)), name: .AVCaptureSessionRuntimeError, object: session)
+    nc.addObserver(self, selector: #selector(captureSessionInterrupted(_:)), name: .AVCaptureSessionWasInterrupted, object: session)
+    nc.addObserver(self, selector: #selector(captureSessionEnded(_:)), name: .AVCaptureSessionInterruptionEnded, object: session)
     self.captureSession = session
 
     // Writer must be in .writing before any sample arrives, otherwise the
@@ -184,29 +183,57 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
 
   func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
     guard CMSampleBufferDataIsReady(sampleBuffer), let writer = writer else { return }
+    if type != .screen { return }
 
-    if type == .screen, !sessionStarted {
-      let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-      writer.startSession(atSourceTime: pts)
-      sessionStarted = true
-    }
+    startSessionIfNeeded(with: sampleBuffer)
 
-    if type == .screen, let videoInput = videoInput, videoInput.isReadyForMoreMediaData {
-      videoInput.append(sampleBuffer)
+    if let videoInput = videoInput, videoInput.isReadyForMoreMediaData {
+      if !videoInput.append(sampleBuffer) {
+        FileHandle.standardError.write("video append failed: \(writer.error?.localizedDescription ?? "unknown")\n".data(using: .utf8) ?? Data())
+      }
     }
   }
 
   // MARK: AVCaptureAudioDataOutputSampleBufferDelegate (mic)
 
   func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-    guard CMSampleBufferDataIsReady(sampleBuffer) else { return }
-    // Anchor the file timeline to video; drop early mic buffers until video PTS is set.
-    guard sessionStarted, let audioInput = audioInput, audioInput.isReadyForMoreMediaData else { return }
-    audioInput.append(sampleBuffer)
+    guard CMSampleBufferDataIsReady(sampleBuffer), let writer = writer else { return }
+
+    // Anchor the writer timeline on whichever sample arrives first. Gating
+    // mic on video PTS used to drop the head of the audio track and, when
+    // the screen stream warmed up slowly or failed silently, every mic
+    // sample — producing the "audio track is silent (-91 dB)" failure.
+    startSessionIfNeeded(with: sampleBuffer)
+
+    guard let audioInput = audioInput, audioInput.isReadyForMoreMediaData else { return }
+    if !audioInput.append(sampleBuffer) {
+      FileHandle.standardError.write("audio append failed: \(writer.error?.localizedDescription ?? "unknown")\n".data(using: .utf8) ?? Data())
+    }
+  }
+
+  private func startSessionIfNeeded(with sampleBuffer: CMSampleBuffer) {
+    guard !sessionStarted, let writer = writer else { return }
+    let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+    guard pts.isValid else { return }
+    writer.startSession(atSourceTime: pts)
+    sessionStarted = true
   }
 
   func stream(_ stream: SCStream, didStopWithError error: Error) {
     FileHandle.standardError.write("stream error: \(error)\n".data(using: .utf8) ?? Data())
+  }
+
+  @objc fileprivate func captureSessionRuntimeError(_ note: Notification) {
+    let err = note.userInfo?[AVCaptureSessionErrorKey] as? NSError
+    FileHandle.standardError.write("capture session runtime error: \(err?.localizedDescription ?? "unknown")\n".data(using: .utf8) ?? Data())
+  }
+
+  @objc fileprivate func captureSessionInterrupted(_ note: Notification) {
+    FileHandle.standardError.write("capture session interrupted\n".data(using: .utf8) ?? Data())
+  }
+
+  @objc fileprivate func captureSessionEnded(_ note: Notification) {
+    FileHandle.standardError.write("capture session interruption ended\n".data(using: .utf8) ?? Data())
   }
 }
 
