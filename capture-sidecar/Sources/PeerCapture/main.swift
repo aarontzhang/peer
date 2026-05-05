@@ -28,10 +28,11 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
   }
 
   private func selectMicrophone() -> AVCaptureDevice? {
-    // Match what the user picked in System Settings → Sound → Input. Anything
-    // smarter (preferring built-in, filtering by transport type) ends up
-    // picking the wrong device when AirPods/USB mics are active and produces
-    // a silent track. The default device is the one wired to system audio.
+    // Prefer the built-in mic. Bluetooth devices like AirPods often pair as
+    // A2DP output-only and deliver no packets to AVCaptureSession, producing
+    // a silent track (-91 dB). The system default input may be AirPods, so
+    // we explicitly skip it and only fall back to the default if no built-in
+    // mic is available.
     let devices = AVCaptureDevice.devices(for: .audio)
     let defaultDevice = AVCaptureDevice.default(for: .audio)
 
@@ -43,16 +44,16 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
       FileHandle.standardError.write("mic candidate: \(summary(device))\n".data(using: .utf8) ?? Data())
     }
 
-    if let defaultDevice, defaultDevice.isConnected, !defaultDevice.isSuspended {
-      FileHandle.standardError.write("mic selected default: \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
-      return defaultDevice
-    }
-
     if let builtIn = devices.first(where: {
       $0.isConnected && !$0.isSuspended && $0.transportType == kIOAudioDeviceTransportTypeBuiltIn
     }) {
-      FileHandle.standardError.write("mic selected built-in (default unavailable): \(summary(builtIn))\n".data(using: .utf8) ?? Data())
+      FileHandle.standardError.write("mic selected built-in: \(summary(builtIn))\n".data(using: .utf8) ?? Data())
       return builtIn
+    }
+
+    if let defaultDevice, defaultDevice.isConnected, !defaultDevice.isSuspended {
+      FileHandle.standardError.write("mic selected default (no built-in available): \(summary(defaultDevice))\n".data(using: .utf8) ?? Data())
+      return defaultDevice
     }
 
     if let any = devices.first(where: { $0.isConnected && !$0.isSuspended }) {
@@ -189,7 +190,7 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
 
     if let videoInput = videoInput, videoInput.isReadyForMoreMediaData {
       if !videoInput.append(sampleBuffer) {
-        FileHandle.standardError.write("video append failed: \(writer.error?.localizedDescription ?? "unknown")\n".data(using: .utf8) ?? Data())
+        FileHandle.standardError.write("video append failed: \(describeWriterError(writer))\n".data(using: .utf8) ?? Data())
       }
     }
   }
@@ -207,7 +208,10 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
 
     guard let audioInput = audioInput, audioInput.isReadyForMoreMediaData else { return }
     if !audioInput.append(sampleBuffer) {
-      FileHandle.standardError.write("audio append failed: \(writer.error?.localizedDescription ?? "unknown")\n".data(using: .utf8) ?? Data())
+      let fmt = CMSampleBufferGetFormatDescription(sampleBuffer)
+      let asbd = fmt.flatMap { CMAudioFormatDescriptionGetStreamBasicDescription($0)?.pointee }
+      let fmtStr = asbd.map { "rate=\($0.mSampleRate) ch=\($0.mChannelsPerFrame) bits=\($0.mBitsPerChannel) flags=\($0.mFormatFlags) id=\($0.mFormatID)" } ?? "nil"
+      FileHandle.standardError.write("audio append failed: \(describeWriterError(writer)) sampleFmt=\(fmtStr)\n".data(using: .utf8) ?? Data())
     }
   }
 
@@ -215,8 +219,19 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
     guard !sessionStarted, let writer = writer else { return }
     let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
     guard pts.isValid else { return }
+    FileHandle.standardError.write("starting writer session at pts=\(pts.seconds) writer.status=\(writer.status.rawValue)\n".data(using: .utf8) ?? Data())
     writer.startSession(atSourceTime: pts)
     sessionStarted = true
+  }
+
+  private func describeWriterError(_ writer: AVAssetWriter) -> String {
+    let err = writer.error as NSError?
+    let code = err.map { "\($0.code)" } ?? "nil"
+    let domain = err?.domain ?? "nil"
+    let reason = err?.localizedFailureReason ?? "nil"
+    let desc = err?.localizedDescription ?? "nil"
+    let underlying = (err?.userInfo[NSUnderlyingErrorKey] as? NSError).map { "\($0.domain):\($0.code) \($0.localizedDescription)" } ?? "nil"
+    return "status=\(writer.status.rawValue) domain=\(domain) code=\(code) desc=\(desc) reason=\(reason) underlying=\(underlying)"
   }
 
   func stream(_ stream: SCStream, didStopWithError error: Error) {

@@ -9,8 +9,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "pnpm sidecar && tauri dev",
-    "tauri:build": "tauri build",
-    "sidecar": "swift build --package-path capture-sidecar -c release && mkdir -p src-tauri/bin && cp capture-sidecar/.build/release/PeerCapture src-tauri/bin/PeerCapture-aarch64-apple-darwin && codesign --force --sign - src-tauri/bin/PeerCapture-aarch64-apple-darwin"
+    "tauri:build": "tauri build && pnpm sign:bundle",
+    "sign:bundle": "codesign --force --sign - --identifier dev.aaronzhang.peer.capture src-tauri/target/release/bundle/macos/Peer.app/Contents/MacOS/PeerCapture && codesign --force --sign - --identifier dev.aaronzhang.peer src-tauri/target/release/bundle/macos/Peer.app",
+    "sidecar": "swift build --package-path capture-sidecar -c release && mkdir -p src-tauri/bin src-tauri/target/debug/bin && cp capture-sidecar/.build/release/PeerCapture src-tauri/bin/PeerCapture-aarch64-apple-darwin && cp capture-sidecar/.build/release/PeerCapture src-tauri/target/debug/bin/PeerCapture-aarch64-apple-darwin && codesign --force --sign - src-tauri/bin/PeerCapture-aarch64-apple-darwin && codesign --force --sign - src-tauri/target/debug/bin/PeerCapture-aarch64-apple-darwin"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",
