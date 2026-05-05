@@ -105,12 +105,36 @@ pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Resu
     }
 
     let mut all = Vec::new();
+    let mut first_err: Option<anyhow::Error> = None;
+    let mut failed = 0usize;
+    let total = ranges.len();
     while let Some(joined) = tasks.next().await {
         match joined {
             Ok(Ok((_, entries))) => all.extend(entries),
-            Ok(Err(err)) => tracing::warn!(?err, "whisper chunk failed (continuing)"),
-            Err(err) => tracing::warn!(?err, "whisper task panicked"),
+            Ok(Err(err)) => {
+                tracing::warn!(?err, "whisper chunk failed (continuing)");
+                failed += 1;
+                if first_err.is_none() {
+                    first_err = Some(err);
+                }
+            }
+            Err(err) => {
+                tracing::warn!(?err, "whisper task panicked");
+                failed += 1;
+                if first_err.is_none() {
+                    first_err = Some(anyhow!(err.to_string()));
+                }
+            }
         }
+    }
+
+    // If every chunk failed, surface the error instead of returning an empty
+    // transcript. An empty transcript looks indistinguishable from "user was
+    // silent" in the UI, which masked an invalid OpenAI key during debugging.
+    if total > 0 && failed == total {
+        return Err(first_err
+            .unwrap_or_else(|| anyhow!("transcription failed"))
+            .context("every whisper chunk failed — check OPENAI_API_KEY"));
     }
 
     Ok(Transcript { entries: dedupe_captions(all, DEDUPE_TOLERANCE_SECONDS) })
