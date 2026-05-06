@@ -279,6 +279,12 @@ html, body {
 .md pre code { background: none; padding: 0; }
 .md strong { color: var(--color-fg); font-weight: 600; }
 .md a { color: var(--color-accent); text-decoration: none; }
+.prompt-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--color-fg);
+}
+
 .md a:hover { text-decoration: underline; }
 
 /* ─── hotkey-unavailable banner ────────────────────────────────────────── */

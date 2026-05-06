@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { marked } from 'marked';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { type Recording } from '@/lib/ipc';
+import { toPlainText } from '@/lib/plainText';
 
 type Props = {
   recording: Recording | null;
@@ -13,11 +14,7 @@ export function ResultView({ recording, liveBody, isStreaming }: Props) {
   const [copied, setCopied] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const body = liveBody ?? recording?.body ?? '';
-  const html = useMemo(() => {
-    if (!body) return '';
-    return marked.parse(body, { async: false }) as string;
-  }, [body]);
+  const body = useMemo(() => toPlainText(liveBody ?? recording?.body ?? ''), [liveBody, recording?.body]);
 
   const thinking = recording?.thinking ?? null;
   const thinkingHtml = useMemo(() => {
@@ -122,14 +119,10 @@ export function ResultView({ recording, liveBody, isStreaming }: Props) {
         </div>
       </div>
       <div className="main__scroll" ref={scrollRef}>
-        <div
-          className="md"
-          dangerouslySetInnerHTML={{
-            __html: isStreaming
-              ? html + '<span class="streaming-cursor"></span>'
-              : html,
-          }}
-        />
+        <div className="prompt-body">
+          {body}
+          {isStreaming && <span className="streaming-cursor" />}
+        </div>
         {!isStreaming && thinking && (
           <details className="thinking">
             <summary className="thinking__summary">

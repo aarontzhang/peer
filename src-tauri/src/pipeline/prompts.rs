@@ -42,7 +42,7 @@ How to write it:
 - Do not paste images. Reference visible elements in words.
 
 Output format:
-- Plain markdown. No "Problem" / "Steps" / "What to change" / "Open questions" headers.
+- Plain text only. No markdown formatting of any kind.
 - No top-level title or summary line — just the prompt itself.
-- Use short paragraphs. Use a bulleted or numbered list only if the user clearly enumerated things; otherwise prose.
+- Use short paragraphs in plain text. If the user clearly enumerated things, separate them with line breaks rather than markdown bullets or numbered lists.
 - Length follows the user. A one-sentence ask stays one sentence. A long walk-through stays long. Do not pad."#;

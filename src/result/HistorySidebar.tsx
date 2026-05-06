@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ipc, type Recording, formatDuration, formatRelative } from '@/lib/ipc';
+import { firstPlainTextLine } from '@/lib/plainText';
 
 type Props = {
   items: Recording[];
@@ -39,7 +40,7 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
           </div>
         )}
         {items.map((rec) => {
-          const title = rec.summary?.trim()
+          const title = firstPlainTextLine(rec.summary ?? rec.body ?? '')
             || (rec.status === 'processing' ? 'Analyzing…'
                 : rec.status === 'recording' ? 'Recording…'
                 : rec.status === 'stopped' ? 'Captured (awaiting send)'

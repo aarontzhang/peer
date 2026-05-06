@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
+import { toPlainText } from '@/lib/plainText';
 import { HistorySidebar } from './HistorySidebar';
 import { ResultView } from './ResultView';
 import { EmptyState } from './EmptyState';
@@ -123,7 +124,7 @@ export function App() {
     const visible = liveBody ?? selected?.body;
     if (visible) {
       e.preventDefault();
-      void navigator.clipboard.writeText(visible);
+      void navigator.clipboard.writeText(toPlainText(visible));
     }
   });
 

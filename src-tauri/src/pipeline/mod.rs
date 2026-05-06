@@ -109,22 +109,23 @@ pub async fn run(
     )
     .await?;
 
-    let summary = first_line(&final_md);
+    let final_text = normalize_prompt_text(&final_md);
+    let summary = first_line(&final_text);
 
     if let Some(mut rec) = state.db().get_recording(&id).await? {
         rec.status = RecordingStatus::Done;
         rec.summary = Some(summary);
-        rec.body = Some(final_md.clone());
+        rec.body = Some(final_text.clone());
         rec.thinking = Some(thinking_md);
         state.db().update_recording(&rec).await?;
     }
 
-    let end = ResultChunk { id: id.clone(), kind: ChunkKind::End, text: final_md.clone() };
+    let end = ResultChunk { id: id.clone(), kind: ChunkKind::End, text: final_text.clone() };
     let _ = app.emit("result:chunk", &end);
 
     // Auto-copy.
     use tauri_plugin_clipboard_manager::ClipboardExt;
-    let _ = app.clipboard().write_text(final_md);
+    let _ = app.clipboard().write_text(final_text);
 
     Ok(())
 }
@@ -135,6 +136,99 @@ fn first_line(s: &str) -> String {
         .find(|l| !l.is_empty())
         .map(|l| l.trim_start_matches('#').trim().to_string())
         .unwrap_or_else(|| "Untitled".to_string())
+}
+
+fn normalize_prompt_text(s: &str) -> String {
+    let mut text = s.replace("\r\n", "\n").replace('\r', "\n");
+    text = strip_fenced_markers(&text, "```");
+    text = strip_fenced_markers(&text, "~~~");
+    text = text
+        .lines()
+        .map(strip_markdown_line_prefixes)
+        .collect::<Vec<_>>()
+        .join("\n");
+    for delim in ["**", "__", "~~", "`", "*"] {
+        text = strip_wrapped_segments(&text, delim);
+    }
+    let text = strip_markdown_links(&text);
+    collapse_blank_lines(&text).trim().to_string()
+}
+
+fn strip_fenced_markers(input: &str, fence: &str) -> String {
+    input
+        .lines()
+        .filter(|line| !line.trim_start().starts_with(fence))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn strip_markdown_line_prefixes(line: &str) -> String {
+    let trimmed = line.trim_start();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    let mut s = trimmed;
+    if let Some(rest) = s.strip_prefix('>') {
+        s = rest.trim_start();
+    }
+    s = s.trim_start_matches('#').trim_start();
+    if let Some(rest) = s
+        .strip_prefix("- ")
+        .or_else(|| s.strip_prefix("* "))
+        .or_else(|| s.strip_prefix("+ "))
+    {
+        s = rest;
+    }
+    let digits = s.chars().take_while(|c| c.is_ascii_digit()).count();
+    if digits > 0 {
+        let rest = &s[digits..];
+        if let Some(rest) = rest.strip_prefix(". ").or_else(|| rest.strip_prefix(") ")) {
+            s = rest;
+        }
+    }
+    if let Some(rest) = s
+        .strip_prefix("[ ] ")
+        .or_else(|| s.strip_prefix("[x] "))
+        .or_else(|| s.strip_prefix("[X] "))
+    {
+        s = rest;
+    }
+    s.trim_end().to_string()
+}
+
+fn strip_wrapped_segments(input: &str, delim: &str) -> String {
+    input.replace(delim, "")
+}
+
+fn strip_markdown_links(input: &str) -> String {
+    let mut out = input.to_string();
+    while let Some(start) = out.find('[') {
+        let Some(mid_rel) = out[start..].find("](") else { break };
+        let mid = start + mid_rel;
+        let Some(end_rel) = out[mid + 2..].find(')') else { break };
+        let end = mid + 2 + end_rel;
+        let label = out[start + 1..mid].to_string();
+        out.replace_range(start..=end, &label);
+    }
+    out
+}
+
+fn collapse_blank_lines(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut blank = false;
+    for line in input.lines() {
+        if line.trim().is_empty() {
+            if !blank {
+                out.push('\n');
+                blank = true;
+            }
+            continue;
+        }
+        blank = false;
+        out.push_str(line.trim_end());
+        out.push('\n');
+    }
+    out
 }
 
 /// Pull the last few non-empty lines of an ffmpeg/ffprobe stderr buffer so a
