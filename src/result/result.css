@@ -2,21 +2,17 @@
 
 html, body, #root { height: 100%; }
 html, body {
-  background: oklch(0.20 0.012 257);
+  background: transparent;
 }
 
 .app {
   position: relative;
   display: grid;
-  grid-template-columns: var(--sidebar-width, 218px) 8px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width, 218px) 1px minmax(0, 1fr);
   grid-template-areas: "sidebar resizer main";
   height: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 22% 0%, oklch(0.24 0.018 255 / 0.70), transparent 34%),
-    oklch(0.15 0.012 257 / 0.94);
-  backdrop-filter: blur(24px) saturate(128%);
-  -webkit-backdrop-filter: blur(24px) saturate(128%);
+  background: transparent;
   color: var(--color-fg);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -29,13 +25,12 @@ html, body {
   display: flex;
   flex-direction: column;
   background:
-    linear-gradient(180deg, oklch(0.23 0.014 257 / 0.58), oklch(0.17 0.012 257 / 0.44)),
-    oklch(0.16 0.012 257 / 0.38);
-  backdrop-filter: blur(30px) saturate(142%);
-  -webkit-backdrop-filter: blur(30px) saturate(142%);
-  box-shadow:
-    inset -1px 0 0 oklch(1 0 0 / 0.035),
-    inset 1px 0 0 oklch(1 0 0 / 0.03);
+    radial-gradient(circle at 78% 12%, oklch(1 0 0 / 0.035), transparent 38%),
+    linear-gradient(180deg, oklch(0.24 0.006 257 / 0.94), oklch(0.18 0.006 257 / 0.92)),
+    oklch(0.19 0.006 257 / 0.93);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: inset 1px 0 0 oklch(1 0 0 / 0.08);
   height: 100%;
   min-height: 0;
   min-width: 0;
@@ -45,6 +40,8 @@ html, body {
   grid-area: resizer;
   position: relative;
   z-index: 3;
+  justify-self: center;
+  width: 13px;
   height: 100%;
   cursor: col-resize;
   touch-action: none;
@@ -56,9 +53,9 @@ html, body {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 3px;
+  left: 6px;
   width: 1px;
-  background: oklch(1 0 0 / 0.075);
+  background: oklch(0.42 0.008 257 / 0.95);
   transition:
     background var(--dur-fast) var(--ease-spring),
     box-shadow var(--dur-fast) var(--ease-spring),
@@ -117,10 +114,15 @@ html, body {
 .sidebar__list {
   flex: 1;
   overflow-y: auto;
+  scrollbar-width: none;
   padding: 4px 8px 24px 8px;
   display: flex;
   flex-direction: column;
   gap: 1px;
+}
+.sidebar__list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .row-wrap {
@@ -130,8 +132,8 @@ html, body {
 }
 .row-wrap:hover { background: oklch(1 0 0 / 0.04); }
 .row-wrap[data-selected='true'] {
-  background: oklch(1 0 0 / 0.06);
-  box-shadow: inset 0 0 0 1px var(--color-line);
+  background: oklch(1 0 0 / 0.085);
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.075);
 }
 
 .row {
@@ -226,7 +228,9 @@ html, body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: oklch(0.14 0.012 257 / 0.82);
+  background: oklch(0.21 0.008 257);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* Top strip: holds the absolutely-positioned actions and gives the window
@@ -300,7 +304,12 @@ html, body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: none;
   padding: 8px 48px 80px 48px;
+}
+.main__scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 /* ─── markdown ─────────────────────────────────────────────────────────── */

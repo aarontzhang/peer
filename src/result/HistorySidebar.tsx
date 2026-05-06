@@ -111,8 +111,6 @@ function BrandMark() {
       <g fill="none" stroke="currentColor" strokeLinecap="round">
         <circle cx="0" cy="0" r="37" strokeWidth="3" mask={`url(#${maskId})`} />
         <g strokeWidth="2.5" style={{ transform: gazeTransform }}>
-          <circle cx="-15" cy="0" r="8.75" fill="var(--color-bg)" stroke="none" />
-          <circle cx="15" cy="0" r="8.75" fill="var(--color-bg)" stroke="none" />
           <circle cx="-15" cy="0" r="10" />
           <circle cx="15"  cy="0" r="10" />
           <line x1="-5" y1="0" x2="5" y2="0" />
