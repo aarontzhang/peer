@@ -85,20 +85,12 @@ pub fn run() {
                     let _ = win.hide();
                 }
             }
-            // macOS: when the user clicks the dock icon and we have no
-            // visible windows, restore the result window. `Reopen` fires
-            // on dock activation.
+            // macOS: dock activation should always surface the main window.
+            // The always-visible pill makes `has_visible_windows` unreliable
+            // for this purpose, so treat every reopen as "show the result".
             #[cfg(target_os = "macos")]
-            RunEvent::Reopen {
-                has_visible_windows,
-                ..
-            } => {
-                if !has_visible_windows {
-                    if let Some(win) = app.get_webview_window("result") {
-                        let _ = win.show();
-                        let _ = win.set_focus();
-                    }
-                }
+            RunEvent::Reopen { .. } => {
+                let _ = reveal_result_window(app, true);
             }
             RunEvent::ExitRequested { api, .. } => {
                 // Don't exit when no windows are visible — we live in the pill.
@@ -106,6 +98,28 @@ pub fn run() {
             }
             _ => {}
         });
+}
+
+pub(crate) fn reveal_result_window(app: &AppHandle, center: bool) -> tauri::Result<()> {
+    let Some(win) = app.get_webview_window("result") else {
+        return Ok(());
+    };
+
+    if win.is_minimized().unwrap_or(false) {
+        win.unminimize()?;
+    }
+
+    win.show()?;
+
+    if center {
+        win.center()?;
+    }
+
+    #[cfg(target_os = "macos")]
+    activate_app(app)?;
+
+    win.set_focus()?;
+    Ok(())
 }
 
 /// Listen for the standard termination signals and flush any active capture
@@ -205,5 +219,16 @@ fn set_app_icon(app: &AppHandle) -> tauri::Result<()> {
         let image: id = NSImage::initWithData_(NSImage::alloc(nil), data);
         let ns_app = NSApp();
         ns_app.setApplicationIconImage_(image);
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn activate_app(app: &AppHandle) -> tauri::Result<()> {
+    use cocoa::appkit::{NSApp, NSApplication};
+    use cocoa::base::YES;
+
+    app.run_on_main_thread(move || unsafe {
+        let ns_app = NSApp();
+        ns_app.activateIgnoringOtherApps_(YES);
     })
 }

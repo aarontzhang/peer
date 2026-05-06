@@ -100,7 +100,9 @@ pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Resu
         let range = *range;
         tasks.push(tokio::spawn(async move {
             let _permit = sem.acquire_owned().await.unwrap();
-            transcribe_range(&client, &key, &src, range).await.map(|e| (i, e))
+            transcribe_range(&client, &key, &src, range)
+                .await
+                .map(|e| (i, e))
         }));
     }
 
@@ -137,14 +139,25 @@ pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Resu
             .context("every whisper chunk failed — check OPENAI_API_KEY"));
     }
 
-    Ok(Transcript { entries: dedupe_captions(all, DEDUPE_TOLERANCE_SECONDS) })
+    Ok(Transcript {
+        entries: dedupe_captions(all, DEDUPE_TOLERANCE_SECONDS),
+    })
 }
 
 async fn audio_max_volume_db(audio: &Path) -> Option<f64> {
-    let out = Command::new("ffmpeg")
+    let out = Command::new(crate::binpath::ffmpeg())
         .args(["-hide_banner", "-nostats", "-i"])
         .arg(audio)
-        .args(["-af", "volumedetect", "-vn", "-sn", "-dn", "-f", "null", "-"])
+        .args([
+            "-af",
+            "volumedetect",
+            "-vn",
+            "-sn",
+            "-dn",
+            "-f",
+            "null",
+            "-",
+        ])
         .output()
         .await
         .ok()?;
@@ -163,7 +176,7 @@ async fn audio_max_volume_db(audio: &Path) -> Option<f64> {
 
 async fn extract_audio(video: &Path) -> Result<PathBuf> {
     let out = video.with_extension("mp3");
-    let status = Command::new("ffmpeg")
+    let status = Command::new(crate::binpath::ffmpeg())
         .args(["-hide_banner", "-loglevel", "error", "-y", "-i"])
         .arg(video)
         .args(["-vn", "-ac", "1", "-ar", "16000", "-b:a", "64k"])
@@ -172,7 +185,10 @@ async fn extract_audio(video: &Path) -> Result<PathBuf> {
         .await
         .context("running ffmpeg for audio extraction")?;
     if !status.status.success() {
-        anyhow::bail!("audio extraction failed: {}", super::tail_stderr(&status.stderr));
+        anyhow::bail!(
+            "audio extraction failed: {}",
+            super::tail_stderr(&status.stderr)
+        );
     }
     Ok(out)
 }
@@ -190,16 +206,28 @@ async fn transcribe_range(
         range.end * 1000.0,
     ));
     let dur = (range.end - range.start).max(0.1);
-    let status = Command::new("ffmpeg")
-        .args(["-hide_banner", "-loglevel", "error", "-y",
-               "-ss", &format!("{:.3}", range.start), "-t", &format!("{:.3}", dur), "-i"])
+    let status = Command::new(crate::binpath::ffmpeg())
+        .args([
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-ss",
+            &format!("{:.3}", range.start),
+            "-t",
+            &format!("{:.3}", dur),
+            "-i",
+        ])
         .arg(audio)
         .args(["-vn", "-ac", "1", "-ar", "16000", "-b:a", "64k"])
         .arg(&chunk_path)
         .output()
         .await?;
     if !status.status.success() {
-        anyhow::bail!("ffmpeg slice failed: {}", super::tail_stderr(&status.stderr));
+        anyhow::bail!(
+            "ffmpeg slice failed: {}",
+            super::tail_stderr(&status.stderr)
+        );
     }
 
     let bytes = tokio::fs::read(&chunk_path).await?;
@@ -241,7 +269,11 @@ async fn transcribe_range(
         if text.is_empty() {
             vec![]
         } else {
-            vec![CaptionEntry { start: range.start, end: range.end, text: text.to_string() }]
+            vec![CaptionEntry {
+                start: range.start,
+                end: range.end,
+                text: text.to_string(),
+            }]
         }
     } else {
         vec![]
@@ -250,19 +282,29 @@ async fn transcribe_range(
 }
 
 #[derive(Copy, Clone, Debug)]
-struct TimeRange { start: f64, end: f64 }
+struct TimeRange {
+    start: f64,
+    end: f64,
+}
 
 fn build_overlapping_ranges(start: f64, end: f64, chunk: f64, overlap: f64) -> Vec<TimeRange> {
     let mut ranges = Vec::new();
     let safe_start = start.max(0.0);
     let safe_end = end.max(safe_start);
-    if safe_end <= safe_start { return ranges }
+    if safe_end <= safe_start {
+        return ranges;
+    }
     let step = (chunk - overlap).max(1.0);
     let mut cursor = safe_start;
     while cursor < safe_end {
         let range_end = (cursor + chunk).min(safe_end);
-        ranges.push(TimeRange { start: cursor, end: range_end });
-        if range_end >= safe_end { break }
+        ranges.push(TimeRange {
+            start: cursor,
+            end: range_end,
+        });
+        if range_end >= safe_end {
+            break;
+        }
         cursor += step;
     }
     ranges
@@ -270,14 +312,22 @@ fn build_overlapping_ranges(start: f64, end: f64, chunk: f64, overlap: f64) -> V
 
 fn dedupe_captions(mut entries: Vec<CaptionEntry>, tolerance: f64) -> Vec<CaptionEntry> {
     entries.sort_by(|a, b| {
-        a.start.partial_cmp(&b.start).unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a.end.partial_cmp(&b.end).unwrap_or(std::cmp::Ordering::Equal))
+        a.start
+            .partial_cmp(&b.start)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| {
+                a.end
+                    .partial_cmp(&b.end)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .then_with(|| a.text.cmp(&b.text))
     });
     let mut out: Vec<CaptionEntry> = Vec::with_capacity(entries.len());
     for e in entries {
         let text = e.text.trim().to_string();
-        if text.is_empty() { continue }
+        if text.is_empty() {
+            continue;
+        }
         let normalized = CaptionEntry {
             start: e.start.max(0.0),
             end: e.end.max(e.start),
@@ -315,9 +365,21 @@ mod tests {
     #[test]
     fn dedupe_collapses_overlap_duplicates() {
         let entries = vec![
-            CaptionEntry { start: 1.00, end: 2.00, text: "hello world".into() },
-            CaptionEntry { start: 1.05, end: 2.04, text: "hello world".into() },
-            CaptionEntry { start: 5.00, end: 6.00, text: "next".into() },
+            CaptionEntry {
+                start: 1.00,
+                end: 2.00,
+                text: "hello world".into(),
+            },
+            CaptionEntry {
+                start: 1.05,
+                end: 2.04,
+                text: "hello world".into(),
+            },
+            CaptionEntry {
+                start: 5.00,
+                end: 6.00,
+                text: "next".into(),
+            },
         ];
         let out = dedupe_captions(entries, 0.08);
         assert_eq!(out.len(), 2);

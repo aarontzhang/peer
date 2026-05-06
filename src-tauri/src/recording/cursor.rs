@@ -55,7 +55,13 @@ fn read_current() -> Option<String> {
         .args(["read", DOMAIN, KEY])
         .output()
         .ok()?;
-    if !out.status.success() { return None }
+    if !out.status.success() {
+        return None;
+    }
     let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    if s.is_empty() { None } else { Some(s) }
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
 }

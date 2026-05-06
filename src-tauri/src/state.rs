@@ -57,6 +57,10 @@ impl AppState {
         })
     }
 
-    pub fn db(&self) -> &Db { &self.db }
-    pub fn recording(&self) -> &RecordingController { &self.recording }
+    pub fn db(&self) -> &Db {
+        &self.db
+    }
+    pub fn recording(&self) -> &RecordingController {
+        &self.recording
+    }
 }

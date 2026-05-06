@@ -7,16 +7,19 @@ import { toPlainText } from '@/lib/plainText';
 type Props = {
   recording: Recording | null;
   liveBody: string | null;
+  liveThinking: string | null;
   isStreaming: boolean;
 };
 
-export function ResultView({ recording, liveBody, isStreaming }: Props) {
+export function ResultView({ recording, liveBody, liveThinking, isStreaming }: Props) {
   const [copied, setCopied] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const body = useMemo(() => toPlainText(liveBody ?? recording?.body ?? ''), [liveBody, recording?.body]);
 
-  const thinking = recording?.thinking ?? null;
+  // Prefer the live thinking event so it's visible the instant per-window
+  // analyses finish, well before the prompt finishes streaming.
+  const thinking = liveThinking ?? recording?.thinking ?? null;
   const thinkingHtml = useMemo(() => {
     if (!thinking) return '';
     return marked.parse(thinking, { async: false }) as string;
@@ -67,7 +70,13 @@ export function ResultView({ recording, liveBody, isStreaming }: Props) {
     );
   }
 
-  if (!body && (recording.status === 'recording' || recording.status === 'processing' || recording.status === 'stopped')) {
+  const inEarlyState =
+    !body &&
+    (recording.status === 'recording' ||
+      recording.status === 'processing' ||
+      recording.status === 'stopped');
+
+  if (inEarlyState && !thinking) {
     const heading =
       recording.status === 'recording' ? 'Recording…'
       : recording.status === 'stopped' ? 'Captured.'
@@ -103,6 +112,11 @@ export function ResultView({ recording, liveBody, isStreaming }: Props) {
     }
   };
 
+  // Auto-expand the thinking pane while we're still waiting on the prompt
+  // (or actively streaming it). Once the prompt is done it collapses again so
+  // the refined output stays the focus.
+  const thinkingOpen = isStreaming || !body;
+
   return (
     <div className="main">
       <div className="main__bar" data-tauri-drag-region>
@@ -119,21 +133,29 @@ export function ResultView({ recording, liveBody, isStreaming }: Props) {
         </div>
       </div>
       <div className="main__scroll" ref={scrollRef}>
-        <div className="prompt-body">
-          {body}
-          {isStreaming && <span className="streaming-cursor" />}
-        </div>
-        {!isStreaming && thinking && (
-          <details className="thinking">
+        {thinking && (
+          <details className="thinking thinking--top" open={thinkingOpen}>
             <summary className="thinking__summary">
               <ChevronIcon />
-              <span>Show thinking</span>
+              <span>{thinkingOpen ? 'Thinking' : 'Show thinking'}</span>
             </summary>
             <div
               className="md thinking__body"
               dangerouslySetInnerHTML={{ __html: thinkingHtml }}
             />
           </details>
+        )}
+        {body ? (
+          <div className="prompt-body">
+            {body}
+            {isStreaming && <span className="streaming-cursor" />}
+          </div>
+        ) : (
+          <div className="md prompt-pending">
+            <p style={{ color: 'var(--color-fg-dim)' }}>
+              Writing the refined prompt…<span className="streaming-cursor" />
+            </p>
+          </div>
         )}
       </div>
     </div>
@@ -180,4 +202,3 @@ function CheckIcon() {
     </svg>
   );
 }
-

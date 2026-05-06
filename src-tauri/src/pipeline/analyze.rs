@@ -50,8 +50,7 @@ pub async fn analyze_and_aggregate(
     }
 
     let windows = window_frames(frames, total_secs);
-    let window_ranges: Vec<(f64, f64)> =
-        windows.iter().map(|w| (w.t_start, w.t_end)).collect();
+    let window_ranges: Vec<(f64, f64)> = windows.iter().map(|w| (w.t_start, w.t_end)).collect();
     let client = Arc::new(
         reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(180))
@@ -86,6 +85,15 @@ pub async fn analyze_and_aggregate(
 
     let thinking_md = render_thinking(&window_results, &window_ranges, transcript);
 
+    // Surface the thinking pane as early as possible — it's ready now, while
+    // the aggregator still has its full streaming time ahead of it. The UI
+    // shows this above the streaming prompt so a viewer of the demo can read
+    // what the model "saw" before the refined prompt finishes writing.
+    let _ = app.emit(
+        "result:thinking",
+        &json!({ "id": id, "thinking": thinking_md }),
+    );
+
     let observations_json = serde_json::to_string_pretty(&Value::Array(
         window_results.into_iter().map(|(_, v)| v).collect(),
     ))?;
@@ -101,7 +109,10 @@ pub async fn analyze_and_aggregate(
     )
     .await?;
 
-    Ok(AnalysisOutput { final_md, thinking_md })
+    Ok(AnalysisOutput {
+        final_md,
+        thinking_md,
+    })
 }
 
 /// Produce a friendly markdown summary of what each per-window analyzer
@@ -126,14 +137,22 @@ fn render_thinking(
             t_end
         ));
 
-        let speech = v.get("userSpeech").and_then(Value::as_str).unwrap_or("").trim();
+        let speech = v
+            .get("userSpeech")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim();
         if !speech.is_empty() {
             out.push_str("**Heard:** ");
             out.push_str(speech);
             out.push_str("\n\n");
         }
 
-        let pointing = v.get("pointing").and_then(Value::as_str).unwrap_or("").trim();
+        let pointing = v
+            .get("pointing")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim();
         if !pointing.is_empty() {
             out.push_str("**Pointing at:** ");
             out.push_str(pointing);
@@ -178,12 +197,22 @@ struct Window {
 fn window_frames(frames: &[Keyframe], total_secs: f64) -> Vec<Window> {
     if frames.is_empty() {
         // Single empty window so the aggregator still gets the transcript.
-        return vec![Window { frames: vec![], t_start: 0.0, t_end: total_secs }];
+        return vec![Window {
+            frames: vec![],
+            t_start: 0.0,
+            t_end: total_secs,
+        }];
     }
     let mut windows = Vec::new();
     for chunk in frames.chunks(MAX_FRAMES_PER_WINDOW) {
-        let t_start = chunk.first().map(|f| f.approx_t as f64 * total_secs).unwrap_or(0.0);
-        let t_end = chunk.last().map(|f| f.approx_t as f64 * total_secs).unwrap_or(total_secs);
+        let t_start = chunk
+            .first()
+            .map(|f| f.approx_t as f64 * total_secs)
+            .unwrap_or(0.0);
+        let t_end = chunk
+            .last()
+            .map(|f| f.approx_t as f64 * total_secs)
+            .unwrap_or(total_secs);
         windows.push(Window {
             frames: chunk.to_vec(),
             t_start,
@@ -257,13 +286,16 @@ async fn analyze_window(
         .trim()
         .to_string();
 
-    let json_value = extract_json(&text).unwrap_or_else(|| json!({ "userSpeech": text, "visibleContext": [], "pointing": "" }));
+    let json_value = extract_json(&text)
+        .unwrap_or_else(|| json!({ "userSpeech": text, "visibleContext": [], "pointing": "" }));
     Ok((index, json_value))
 }
 
 fn extract_json(text: &str) -> Option<Value> {
     let trimmed = text.trim();
-    if let Ok(v) = serde_json::from_str::<Value>(trimmed) { return Some(v) }
+    if let Ok(v) = serde_json::from_str::<Value>(trimmed) {
+        return Some(v);
+    }
     // Strip fenced ```json blocks
     let start = trimmed.find('{')?;
     let end = trimmed.rfind('}')?;
@@ -347,15 +379,25 @@ async fn aggregate_streaming(
             buf.drain(..=idx + 1); // drop block + trailing \n\n
 
             for line in event_block.lines() {
-                let Some(data) = line.strip_prefix("data:") else { continue };
+                let Some(data) = line.strip_prefix("data:") else {
+                    continue;
+                };
                 let data = data.trim();
-                if data.is_empty() || data == "[DONE]" { continue }
-                let Ok(v): Result<Value, _> = serde_json::from_str(data) else { continue };
+                if data.is_empty() || data == "[DONE]" {
+                    continue;
+                }
+                let Ok(v): Result<Value, _> = serde_json::from_str(data) else {
+                    continue;
+                };
                 let kind = v["type"].as_str().unwrap_or("");
                 if kind == "content_block_delta" {
                     if let Some(text) = v["delta"]["text"].as_str() {
                         acc.push_str(text);
-                        let chunk = ResultChunk { id: id.clone(), kind: ChunkKind::Delta, text: text.to_string() };
+                        let chunk = ResultChunk {
+                            id: id.clone(),
+                            kind: ChunkKind::Delta,
+                            text: text.to_string(),
+                        };
                         let _ = app.emit("result:chunk", &chunk);
                     }
                 }

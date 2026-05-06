@@ -43,7 +43,10 @@ fn publish_status(app: &AppHandle, state: &AppState, status: HotkeyStatus) {
 fn run_tap(app: AppHandle, app_state: Arc<AppState>, tx: mpsc::UnboundedSender<()>) {
     // RefCell because CGEventTap demands `Fn` (not `FnMut`) but the run loop
     // is single-threaded so we can safely borrow_mut from inside the callback.
-    let state = RefCell::new(TapState { fn_down_at: None, other_key_pressed: false });
+    let state = RefCell::new(TapState {
+        fn_down_at: None,
+        other_key_pressed: false,
+    });
 
     let callback = move |_proxy, event_type, event: &core_graphics::event::CGEvent| {
         let mut s = state.borrow_mut();
@@ -92,7 +95,10 @@ fn run_tap(app: AppHandle, app_state: Arc<AppState>, tx: mpsc::UnboundedSender<(
             publish_status(
                 &app_loop,
                 &state_loop,
-                HotkeyStatus { installed: true, reason: None },
+                HotkeyStatus {
+                    installed: true,
+                    reason: None,
+                },
             );
             CFRunLoop::run_current();
         },
@@ -107,7 +113,10 @@ fn run_tap(app: AppHandle, app_state: Arc<AppState>, tx: mpsc::UnboundedSender<(
         publish_status(
             &app,
             &app_state,
-            HotkeyStatus { installed: false, reason: Some(reason) },
+            HotkeyStatus {
+                installed: false,
+                reason: Some(reason),
+            },
         );
     }
 }

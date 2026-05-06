@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
@@ -16,12 +17,33 @@ async function copyBodyToClipboard(text: string) {
   }
 }
 
+const SIDEBAR_WIDTH_KEY = 'peer:result-sidebar-width';
+const SIDEBAR_DEFAULT_WIDTH = 218;
+const SIDEBAR_MIN_WIDTH = 176;
+const SIDEBAR_MAX_WIDTH = 420;
+const MAIN_MIN_WIDTH = 360;
+
+function clampSidebarWidth(width: number, maxWidth = SIDEBAR_MAX_WIDTH) {
+  return Math.min(Math.max(width, SIDEBAR_MIN_WIDTH), maxWidth);
+}
+
+function getStoredSidebarWidth() {
+  const raw = window.localStorage.getItem(SIDEBAR_WIDTH_KEY);
+  const width = raw ? Number.parseInt(raw, 10) : SIDEBAR_DEFAULT_WIDTH;
+  return Number.isFinite(width) ? clampSidebarWidth(width) : SIDEBAR_DEFAULT_WIDTH;
+}
+
 export function App() {
+  const appRef = useRef<HTMLDivElement>(null);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(getStoredSidebarWidth);
 
   // Live streaming buffer per-recording; cleared when stream ends.
   const liveRef = useRef<{ id: string; body: string } | null>(null);
+  // Thinking arrives ahead of the streamed prompt and is cached per-recording
+  // so switching to another row and back doesn't drop it.
+  const liveThinkingRef = useRef<Map<string, string>>(new Map());
   const [, force] = useState(0);
   const triggerRender = useCallback(() => force((n) => n + 1), []);
 
@@ -34,6 +56,66 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [keys, setKeys] = useState<{ openai: boolean; anthropic: boolean }>({ openai: false, anthropic: false });
   const [hotkey, setHotkey] = useState<HotkeyStatus | null>(null);
+
+  const getMaxSidebarWidth = useCallback(() => {
+    const appWidth = appRef.current?.clientWidth ?? window.innerWidth;
+    return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, appWidth - MAIN_MIN_WIDTH));
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(Math.round(sidebarWidth)));
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    const syncWidthToWindow = () => {
+      setSidebarWidth((width) => clampSidebarWidth(width, getMaxSidebarWidth()));
+    };
+
+    syncWidthToWindow();
+    window.addEventListener('resize', syncWidthToWindow);
+    return () => window.removeEventListener('resize', syncWidthToWindow);
+  }, [getMaxSidebarWidth]);
+
+  const resizeSidebarBy = useCallback((delta: number) => {
+    setSidebarWidth((width) => clampSidebarWidth(width + delta, getMaxSidebarWidth()));
+  }, [getMaxSidebarWidth]);
+
+  const onSidebarResizePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = sidebarWidth;
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onPointerMove = (moveEvent: globalThis.PointerEvent) => {
+      const nextWidth = startWidth + moveEvent.clientX - startX;
+      setSidebarWidth(clampSidebarWidth(nextWidth, getMaxSidebarWidth()));
+    };
+
+    const onPointerUp = () => {
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+      document.removeEventListener('pointercancel', onPointerUp);
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp, { once: true });
+    document.addEventListener('pointercancel', onPointerUp, { once: true });
+  }, [getMaxSidebarWidth, sidebarWidth]);
+
+  const onSidebarResizeKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const step = event.shiftKey ? 32 : 12;
+    resizeSidebarBy(event.key === 'ArrowRight' ? step : -step);
+  }, [resizeSidebarBy]);
 
   const refreshList = useCallback(async () => {
     const list = await ipc.listRecordings();
@@ -71,6 +153,16 @@ export function App() {
     });
     return () => { void unsub.then((fn) => fn()); };
   }, [refreshList]);
+
+  // Thinking arrives once per-window analyses finish, before the prompt
+  // streams. Stash it so ResultView can show it above the streaming body.
+  useEffect(() => {
+    const unsub = ipc.onThinking((t) => {
+      liveThinkingRef.current.set(t.id, t.thinking);
+      triggerRender();
+    });
+    return () => { void unsub.then((fn) => fn()); };
+  }, [triggerRender]);
 
   // Streaming chunks.
   useEffect(() => {
@@ -116,7 +208,7 @@ export function App() {
     e.preventDefault();
   });
 
-  // ⌘C copies the visible body when the markdown isn't focused.
+  // ⌘C copies the visible prompt body when no text selection is active.
   useGlobalKey('c', (e) => {
     if (!(e.metaKey || e.ctrlKey)) return;
     const sel = window.getSelection?.();
@@ -137,13 +229,19 @@ export function App() {
     ? liveRef.current.body
     : null;
 
+  const liveThinking = selectedId ? liveThinkingRef.current.get(selectedId) ?? null : null;
+
   const needsKeys = !(keys.openai && keys.anthropic);
   const hasContent = !!selected;
 
   const showHotkeyWarning = hotkey !== null && !hotkey.installed;
 
   return (
-    <div className="app">
+    <div
+      ref={appRef}
+      className="app"
+      style={{ '--sidebar-width': `${Math.round(sidebarWidth)}px` } as CSSProperties}
+    >
       {showHotkeyWarning && (
         <div className="hotkey-banner" role="status">
           <span className="hotkey-banner__dot" aria-hidden />
@@ -159,10 +257,24 @@ export function App() {
         onSelect={setSelectedId}
         onChanged={refreshList}
       />
+      <div
+        className="sidebar-resizer"
+        role="separator"
+        aria-label="Resize history sidebar"
+        aria-orientation="vertical"
+        aria-valuemin={SIDEBAR_MIN_WIDTH}
+        aria-valuemax={getMaxSidebarWidth()}
+        aria-valuenow={Math.round(sidebarWidth)}
+        tabIndex={0}
+        data-no-drag
+        onPointerDown={onSidebarResizePointerDown}
+        onKeyDown={onSidebarResizeKeyDown}
+      />
       {hasContent ? (
         <ResultView
           recording={selected}
           liveBody={liveBody}
+          liveThinking={liveThinking}
           isStreaming={streamingId === selectedId}
         />
       ) : (
@@ -176,4 +288,3 @@ export function App() {
     </div>
   );
 }
-

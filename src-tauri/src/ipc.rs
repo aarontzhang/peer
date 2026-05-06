@@ -7,6 +7,7 @@ use crate::db::Recording;
 use crate::hotkey::HotkeyStatus;
 use crate::recording;
 use crate::state::AppState;
+use crate::reveal_result_window;
 
 /// Read API keys from `<app_data_dir>/keys.json` if present. Returns
 /// `(openai, anthropic)`. Either may be `None`.
@@ -120,11 +121,7 @@ async fn purge_artifacts(state: &Arc<AppState>, id: &str, video_path: &str) {
 
 #[tauri::command]
 pub fn open_result_window(app: AppHandle) -> Result<(), String> {
-    if let Some(win) = app.get_webview_window("result") {
-        win.show().map_err(err_to_string)?;
-        win.set_focus().map_err(err_to_string)?;
-    }
-    Ok(())
+    reveal_result_window(&app, true).map_err(err_to_string)
 }
 
 #[tauri::command]

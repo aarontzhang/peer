@@ -16,7 +16,10 @@ pub struct Db {
 
 impl Db {
     pub fn new(path: PathBuf) -> Self {
-        Self { path, pool: Arc::new(OnceCell::new()) }
+        Self {
+            path,
+            pool: Arc::new(OnceCell::new()),
+        }
     }
 
     pub async fn init(&self) -> Result<()> {
@@ -151,7 +154,6 @@ impl Db {
             .await?;
         Ok(())
     }
-
 }
 
 const SCHEMA: &str = r#"

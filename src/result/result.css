@@ -1,4 +1,4 @@
-/* Result window — 760×560. Two-column. Bespoke sidebar + markdown. */
+/* Result window — 760×560. Two-column. Bespoke sidebar + prompt pane. */
 
 html, body, #root { height: 100%; }
 html, body {
@@ -8,9 +8,15 @@ html, body {
 .app {
   position: relative;
   display: grid;
-  grid-template-columns: 218px 1fr;
-  grid-template-areas: "sidebar main";
+  grid-template-columns: var(--sidebar-width, 218px) 8px minmax(0, 1fr);
+  grid-template-areas: "sidebar resizer main";
   height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 22% 0%, oklch(0.24 0.018 255 / 0.70), transparent 34%),
+    oklch(0.15 0.012 257 / 0.94);
+  backdrop-filter: blur(24px) saturate(128%);
+  -webkit-backdrop-filter: blur(24px) saturate(128%);
   color: var(--color-fg);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -22,9 +28,51 @@ html, body {
   grid-area: sidebar;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--color-line);
+  background:
+    linear-gradient(180deg, oklch(0.23 0.014 257 / 0.58), oklch(0.17 0.012 257 / 0.44)),
+    oklch(0.16 0.012 257 / 0.38);
+  backdrop-filter: blur(30px) saturate(142%);
+  -webkit-backdrop-filter: blur(30px) saturate(142%);
+  box-shadow:
+    inset -1px 0 0 oklch(1 0 0 / 0.035),
+    inset 1px 0 0 oklch(1 0 0 / 0.03);
   height: 100%;
   min-height: 0;
+  min-width: 0;
+}
+
+.sidebar-resizer {
+  grid-area: resizer;
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+.sidebar-resizer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: oklch(1 0 0 / 0.075);
+  transition:
+    background var(--dur-fast) var(--ease-spring),
+    box-shadow var(--dur-fast) var(--ease-spring),
+    width var(--dur-fast) var(--ease-spring);
+}
+.sidebar-resizer:hover::before,
+.sidebar-resizer:focus-visible::before,
+.sidebar-resizer:active::before {
+  width: 2px;
+  background: oklch(0.72 0.10 245 / 0.62);
+  box-shadow: 0 0 18px oklch(0.72 0.10 245 / 0.30);
+}
+.sidebar-resizer:focus-visible {
+  outline: none;
 }
 
 /* Brand block: orb + wordmark sized together to fill the sidebar's width.
@@ -174,9 +222,11 @@ html, body {
   grid-area: main;
   position: relative;
   height: 100%;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  background: oklch(0.14 0.012 257 / 0.82);
 }
 
 /* Top strip: holds the absolutely-positioned actions and gives the window
@@ -279,13 +329,13 @@ html, body {
 .md pre code { background: none; padding: 0; }
 .md strong { color: var(--color-fg); font-weight: 600; }
 .md a { color: var(--color-accent); text-decoration: none; }
+.md a:hover { text-decoration: underline; }
+
 .prompt-body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--color-fg);
 }
-
-.md a:hover { text-decoration: underline; }
 
 /* ─── hotkey-unavailable banner ────────────────────────────────────────── */
 .hotkey-banner {
@@ -324,6 +374,17 @@ html, body {
   margin-top: 32px;
   padding-top: 18px;
   border-top: 1px solid var(--color-line);
+}
+.thinking--top {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-line);
+}
+.prompt-pending {
+  color: var(--color-fg-dim);
 }
 .thinking__summary {
   display: inline-flex;

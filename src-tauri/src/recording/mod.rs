@@ -10,11 +10,12 @@ use std::time::Instant;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
 use crate::db::{Recording, RecordingStatus};
 use crate::pipeline;
+use crate::reveal_result_window;
 use crate::state::AppState;
 
 pub use capture::CaptureProcess;
@@ -268,10 +269,7 @@ pub async fn send(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     );
 
     // Open result window so the user sees the streamed instructions.
-    if let Some(win) = app.get_webview_window("result") {
-        let _ = win.show();
-        let _ = win.set_focus();
-    }
+    let _ = reveal_result_window(&app, true);
 
     let app2 = app.clone();
     let state2 = state.clone();

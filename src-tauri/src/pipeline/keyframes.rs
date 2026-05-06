@@ -39,14 +39,20 @@ pub async fn extract(video: &Path, out_dir: &Path) -> Result<Vec<Keyframe>> {
     );
     let scene_ok = try_ffmpeg(&[
         "-hide_banner",
-        "-loglevel", "error",
+        "-loglevel",
+        "error",
         "-y",
-        "-i", video.to_string_lossy().as_ref(),
-        "-vf", &filter,
-        "-fps_mode", "vfr",
-        "-q:v", &QUALITY.to_string(),
+        "-i",
+        video.to_string_lossy().as_ref(),
+        "-vf",
+        &filter,
+        "-fps_mode",
+        "vfr",
+        "-q:v",
+        &QUALITY.to_string(),
         pattern.to_string_lossy().as_ref(),
-    ]).await;
+    ])
+    .await;
     if let Err(err) = &scene_ok {
         tracing::info!(?err, "scene detect produced no frames — falling back");
     }
@@ -54,7 +60,10 @@ pub async fn extract(video: &Path, out_dir: &Path) -> Result<Vec<Keyframe>> {
     let mut frames = list_jpegs(out_dir, "scene_").await.unwrap_or_default();
 
     if frames.len() < MIN_FRAMES_FOR_SCENE {
-        tracing::info!(found = frames.len(), "scene detect underflow — falling back to uniform fps={FALLBACK_FPS}");
+        tracing::info!(
+            found = frames.len(),
+            "scene detect underflow — falling back to uniform fps={FALLBACK_FPS}"
+        );
         clear_dir(out_dir).await?;
         let pattern = out_dir.join("uni_%04d.jpg");
         let filter = format!(
@@ -64,13 +73,18 @@ pub async fn extract(video: &Path, out_dir: &Path) -> Result<Vec<Keyframe>> {
         );
         let _ = try_ffmpeg(&[
             "-hide_banner",
-            "-loglevel", "error",
+            "-loglevel",
+            "error",
             "-y",
-            "-i", video.to_string_lossy().as_ref(),
-            "-vf", &filter,
-            "-q:v", &QUALITY.to_string(),
+            "-i",
+            video.to_string_lossy().as_ref(),
+            "-vf",
+            &filter,
+            "-q:v",
+            &QUALITY.to_string(),
             pattern.to_string_lossy().as_ref(),
-        ]).await;
+        ])
+        .await;
         frames = list_jpegs(out_dir, "uni_").await.unwrap_or_default();
 
         // Last resort for sub-second clips: grab a single frame at t=0.
@@ -79,13 +93,18 @@ pub async fn extract(video: &Path, out_dir: &Path) -> Result<Vec<Keyframe>> {
             let pattern = out_dir.join("uni_0001.jpg");
             let _ = try_ffmpeg(&[
                 "-hide_banner",
-                "-loglevel", "error",
+                "-loglevel",
+                "error",
                 "-y",
-                "-i", video.to_string_lossy().as_ref(),
-                "-frames:v", "1",
-                "-q:v", &QUALITY.to_string(),
+                "-i",
+                video.to_string_lossy().as_ref(),
+                "-frames:v",
+                "1",
+                "-q:v",
+                &QUALITY.to_string(),
                 pattern.to_string_lossy().as_ref(),
-            ]).await;
+            ])
+            .await;
             frames = list_jpegs(out_dir, "uni_").await.unwrap_or_default();
         }
     }
@@ -114,14 +133,18 @@ pub async fn extract(video: &Path, out_dir: &Path) -> Result<Vec<Keyframe>> {
         .enumerate()
         .map(|(i, path)| Keyframe {
             path,
-            approx_t: if count > 1.0 { i as f32 / (count - 1.0) } else { 0.0 },
+            approx_t: if count > 1.0 {
+                i as f32 / (count - 1.0)
+            } else {
+                0.0
+            },
         })
         .collect();
     Ok(frames)
 }
 
 async fn run_ffmpeg(args: &[&str]) -> Result<()> {
-    let out = Command::new("ffmpeg")
+    let out = Command::new(crate::binpath::ffmpeg())
         .args(args)
         .output()
         .await

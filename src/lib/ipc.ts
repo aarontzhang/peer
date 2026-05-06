@@ -32,6 +32,8 @@ export type ResultChunk = {
 
 export type TranscriptEvent = { id: string; transcript: string };
 
+export type ThinkingEvent = { id: string; thinking: string };
+
 export type ApiKeyStatus = { openai: boolean; anthropic: boolean };
 
 export type HotkeyStatus = {
@@ -61,6 +63,8 @@ export const ipc = {
     listen<ResultChunk>('result:chunk', (e) => cb(e.payload)),
   onTranscript: (cb: (t: TranscriptEvent) => void): Promise<UnlistenFn> =>
     listen<TranscriptEvent>('result:transcript', (e) => cb(e.payload)),
+  onThinking: (cb: (t: ThinkingEvent) => void): Promise<UnlistenFn> =>
+    listen<ThinkingEvent>('result:thinking', (e) => cb(e.payload)),
   onHotkeyStatus: (cb: (s: HotkeyStatus) => void): Promise<UnlistenFn> =>
     listen<HotkeyStatus>('hotkey:status', (e) => cb(e.payload)),
 };
