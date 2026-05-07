@@ -45,7 +45,7 @@ src/                        # React 19 frontend
   lib/                      # ipc + global key hooks
   styles/tokens.css         # Apple-tuned design tokens (Tailwind v4 @theme)
 src-tauri/                  # Rust core
-  src/recording/            # capture lifecycle, Swift sidecar driver, cursor toggle
+  src/recording/            # capture lifecycle, Swift sidecar driver
   src/hotkey/fn_tap.rs      # CGEventTap Fn-tap detector
   src/pipeline/             # keyframes, transcribe, analyze, prompts, ffprobe
   src/db/                   # sqlx schema for recordings + results

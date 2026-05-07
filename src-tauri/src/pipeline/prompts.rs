@@ -9,7 +9,7 @@ You will receive:
 - The aligned narration transcript for that segment.
 - The segment's time range relative to the full clip.
 
-THE CURSOR IS THE PRIMARY SIGNAL. The user is narrating while pointing — the mouse cursor is how they indicate what "this", "here", "that line", "this button" refer to. The cursor has been enlarged (2.5×) to make it easy to spot. In every frame, FIRST locate the cursor, THEN read what it is on, near, or hovering over. Whatever the cursor is touching is almost certainly the subject of the user's speech in that moment. Do not produce a generic frame description; produce a cursor-anchored one.
+THE CURSOR IS THE PRIMARY SIGNAL. The user is narrating while pointing — the mouse cursor is how they indicate what "this", "here", "that line", "this button" refer to. In every frame, FIRST locate the cursor, THEN read what it is on, near, or hovering over. Whatever the cursor is touching is almost certainly the subject of the user's speech in that moment. Do not produce a generic frame description; produce a cursor-anchored one.
 
 Return ONLY this JSON object, nothing else:
 {

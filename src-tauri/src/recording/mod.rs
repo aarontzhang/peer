@@ -1,7 +1,6 @@
 //! Recording lifecycle: drives the Swift sidecar, owns timing, hands off to the pipeline.
 
 mod capture;
-mod cursor;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -104,8 +103,6 @@ pub async fn start(app: AppHandle, state: Arc<AppState>) -> Result<String> {
     let id = Uuid::new_v4().to_string();
     let video_path = state.recordings_dir.join(format!("{id}.mp4"));
 
-    cursor::enlarge();
-
     let capture = capture::start(&state.bin_dir, &video_path).await?;
 
     let started_at = Instant::now();
@@ -188,7 +185,6 @@ pub async fn start(app: AppHandle, state: Arc<AppState>) -> Result<String> {
                             if let Some(h) = active.auto_stop_handle.take() {
                                 h.abort();
                             }
-                            cursor::restore();
                             *cur = None;
                             TimerOutcome::Failed {
                                 id,
@@ -268,7 +264,6 @@ pub async fn stop(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     if let Some(h) = active.auto_stop_handle.take() {
         h.abort();
     }
-    cursor::restore();
 
     let duration_ms = active.started_at.elapsed().as_millis() as u64;
     if let Err(err) = active.capture.stop().await {
@@ -407,7 +402,6 @@ pub async fn shutdown(state: Arc<AppState>) {
     if let Some(h) = active.auto_stop_handle.take() {
         h.abort();
     }
-    cursor::restore();
     let duration_ms = active.started_at.elapsed().as_millis() as u64;
     if let Err(err) = active.capture.stop().await {
         tracing::warn!(?err, "capture stop failed during shutdown");
@@ -438,7 +432,6 @@ pub async fn cancel(app: AppHandle, state: Arc<AppState>) -> Result<()> {
             if let Some(h) = active.auto_stop_handle.take() {
                 h.abort();
             }
-            cursor::restore();
             let _ = active.capture.cancel().await;
             let _ = tokio::fs::remove_file(&active.video_path).await;
             let _ = state.db().delete_recording(&active.id).await;
