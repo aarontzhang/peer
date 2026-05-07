@@ -10,10 +10,10 @@ export function Pill() {
     return () => { void unsub.then((fn) => fn()); };
   }, []);
 
-  // Auto-fade processing→done back to idle after 1.4s.
+  // Auto-fade copied/done feedback back to idle after a short confirmation.
   useEffect(() => {
     if (event.kind === 'done') {
-      const t = window.setTimeout(() => setEvent({ kind: 'idle' }), 1400);
+      const t = window.setTimeout(() => setEvent({ kind: 'idle' }), 3000);
       return () => window.clearTimeout(t);
     }
   }, [event]);
@@ -28,8 +28,8 @@ export function Pill() {
 
   // Click on the logo or the dots: toggle recording. Drag on the dots moves
   // the pill instead — see useDragHandle below for the click-vs-drag split.
-  // A clean Fn tap (handled in src-tauri/src/hotkey/fn_tap.rs) does the same
-  // thing without having to aim at the pill.
+  // The configured recording keybind does the same thing without having to
+  // aim at the pill.
   const toggleRecording = () => {
     if (state === 'recording') {
       void ipc.stopRecording();
@@ -40,6 +40,28 @@ export function Pill() {
 
   const onCancel = () => { void ipc.cancelRecording(); };
   const onSend = () => { void ipc.sendRecording(); };
+
+  useEffect(() => {
+    if (event.kind !== 'stopped') return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat || isEditableTarget(e.target)) return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        void ipc.sendRecording();
+        return;
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        e.stopPropagation();
+        void ipc.cancelRecording();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [event.kind]);
 
   const elapsed = event.kind === 'recording' ? event.elapsedMs
     : event.kind === 'stopped' ? event.durationMs
@@ -98,6 +120,12 @@ export function Pill() {
       </div>
     </div>
   );
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName.toLowerCase();
+  return target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
 }
 
 /* ─── Drag handle: clamps the pill inside the current monitor ──────────── */

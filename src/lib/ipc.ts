@@ -36,7 +36,11 @@ export type ThinkingEvent = { id: string; thinking: string };
 
 export type ApiKeyStatus = { openai: boolean; anthropic: boolean };
 
+export type RecordingKeybind = 'rightOption' | 'fn' | 'cmdShiftR';
+
 export type HotkeyStatus = {
+  keybind: RecordingKeybind;
+  label: string;
   installed: boolean;
   reason: string | null;
 };
@@ -56,6 +60,8 @@ export const ipc = {
     invoke<void>('set_api_key', { args: { provider, key } }),
   getApiKeyStatus: () => invoke<ApiKeyStatus>('get_api_key_status'),
   getHotkeyStatus: () => invoke<HotkeyStatus>('get_hotkey_status'),
+  setRecordingKeybind: (keybind: RecordingKeybind) =>
+    invoke<HotkeyStatus>('set_recording_keybind', { keybind }),
 
   onPillEvent: (cb: (e: PillEvent) => void): Promise<UnlistenFn> =>
     listen<PillEvent>('pill:state', (e) => cb(e.payload)),

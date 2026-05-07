@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 
 use crate::db::Recording;
-use crate::hotkey::HotkeyStatus;
+use crate::hotkey::{self, HotkeyStatus, RecordingKeybind};
 use crate::recording;
 use crate::reveal_result_window;
 use crate::state::AppState;
@@ -164,6 +164,15 @@ pub fn set_api_key(args: SetApiKeyArgs) -> Result<(), String> {
 #[tauri::command]
 pub fn get_hotkey_status(state: State<'_, Arc<AppState>>) -> Result<HotkeyStatus, String> {
     Ok(state.hotkey_status.lock().clone())
+}
+
+#[tauri::command]
+pub fn set_recording_keybind(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    keybind: RecordingKeybind,
+) -> Result<HotkeyStatus, String> {
+    hotkey::set_recording_keybind(app, state.inner().clone(), keybind).map_err(err_to_string)
 }
 
 #[tauri::command]

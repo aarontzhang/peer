@@ -515,7 +515,8 @@ html, body {
 }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
 .field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-fg-dim); font-weight: 600; }
-.field input {
+.field input,
+.field select {
   background: oklch(0.13 0.006 82 / 0.78);
   border: 1px solid var(--color-line);
   color: var(--color-fg);
@@ -525,4 +526,25 @@ html, body {
   font-family: var(--font-mono);
   font-size: 12px;
 }
-.field input:focus { outline: none; border-color: var(--color-accent); }
+.field select {
+  min-height: 34px;
+  font-family: var(--font-sans);
+}
+.field input:focus,
+.field select:focus { outline: none; border-color: var(--color-accent); }
+.keybind-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.field__hint,
+.field__error {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-fg-dim);
+}
+.field__error {
+  color: oklch(0.82 0.14 42);
+}

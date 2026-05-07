@@ -1,11 +1,11 @@
 # Peer
 
-Screen-recording → Claude-Code instruction set. Tap **Fn** (Globe) to start, tap again to stop, while you talk and point. Peer turns the clip into a copy-paste-ready instruction set in <12 seconds.
+Screen-recording → Claude-Code instruction set. Tap **Fn** to start, tap again to stop, while you talk and point. Peer turns the clip into a copy-paste-ready instruction set in <12 seconds.
 
 ## Architecture
 
 ```
-Fn-tap (CGEventTap)
+Recording keybind (Fn by default, Right Option/Cmd+Shift+R optional)
    └─ Rust orchestrator
        ├─ Swift sidecar (ScreenCaptureKit) → mp4
        ├─ ffmpeg scene-detect keyframes (uniform-fps fallback)
@@ -22,7 +22,7 @@ pnpm install
 pnpm tauri dev
 ```
 
-The first run pulls Tauri 2 deps and compiles the Rust core (~60s the first time). Once the pill window appears, tap **Fn** to start a recording, tap **Fn** again to stop.
+The first run pulls Tauri 2 deps and compiles the Rust core (~60s the first time). Once the pill window appears, tap **Fn** to start a recording, tap **Fn** again to stop. You can switch the recording keybind in Settings.
 
 ### Swift sidecar (optional, for production capture quality)
 
@@ -46,7 +46,7 @@ src/                        # React 19 frontend
   styles/tokens.css         # Apple-tuned design tokens (Tailwind v4 @theme)
 src-tauri/                  # Rust core
   src/recording/            # capture lifecycle, Swift sidecar driver
-  src/hotkey/fn_tap.rs      # CGEventTap Fn-tap detector
+  src/hotkey/fn_tap.rs      # CGEventTap modifier-tap detector
   src/pipeline/             # keyframes, transcribe, analyze, prompts, ffprobe
   src/db/                   # sqlx schema for recordings + results
   src/ipc.rs                # Tauri commands
@@ -55,7 +55,7 @@ capture-sidecar/            # Swift package — ScreenCaptureKit → mp4
 
 ## Permissions
 
-First run will prompt for **Screen Recording**, **Microphone**, and **Accessibility** (the last one is required for the global Fn-tap detector). All three need to be granted in System Settings → Privacy & Security.
+First run will prompt for **Screen Recording**, **Microphone**, and **Accessibility** (the last one is required for modifier-tap keybinds like Fn and Right Option). All three need to be granted in System Settings → Privacy & Security.
 
 ### TCC reset (only if you've been running older builds)
 

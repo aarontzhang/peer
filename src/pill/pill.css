@@ -46,6 +46,12 @@ html, body, #root {
               0 0 0 0.5px oklch(1 0 0 / 0.08) inset,
               0 0 0 1.5px oklch(0.78 0.16 245 / 0.45);
 }
+.pill[data-state='done'] {
+  box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
+              0 0 0 0.5px oklch(1 0 0 / 0.08) inset,
+              0 0 0 1.5px oklch(0.74 0.16 156 / 0.62),
+              0 0 16px oklch(0.74 0.16 156 / 0.30);
+}
 
 /* ─── Top area: logo button (idle / recording / processing / done) ─────── */
 
@@ -96,11 +102,6 @@ html, body, #root {
 .logo[data-state='processing'] .logo__glasses {
   animation: logo-pulse 1.6s ease-in-out infinite;
 }
-.logo[data-state='done'] circle,
-.logo[data-state='done'] line {
-  stroke: oklch(0.84 0.14 156);
-}
-
 @keyframes logo-pulse {
   0%, 100% { opacity: 0.65; }
   50%      { opacity: 1; }

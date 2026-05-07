@@ -13,7 +13,11 @@ async function copyBodyToClipboard(text: string) {
   try {
     await writeText(text);
   } catch {
-    try { await navigator.clipboard.writeText(text); } catch { /* best-effort */ }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // best-effort
+    }
   }
 }
 
@@ -208,6 +212,22 @@ export function App() {
     e.preventDefault();
   });
 
+  // Stopped recordings are waiting on the pill review choice. Let keyboard
+  // confirmation mirror those two pill buttons.
+  useGlobalKey(['Enter', 'Delete', 'Backspace'], (e) => {
+    if (showSettings || isEditableTarget(e.target)) return;
+    if (selected?.status !== 'stopped') return;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      void ipc.sendRecording();
+      return;
+    }
+
+    e.preventDefault();
+    void ipc.cancelRecording();
+  });
+
   // ⌘C copies the visible prompt body when no text selection is active.
   useGlobalKey('c', (e) => {
     if (!(e.metaKey || e.ctrlKey)) return;
@@ -216,7 +236,7 @@ export function App() {
     const visible = liveBody ?? selected?.body;
     if (visible) {
       e.preventDefault();
-      void navigator.clipboard.writeText(toPlainText(visible));
+      void copyBodyToClipboard(toPlainText(visible));
     }
   });
 
@@ -246,7 +266,7 @@ export function App() {
         <div className="hotkey-banner" role="status">
           <span className="hotkey-banner__dot" aria-hidden />
           <span className="hotkey-banner__msg">
-            <strong>Fn hotkey unavailable.</strong>{' '}
+            <strong>{hotkey?.label ?? 'Recording'} hotkey unavailable.</strong>{' '}
             {hotkey?.reason ?? 'Grant Peer Accessibility access in System Settings → Privacy & Security → Accessibility, then quit and reopen Peer.'}
           </span>
         </div>
@@ -276,6 +296,9 @@ export function App() {
           liveBody={liveBody}
           liveThinking={liveThinking}
           isStreaming={streamingId === selectedId}
+          onCopyPrompt={(text) => {
+            return copyBodyToClipboard(text);
+          }}
         />
       ) : (
         <EmptyState needsKeys={needsKeys} onOpenSettings={() => setShowSettings(true)} />
@@ -287,4 +310,10 @@ export function App() {
       />
     </div>
   );
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName.toLowerCase();
+  return target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
 }

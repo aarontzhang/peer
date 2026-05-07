@@ -8,6 +8,7 @@ mod transcribe;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -41,6 +42,7 @@ pub async fn run(
     video_path: PathBuf,
     duration_ms: u64,
 ) -> Result<()> {
+    let total_started = Instant::now();
     let openai =
         ipc::read_api_key(&app, "openai").context("OpenAI key missing — set it in Settings")?;
     let anthropic = ipc::read_api_key(&app, "anthropic")
@@ -53,7 +55,12 @@ pub async fn run(
         state.db().update_recording(&rec).await?;
     }
 
+    let probe_started = Instant::now();
     let probe = ffprobe::probe(&video_path).await?;
+    tracing::info!(
+        elapsed_ms = probe_started.elapsed().as_millis(),
+        "stage probe complete"
+    );
     tracing::info!(?probe, "probed");
     let total_secs = probe.duration_secs.max(duration_ms as f64 / 1000.0);
 
@@ -66,6 +73,7 @@ pub async fn run(
     let video_kf = video_path.clone();
     let frames_kf = frames_dir.clone();
     let kf_handle = tokio::spawn(async move {
+        let started = Instant::now();
         emit(
             &app_kf,
             &PillEvent::Processing {
@@ -74,7 +82,20 @@ pub async fn run(
                 progress: 0.18,
             },
         );
-        keyframes::extract(&video_kf, &frames_kf).await
+        let result = keyframes::extract(&video_kf, &frames_kf).await;
+        match &result {
+            Ok(frames) => tracing::info!(
+                elapsed_ms = started.elapsed().as_millis(),
+                frames = frames.len(),
+                "stage keyframe extraction complete"
+            ),
+            Err(err) => tracing::warn!(
+                elapsed_ms = started.elapsed().as_millis(),
+                ?err,
+                "stage keyframe extraction failed"
+            ),
+        }
+        result
     });
 
     let app_tx = app.clone();
@@ -82,6 +103,7 @@ pub async fn run(
     let video_tx = video_path.clone();
     let openai_clone = openai.clone();
     let tx_handle = tokio::spawn(async move {
+        let started = Instant::now();
         emit(
             &app_tx,
             &PillEvent::Processing {
@@ -90,7 +112,20 @@ pub async fn run(
                 progress: 0.22,
             },
         );
-        transcribe::transcribe(&video_tx, &openai_clone, total_secs).await
+        let result = transcribe::transcribe(&video_tx, &openai_clone, total_secs).await;
+        match &result {
+            Ok(transcript) => tracing::info!(
+                elapsed_ms = started.elapsed().as_millis(),
+                entries = transcript.entries.len(),
+                "stage audio extraction/transcription complete"
+            ),
+            Err(err) => tracing::warn!(
+                elapsed_ms = started.elapsed().as_millis(),
+                ?err,
+                "stage audio extraction/transcription failed"
+            ),
+        }
+        result
     });
 
     let frames = kf_handle.await??;
@@ -149,6 +184,7 @@ pub async fn run(
     } = analyze::analyze_and_aggregate(
         app.clone(),
         id.clone(),
+        &openai,
         &anthropic,
         &frames,
         &transcript,
@@ -177,6 +213,11 @@ pub async fn run(
     // Auto-copy.
     use tauri_plugin_clipboard_manager::ClipboardExt;
     let _ = app.clipboard().write_text(final_text);
+
+    tracing::info!(
+        elapsed_ms = total_started.elapsed().as_millis(),
+        "stage total processing complete"
+    );
 
     Ok(())
 }

@@ -1,26 +1,18 @@
 //! Global hotkeys for toggling recording.
 //!
-//! Two parallel paths share a single toggle channel:
-//!
-//! - **Fn tap** (macOS only): a clean tap of the Fn/Globe key. Implemented
-//!   via a low-level CGEventTap watching `kCGEventFlagsChanged`. Requires
-//!   Accessibility permission; the dev-build path frequently loses TCC
-//!   approval after enough rebuilds, which is why we have a backup.
-//! - **Cmd+Shift+R chord**: registered through `tauri-plugin-global-shortcut`,
-//!   which uses `RegisterEventHotKey` under the hood. Doesn't need
-//!   Accessibility — works in dev even when TCC is being weird.
-//!
-//! Both paths feed the same `mpsc` toggle channel; a single tokio task
-//! reads from it and decides start vs. stop based on current recording
-//! state, so the two hotkeys can't get out of sync.
+//! The selected recording keybind is persisted locally and feeds one shared
+//! toggle channel. Modifier-only taps use a CGEventTap; Cmd+Shift+R uses
+//! `tauri-plugin-global-shortcut`.
 
 #[cfg(target_os = "macos")]
 mod fn_tap;
 mod global_chord;
 
+use std::path::Path;
 use std::sync::Arc;
 
-use tauri::AppHandle;
+use anyhow::{Context, Result};
+use tauri::{AppHandle, Emitter};
 use tokio::sync::mpsc;
 
 use crate::recording::{self, RecordingPhase};
@@ -37,9 +29,22 @@ pub fn install(app: AppHandle, state: Arc<AppState>) {
     global_chord::install(app, state, tx);
 }
 
-/// One consumer of toggle signals — owns the AppHandle and reads the
-/// current recording phase to decide start vs. stop. Both the Fn tap and
-/// the chord push into the same channel, so the two can't race.
+pub fn set_recording_keybind(
+    app: AppHandle,
+    state: Arc<AppState>,
+    keybind: RecordingKeybind,
+) -> Result<HotkeyStatus> {
+    save_recording_keybind(&state.data_dir, keybind)?;
+    {
+        let mut selected = state.recording_keybind.lock();
+        *selected = keybind;
+    }
+    global_chord::sync_registration(&app, &state);
+    Ok(publish_status(&app, &state))
+}
+
+/// One consumer of toggle signals owns the AppHandle and reads the current
+/// recording phase to decide start vs. stop.
 fn spawn_toggle_consumer(
     app: AppHandle,
     state: Arc<AppState>,
@@ -60,7 +65,7 @@ fn spawn_toggle_consumer(
                 Phase::Idle => recording::start(app.clone(), state.clone())
                     .await
                     .map(|_| ()),
-                // Awaiting send/cancel — leave the review state alone.
+                // Awaiting send/cancel: leave the review state alone.
                 Phase::Review => Ok(()),
             };
             if let Err(err) = res {
@@ -76,21 +81,114 @@ enum Phase {
     Review,
 }
 
-/// Snapshot of whether the global Fn-tap hotkey is wired up. Surfaces to
-/// the UI so the user can see if Accessibility access is missing rather
-/// than silently wondering why the key does nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RecordingKeybind {
+    RightOption,
+    Fn,
+    CmdShiftR,
+}
+
+impl Default for RecordingKeybind {
+    fn default() -> Self {
+        Self::Fn
+    }
+}
+
+impl RecordingKeybind {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::RightOption => "Right Option",
+            Self::Fn => "Fn",
+            Self::CmdShiftR => "Cmd+Shift+R",
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SettingsFile {
+    #[serde(default)]
+    recording_keybind: RecordingKeybind,
+}
+
+pub fn load_recording_keybind(data_dir: &Path) -> RecordingKeybind {
+    let path = data_dir.join("settings.json");
+    let Ok(bytes) = std::fs::read(path) else {
+        return RecordingKeybind::default();
+    };
+    serde_json::from_slice::<SettingsFile>(&bytes)
+        .map(|s| s.recording_keybind)
+        .unwrap_or_default()
+}
+
+fn save_recording_keybind(data_dir: &Path, keybind: RecordingKeybind) -> Result<()> {
+    std::fs::create_dir_all(data_dir)?;
+    let path = data_dir.join("settings.json");
+    let bytes = serde_json::to_vec_pretty(&SettingsFile {
+        recording_keybind: keybind,
+    })
+    .context("serialize hotkey settings")?;
+    std::fs::write(path, bytes).context("write hotkey settings")
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct HotkeyAvailability {
+    pub modifier_tap: Option<std::result::Result<(), String>>,
+    pub cmd_shift_r: Option<std::result::Result<(), String>>,
+}
+
+pub fn set_modifier_tap_availability(
+    app: &AppHandle,
+    state: &AppState,
+    availability: std::result::Result<(), String>,
+) {
+    {
+        let mut a = state.hotkey_availability.lock();
+        a.modifier_tap = Some(availability);
+    }
+    publish_status(app, state);
+}
+
+pub fn set_cmd_shift_r_availability(
+    app: &AppHandle,
+    state: &AppState,
+    availability: std::result::Result<(), String>,
+) {
+    {
+        let mut a = state.hotkey_availability.lock();
+        a.cmd_shift_r = Some(availability);
+    }
+    publish_status(app, state);
+}
+
+pub fn publish_status(app: &AppHandle, state: &AppState) -> HotkeyStatus {
+    let keybind = *state.recording_keybind.lock();
+    let status = status_for(keybind, &state.hotkey_availability.lock());
+    {
+        let mut s = state.hotkey_status.lock();
+        *s = status.clone();
+    }
+    let _ = app.emit("hotkey:status", &status);
+    status
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HotkeyStatus {
-    /// `true` once the CGEventTap is created and listening.
+    pub keybind: RecordingKeybind,
+    pub label: String,
+    /// `true` once the selected recording trigger is created and listening.
     pub installed: bool,
     /// Human-readable reason when `installed` is false.
     pub reason: Option<String>,
 }
 
 impl HotkeyStatus {
-    pub fn unknown() -> Self {
+    pub fn unknown(keybind: RecordingKeybind) -> Self {
         Self {
+            keybind,
+            label: keybind.label().into(),
             installed: false,
             reason: Some(
                 "Hotkey is initializing. If this persists, grant Peer \
@@ -99,5 +197,27 @@ impl HotkeyStatus {
                     .into(),
             ),
         }
+    }
+}
+
+fn status_for(keybind: RecordingKeybind, availability: &HotkeyAvailability) -> HotkeyStatus {
+    let selected = match keybind {
+        RecordingKeybind::RightOption | RecordingKeybind::Fn => &availability.modifier_tap,
+        RecordingKeybind::CmdShiftR => &availability.cmd_shift_r,
+    };
+    match selected {
+        Some(Ok(())) => HotkeyStatus {
+            keybind,
+            label: keybind.label().into(),
+            installed: true,
+            reason: None,
+        },
+        Some(Err(reason)) => HotkeyStatus {
+            keybind,
+            label: keybind.label().into(),
+            installed: false,
+            reason: Some(reason.clone()),
+        },
+        None => HotkeyStatus::unknown(keybind),
     }
 }

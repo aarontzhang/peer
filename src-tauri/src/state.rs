@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 use tauri::{AppHandle, Manager};
 
 use crate::db::Db;
-use crate::hotkey::HotkeyStatus;
+use crate::hotkey::{self, HotkeyAvailability, HotkeyStatus, RecordingKeybind};
 use crate::recording::RecordingController;
 
 /// Process-wide state managed by Tauri. Cheap to clone (`Arc` internals).
@@ -19,10 +19,12 @@ pub struct AppState {
     /// Set while a recording is in flight; clears the moment we hand the file
     /// to the pipeline.
     pub current: Arc<Mutex<Option<crate::recording::RecordingPhase>>>,
-    /// Live status of the global Fn-tap. Updated from the hotkey module
-    /// once the CGEventTap setup either succeeds or fails. The UI reads
-    /// this via `get_hotkey_status` to surface a banner when the tap
-    /// couldn't be installed (typically: missing Accessibility access).
+    /// User-selected recording keybind, persisted in app data.
+    pub recording_keybind: Arc<Mutex<RecordingKeybind>>,
+    /// Backend availability for each hotkey mechanism.
+    pub hotkey_availability: Arc<Mutex<HotkeyAvailability>>,
+    /// Live status of the selected recording hotkey. Updated from the hotkey
+    /// module once setup either succeeds or fails.
     pub hotkey_status: Arc<Mutex<HotkeyStatus>>,
 }
 
@@ -44,6 +46,7 @@ impl AppState {
         std::fs::create_dir_all(&recordings_dir)?;
         std::fs::create_dir_all(&frames_dir)?;
         std::fs::create_dir_all(&data_dir)?;
+        let recording_keybind = hotkey::load_recording_keybind(&data_dir);
 
         Ok(Self {
             db: Db::new(data_dir.join("peer.db")),
@@ -53,7 +56,9 @@ impl AppState {
             frames_dir,
             bin_dir,
             current: Arc::new(Mutex::new(None)),
-            hotkey_status: Arc::new(Mutex::new(HotkeyStatus::unknown())),
+            recording_keybind: Arc::new(Mutex::new(recording_keybind)),
+            hotkey_availability: Arc::new(Mutex::new(HotkeyAvailability::default())),
+            hotkey_status: Arc::new(Mutex::new(HotkeyStatus::unknown(recording_keybind))),
         })
     }
 

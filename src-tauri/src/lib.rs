@@ -69,6 +69,7 @@ pub fn run() {
             ipc::set_api_key,
             ipc::get_api_key_status,
             ipc::get_hotkey_status,
+            ipc::set_recording_keybind,
             ipc::move_pill,
             ipc::cursor_position,
         ])

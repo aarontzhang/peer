@@ -7,6 +7,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 use anyhow::{anyhow, Context, Result};
 use futures::stream::{FuturesUnordered, StreamExt};
@@ -65,7 +66,12 @@ struct WhisperSegment {
 }
 
 pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Result<Transcript> {
+    let audio_started = Instant::now();
     let audio_path = extract_audio(video).await?;
+    tracing::info!(
+        elapsed_ms = audio_started.elapsed().as_millis(),
+        "stage audio extraction complete"
+    );
     if total_secs <= 0.5 {
         return Ok(Transcript::default());
     }
@@ -91,6 +97,7 @@ pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Resu
         .build()?;
     let sem = Arc::new(Semaphore::new(MAX_PARALLEL));
 
+    let transcription_started = Instant::now();
     let mut tasks = FuturesUnordered::new();
     for (i, range) in ranges.iter().enumerate() {
         let sem = sem.clone();
@@ -139,9 +146,15 @@ pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Resu
             .context("every whisper chunk failed — check OPENAI_API_KEY"));
     }
 
-    Ok(Transcript {
+    let transcript = Transcript {
         entries: dedupe_captions(all, DEDUPE_TOLERANCE_SECONDS),
-    })
+    };
+    tracing::info!(
+        elapsed_ms = transcription_started.elapsed().as_millis(),
+        entries = transcript.entries.len(),
+        "stage Whisper transcription complete"
+    );
+    Ok(transcript)
 }
 
 async fn audio_max_volume_db(audio: &Path) -> Option<f64> {

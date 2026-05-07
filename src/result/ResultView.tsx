@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { useEffect, useMemo, useRef } from 'react';
 import { type Recording } from '@/lib/ipc';
 import { toPlainText } from '@/lib/plainText';
 
@@ -8,10 +7,10 @@ type Props = {
   liveBody: string | null;
   liveThinking: string | null;
   isStreaming: boolean;
+  onCopyPrompt: (text: string) => Promise<void>;
 };
 
-export function ResultView({ recording, liveBody, liveThinking, isStreaming }: Props) {
-  const [copied, setCopied] = useState(false);
+export function ResultView({ recording, liveBody, liveThinking, isStreaming, onCopyPrompt }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const body = useMemo(() => toPlainText(liveBody ?? recording?.body ?? ''), [liveBody, recording?.body]);
@@ -78,7 +77,7 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming }: P
       : 'Analyzing…';
     const sub =
       recording.status === 'stopped'
-        ? 'Press the send button on the pill to turn this into an instruction set, or the X to discard.'
+        ? 'Press Enter to analyze, Delete to discard, or use the pill buttons.'
         : "The instruction set will stream in here as soon as it's ready.";
     return (
       <div className="main">
@@ -95,16 +94,7 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming }: P
 
   const onCopy = async () => {
     if (!body) return;
-    try {
-      await writeText(body);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // Browser fallback for dev mode
-      await navigator.clipboard.writeText(body);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    }
+    await onCopyPrompt(body);
   };
 
   // Auto-expand the thinking pane while we're still waiting on the prompt
@@ -120,10 +110,10 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming }: P
             className="icon-btn"
             onClick={onCopy}
             disabled={!body}
-            aria-label={copied ? 'Copied' : 'Copy'}
-            title={copied ? 'Copied' : 'Copy'}
+            aria-label="Copy"
+            title="Copy"
           >
-            {copied ? <CheckIcon /> : <CopyIcon />}
+            <CopyIcon />
           </button>
         </div>
       </div>
@@ -182,15 +172,6 @@ function CopyIcon() {
             fill="none" stroke="currentColor" strokeWidth="1.3" />
       <rect x="5.5" y="5" width="8" height="9.5" rx="1.6" ry="1.6"
             fill="none" stroke="currentColor" strokeWidth="1.3" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
-      <path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor"
-            strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
