@@ -6,8 +6,8 @@ use tauri::{AppHandle, Manager, State};
 use crate::db::Recording;
 use crate::hotkey::HotkeyStatus;
 use crate::recording;
-use crate::state::AppState;
 use crate::reveal_result_window;
+use crate::state::AppState;
 
 /// Read API keys from `<app_data_dir>/keys.json` if present. Returns
 /// `(openai, anthropic)`. Either may be `None`.
