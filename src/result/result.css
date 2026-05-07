@@ -25,10 +25,10 @@ html, body {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 0%, oklch(1 0 0 / 0.08), transparent 34%),
-    linear-gradient(135deg, oklch(0.28 0.008 82 / 0.22), oklch(0.17 0.006 82 / 0.16));
-  backdrop-filter: blur(34px) saturate(155%);
-  -webkit-backdrop-filter: blur(34px) saturate(155%);
+    linear-gradient(180deg, oklch(0.25 0.006 82 / 0.64), oklch(0.17 0.005 82 / 0.56)),
+    oklch(0.18 0.005 82 / 0.52);
+  backdrop-filter: blur(38px) saturate(165%);
+  -webkit-backdrop-filter: blur(38px) saturate(165%);
 }
 
 /* ─── sidebar ──────────────────────────────────────────────────────────── */
@@ -38,12 +38,7 @@ html, body {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(circle at 78% 12%, oklch(1 0 0 / 0.055), transparent 42%),
-    linear-gradient(180deg, oklch(0.25 0.006 82 / 0.64), oklch(0.17 0.005 82 / 0.56)),
-    oklch(0.18 0.005 82 / 0.52);
-  backdrop-filter: blur(38px) saturate(165%);
-  -webkit-backdrop-filter: blur(38px) saturate(165%);
+  background: transparent;
   box-shadow: inset 1px 0 0 oklch(1 0 0 / 0.08);
   height: 100%;
   min-height: 0;
@@ -243,11 +238,7 @@ html, body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background:
-    linear-gradient(180deg, oklch(0.25 0.006 82 / 0.78), oklch(0.20 0.006 82 / 0.74)),
-    oklch(0.21 0.006 82 / 0.72);
-  backdrop-filter: blur(30px) saturate(145%);
-  -webkit-backdrop-filter: blur(30px) saturate(145%);
+  background: transparent;
 }
 
 /* Top strip: holds the absolutely-positioned actions and gives the window
