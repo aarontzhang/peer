@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { marked } from 'marked';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { type Recording } from '@/lib/ipc';
 import { toPlainText } from '@/lib/plainText';
@@ -20,10 +19,6 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming }: P
   // Prefer the live thinking event so it's visible the instant per-window
   // analyses finish, well before the prompt finishes streaming.
   const thinking = liveThinking ?? recording?.thinking ?? null;
-  const thinkingHtml = useMemo(() => {
-    if (!thinking) return '';
-    return marked.parse(thinking, { async: false }) as string;
-  }, [thinking]);
 
   useEffect(() => {
     if (!isStreaming) return;
@@ -139,10 +134,7 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming }: P
               <ChevronIcon />
               <span>{thinkingOpen ? 'Thinking' : 'Show thinking'}</span>
             </summary>
-            <div
-              className="md thinking__body"
-              dangerouslySetInnerHTML={{ __html: thinkingHtml }}
-            />
+            <div className="thinking__body">{thinking}</div>
           </details>
         )}
         {body ? (
