@@ -2,7 +2,9 @@ node_modules/
 dist/
 target/
 .DS_Store
+.!*
 *.log
+.claude/scheduled_tasks.lock
 src-tauri/gen/
 src-tauri/target/
 src-tauri/bin/HummingbirdCapture*
