@@ -17,8 +17,14 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
   private var stream: SCStream?
   private var writer: AVAssetWriter?
   private var videoInput: AVAssetWriterInput?
+  private var videoAdaptor: AVAssetWriterInputPixelBufferAdaptor?
   private var audioInput: AVAssetWriterInput?
   private var sessionStarted = false
+  private var isStopping = false
+  private var videoBasePTS: CMTime?
+  private var audioBasePTS: CMTime?
+  private var lastVideoPTS: CMTime?
+  private var lastAudioPTS: CMTime?
   private let queue = DispatchQueue(label: "dev.aaronzhang.peer.capture")
   private var captureSession: AVCaptureSession?
 
@@ -113,6 +119,14 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
     videoInput.expectsMediaDataInRealTime = true
     writer.add(videoInput)
     self.videoInput = videoInput
+    self.videoAdaptor = AVAssetWriterInputPixelBufferAdaptor(
+      assetWriterInput: videoInput,
+      sourcePixelBufferAttributes: [
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+        kCVPixelBufferWidthKey as String: cfg.width,
+        kCVPixelBufferHeightKey as String: cfg.height,
+      ]
+    )
 
     let audioSettings: [String: Any] = [
       AVFormatIDKey: kAudioFormatMPEG4AAC,
@@ -165,7 +179,15 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
     session.startRunning()
   }
 
-  func stop() async {
+  func stop() async throws {
+    // Stop accepting samples before marking writer inputs finished. Both
+    // ScreenCaptureKit and AVCapture can have delegate callbacks queued when
+    // STOP arrives; appending one of those after finish begins fails the writer
+    // and leaves the MP4 without a valid trailer.
+    queue.sync {
+      self.isStopping = true
+    }
+
     self.captureSession?.stopRunning()
     if let stream = stream {
       try? await stream.stopCapture()
@@ -173,23 +195,36 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
     self.videoInput?.markAsFinished()
     self.audioInput?.markAsFinished()
     if let writer = writer {
+      if writer.status == .failed {
+        throw writer.error ?? NSError(domain: "Peer", code: 7, userInfo: [NSLocalizedDescriptionKey: "writer failed before finish"])
+      }
       await writer.finishWriting()
+      if writer.status != .completed {
+        let status = writer.status.rawValue
+        throw writer.error ?? NSError(domain: "Peer", code: 8, userInfo: [NSLocalizedDescriptionKey: "writer did not complete; status=\(status)"])
+      }
     }
     self.stream = nil
     self.writer = nil
+    self.videoAdaptor = nil
     self.captureSession = nil
   }
 
   // MARK: SCStreamOutput (video)
 
   func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
+    guard !isStopping else { return }
     guard CMSampleBufferDataIsReady(sampleBuffer), let writer = writer else { return }
     if type != .screen { return }
+    guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
-    startSessionIfNeeded(with: sampleBuffer)
+    startSessionIfNeeded()
+    guard let pts = normalizedPTS(sampleBuffer, mediaType: .video) else { return }
 
-    if let videoInput = videoInput, videoInput.isReadyForMoreMediaData {
-      if !videoInput.append(sampleBuffer) {
+    if let videoInput = videoInput,
+       let videoAdaptor = videoAdaptor,
+       videoInput.isReadyForMoreMediaData {
+      if !videoAdaptor.append(pixelBuffer, withPresentationTime: pts) {
         FileHandle.standardError.write("video append failed: \(describeWriterError(writer))\n".data(using: .utf8) ?? Data())
       }
     }
@@ -198,30 +233,136 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, AVCaptureAudio
   // MARK: AVCaptureAudioDataOutputSampleBufferDelegate (mic)
 
   func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+    guard !isStopping else { return }
     guard CMSampleBufferDataIsReady(sampleBuffer), let writer = writer else { return }
 
     // Anchor the writer timeline on whichever sample arrives first. Gating
     // mic on video PTS used to drop the head of the audio track and, when
     // the screen stream warmed up slowly or failed silently, every mic
     // sample — producing the "audio track is silent (-91 dB)" failure.
-    startSessionIfNeeded(with: sampleBuffer)
+    startSessionIfNeeded()
+    guard let normalized = normalizedSampleBuffer(sampleBuffer, mediaType: .audio) else { return }
 
     guard let audioInput = audioInput, audioInput.isReadyForMoreMediaData else { return }
-    if !audioInput.append(sampleBuffer) {
-      let fmt = CMSampleBufferGetFormatDescription(sampleBuffer)
+    if !audioInput.append(normalized) {
+      let fmt = CMSampleBufferGetFormatDescription(normalized)
       let asbd = fmt.flatMap { CMAudioFormatDescriptionGetStreamBasicDescription($0)?.pointee }
       let fmtStr = asbd.map { "rate=\($0.mSampleRate) ch=\($0.mChannelsPerFrame) bits=\($0.mBitsPerChannel) flags=\($0.mFormatFlags) id=\($0.mFormatID)" } ?? "nil"
       FileHandle.standardError.write("audio append failed: \(describeWriterError(writer)) sampleFmt=\(fmtStr)\n".data(using: .utf8) ?? Data())
     }
   }
 
-  private func startSessionIfNeeded(with sampleBuffer: CMSampleBuffer) {
+  private func startSessionIfNeeded() {
     guard !sessionStarted, let writer = writer else { return }
-    let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-    guard pts.isValid else { return }
-    FileHandle.standardError.write("starting writer session at pts=\(pts.seconds) writer.status=\(writer.status.rawValue)\n".data(using: .utf8) ?? Data())
-    writer.startSession(atSourceTime: pts)
+    FileHandle.standardError.write("starting writer session at pts=0 writer.status=\(writer.status.rawValue)\n".data(using: .utf8) ?? Data())
+    writer.startSession(atSourceTime: .zero)
     sessionStarted = true
+  }
+
+  private enum MediaKind {
+    case video
+    case audio
+  }
+
+  private func normalizedPTS(_ sampleBuffer: CMSampleBuffer, mediaType: MediaKind) -> CMTime? {
+    var timing = CMSampleTimingInfo()
+    let timingStatus = CMSampleBufferGetSampleTimingInfo(sampleBuffer, at: 0, timingInfoOut: &timing)
+    guard timingStatus == noErr, timing.presentationTimeStamp.isValid else {
+      FileHandle.standardError.write("sample timing unavailable status=\(timingStatus)\n".data(using: .utf8) ?? Data())
+      return nil
+    }
+
+    let base: CMTime
+    let last: CMTime?
+    switch mediaType {
+    case .video:
+      if videoBasePTS == nil { videoBasePTS = timing.presentationTimeStamp }
+      base = videoBasePTS ?? timing.presentationTimeStamp
+      last = lastVideoPTS
+    case .audio:
+      if audioBasePTS == nil { audioBasePTS = timing.presentationTimeStamp }
+      base = audioBasePTS ?? timing.presentationTimeStamp
+      last = lastAudioPTS
+    }
+
+    var pts = CMTimeSubtract(timing.presentationTimeStamp, base)
+    if CMTimeCompare(pts, .zero) < 0 {
+      pts = .zero
+    }
+
+    if let last, CMTimeCompare(pts, last) <= 0 {
+      let step = timing.duration.isValid && timing.duration.seconds > 0
+        ? timing.duration
+        : defaultFrameStep(for: mediaType)
+      pts = CMTimeAdd(last, step)
+    }
+
+    if timing.decodeTimeStamp.isValid {
+      var dts = CMTimeSubtract(timing.decodeTimeStamp, base)
+      if CMTimeCompare(dts, .zero) < 0 {
+        dts = .zero
+      }
+      timing.decodeTimeStamp = dts
+    }
+    timing.presentationTimeStamp = pts
+
+    switch mediaType {
+    case .video:
+      lastVideoPTS = pts
+    case .audio:
+      lastAudioPTS = pts
+    }
+
+    return pts
+  }
+
+  private func normalizedSampleBuffer(_ sampleBuffer: CMSampleBuffer, mediaType: MediaKind) -> CMSampleBuffer? {
+    var timing = CMSampleTimingInfo()
+    let timingStatus = CMSampleBufferGetSampleTimingInfo(sampleBuffer, at: 0, timingInfoOut: &timing)
+    guard timingStatus == noErr, timing.presentationTimeStamp.isValid else {
+      FileHandle.standardError.write("sample timing unavailable status=\(timingStatus)\n".data(using: .utf8) ?? Data())
+      return nil
+    }
+
+    guard let pts = normalizedPTS(sampleBuffer, mediaType: mediaType) else { return nil }
+    timing.presentationTimeStamp = pts
+    if timing.decodeTimeStamp.isValid {
+      let base: CMTime
+      switch mediaType {
+      case .video:
+        base = videoBasePTS ?? timing.decodeTimeStamp
+      case .audio:
+        base = audioBasePTS ?? timing.decodeTimeStamp
+      }
+      var dts = CMTimeSubtract(timing.decodeTimeStamp, base)
+      if CMTimeCompare(dts, .zero) < 0 {
+        dts = .zero
+      }
+      timing.decodeTimeStamp = dts
+    }
+
+    var normalized: CMSampleBuffer?
+    let copyStatus = CMSampleBufferCreateCopyWithNewTiming(
+      allocator: kCFAllocatorDefault,
+      sampleBuffer: sampleBuffer,
+      sampleTimingEntryCount: 1,
+      sampleTimingArray: &timing,
+      sampleBufferOut: &normalized
+    )
+    if copyStatus != noErr {
+      FileHandle.standardError.write("sample retime failed status=\(copyStatus)\n".data(using: .utf8) ?? Data())
+      return nil
+    }
+    return normalized
+  }
+
+  private func defaultFrameStep(for mediaType: MediaKind) -> CMTime {
+    switch mediaType {
+    case .video:
+      return CMTime(value: 1, timescale: 30)
+    case .audio:
+      return CMTime(value: 1, timescale: 48000)
+    }
   }
 
   private func describeWriterError(_ writer: AVAssetWriter) -> String {
@@ -283,7 +424,12 @@ struct CLI {
       if line == "STOP" { break }
     }
 
-    await recorder.stop()
+    do {
+      try await recorder.stop()
+    } catch {
+      fputs("stop failed: \(error)\n", stderr)
+      exit(2)
+    }
     print("DONE")
     fflush(stdout)
   }

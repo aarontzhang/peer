@@ -2,21 +2,21 @@
 
 /*
   Design tokens — hand-tuned to feel native on macOS.
-  These are NOT shadcn defaults. Hue is a cool blue-grey that
-  reads as neutral against vibrant macOS wallpapers; the red
-  is calibrated to match the system "recording" red used in
-  Voice Memos and Screen Recording.
+  These are NOT shadcn defaults. The dark neutrals use a warm graphite
+  cast so translucent surfaces feel closer to native macOS materials
+  than cold blue-grey panels; the red is calibrated to match the system
+  "recording" red used in Voice Memos and Screen Recording.
 */
 @theme {
-  --color-bg: oklch(0.16 0.012 257);
-  --color-bg-elevated: oklch(0.20 0.013 257);
-  --color-bg-translucent: oklch(0.22 0.014 257 / 0.72);
+  --color-bg: oklch(0.17 0.006 82);
+  --color-bg-elevated: oklch(0.22 0.007 82);
+  --color-bg-translucent: oklch(0.24 0.008 82 / 0.64);
   --color-line: oklch(1 0 0 / 0.07);
   --color-line-strong: oklch(1 0 0 / 0.12);
 
-  --color-fg: oklch(0.96 0.005 257);
-  --color-fg-muted: oklch(0.74 0.008 257);
-  --color-fg-dim: oklch(0.54 0.010 257);
+  --color-fg: oklch(0.96 0.004 82);
+  --color-fg-muted: oklch(0.75 0.006 82);
+  --color-fg-dim: oklch(0.56 0.007 82);
 
   --color-accent: oklch(0.78 0.16 245);
   --color-accent-soft: oklch(0.78 0.16 245 / 0.12);

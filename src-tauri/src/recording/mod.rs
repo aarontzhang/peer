@@ -161,26 +161,84 @@ pub async fn start(app: AppHandle, state: Arc<AppState>) -> Result<String> {
         let state2 = state.clone();
         let id2 = id.clone();
         tokio::spawn(async move {
+            enum TimerOutcome {
+                Continue(u64),
+                Failed {
+                    id: String,
+                    elapsed_ms: u64,
+                    message: String,
+                },
+            }
+
             let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
             loop {
                 interval.tick().await;
-                let cur = state2.current.lock();
-                let Some(RecordingPhase::Active(active)) = cur.as_ref() else {
-                    break;
+                let outcome = {
+                    let mut cur = state2.current.lock();
+                    let Some(RecordingPhase::Active(active)) = cur.as_mut() else {
+                        break;
+                    };
+                    if active.id != id2 {
+                        break;
+                    }
+                    let elapsed = active.started_at.elapsed().as_millis() as u64;
+                    match active.capture.try_wait() {
+                        Ok(Some(status)) => {
+                            let id = active.id.clone();
+                            if let Some(h) = active.auto_stop_handle.take() {
+                                h.abort();
+                            }
+                            cursor::restore();
+                            *cur = None;
+                            TimerOutcome::Failed {
+                                id,
+                                elapsed_ms: elapsed,
+                                message: format!(
+                                    "Capture stopped unexpectedly before you ended the recording: {status}"
+                                ),
+                            }
+                        }
+                        Ok(None) => TimerOutcome::Continue(elapsed),
+                        Err(err) => {
+                            tracing::warn!(?err, "failed to poll capture process");
+                            TimerOutcome::Continue(elapsed)
+                        }
+                    }
                 };
-                if active.id != id2 {
-                    break;
-                }
-                let elapsed = active.started_at.elapsed().as_millis() as u64;
-                emit(
-                    &app2,
-                    &PillEvent::Recording {
-                        id: id2.clone(),
-                        elapsed_ms: elapsed,
-                    },
-                );
-                if elapsed >= MAX_DURATION_MS {
-                    break;
+
+                match outcome {
+                    TimerOutcome::Continue(elapsed) => {
+                        emit(
+                            &app2,
+                            &PillEvent::Recording {
+                                id: id2.clone(),
+                                elapsed_ms: elapsed,
+                            },
+                        );
+                        if elapsed >= MAX_DURATION_MS {
+                            break;
+                        }
+                    }
+                    TimerOutcome::Failed {
+                        id,
+                        elapsed_ms,
+                        message,
+                    } => {
+                        if let Ok(Some(mut rec)) = state2.db().get_recording(&id).await {
+                            rec.status = RecordingStatus::Failed;
+                            rec.duration_ms = elapsed_ms;
+                            rec.error = Some(message.clone());
+                            let _ = state2.db().update_recording(&rec).await;
+                        }
+                        emit(
+                            &app2,
+                            &PillEvent::Error {
+                                id: Some(id),
+                                message,
+                            },
+                        );
+                        break;
+                    }
                 }
             }
         });
@@ -213,7 +271,23 @@ pub async fn stop(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     cursor::restore();
 
     let duration_ms = active.started_at.elapsed().as_millis() as u64;
-    active.capture.stop().await?;
+    if let Err(err) = active.capture.stop().await {
+        let msg = format!("{err:#}");
+        if let Ok(Some(mut rec)) = state.db().get_recording(&active.id).await {
+            rec.status = RecordingStatus::Failed;
+            rec.duration_ms = duration_ms;
+            rec.error = Some(msg.clone());
+            let _ = state.db().update_recording(&rec).await;
+        }
+        emit(
+            &app,
+            &PillEvent::Error {
+                id: Some(active.id.clone()),
+                message: msg.clone(),
+            },
+        );
+        return Err(anyhow!(msg));
+    }
 
     // Flip the persisted row from 'recording' → 'stopped' so the result
     // window doesn't keep showing "Recording…" while we wait for the user

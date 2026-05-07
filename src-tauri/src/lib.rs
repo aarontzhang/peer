@@ -33,6 +33,9 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             set_app_icon(&handle)?;
 
+            #[cfg(target_os = "macos")]
+            apply_result_window_vibrancy(&handle);
+
             position_pill(&handle)?;
 
             hotkey::install(handle.clone(), state.clone());
@@ -120,6 +123,24 @@ pub(crate) fn reveal_result_window(app: &AppHandle, center: bool) -> tauri::Resu
 
     win.set_focus()?;
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn apply_result_window_vibrancy(app: &AppHandle) {
+    use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
+
+    let Some(win) = app.get_webview_window("result") else {
+        return;
+    };
+
+    if let Err(err) = apply_vibrancy(
+        &win,
+        NSVisualEffectMaterial::HudWindow,
+        Some(NSVisualEffectState::Active),
+        Some(14.0),
+    ) {
+        tracing::warn!(?err, "failed to apply result window vibrancy");
+    }
 }
 
 /// Listen for the standard termination signals and flush any active capture

@@ -2,8 +2,10 @@
 //! Falls back to `ffmpeg avfoundation` capture if the sidecar is missing —
 //! useful in `pnpm tauri dev` before the sidecar has been built.
 
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
+use std::process::{ExitStatus, Stdio};
+use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, Result};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -12,12 +14,41 @@ use tokio::process::{Child, Command};
 pub struct CaptureProcess {
     child: Child,
     backend: Backend,
+    stderr_tail: LogTail,
 }
 
 #[derive(Copy, Clone, Debug)]
 enum Backend {
     Sidecar,
     Ffmpeg,
+}
+
+#[derive(Clone, Default)]
+struct LogTail {
+    lines: Arc<Mutex<VecDeque<String>>>,
+}
+
+impl LogTail {
+    fn push(&self, line: String) {
+        let Ok(mut lines) = self.lines.lock() else {
+            return;
+        };
+        if lines.len() == 12 {
+            lines.pop_front();
+        }
+        lines.push_back(line);
+    }
+
+    fn summary(&self) -> String {
+        let Ok(lines) = self.lines.lock() else {
+            return String::new();
+        };
+        lines
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+            .join(" | ")
+    }
 }
 
 pub async fn start(bin_dir: &Path, output: &Path) -> Result<CaptureProcess> {
@@ -72,33 +103,44 @@ async fn start_sidecar(path: &Path, output: &Path) -> Result<CaptureProcess> {
         .kill_on_drop(true)
         .spawn()?;
 
+    let stderr_tail = LogTail::default();
     if let Some(stderr) = child.stderr.take() {
+        let stderr_tail = stderr_tail.clone();
         tokio::spawn(async move {
             let mut reader = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 tracing::warn!(target: "capture", "sidecar stderr: {line}");
+                stderr_tail.push(line);
             }
         });
     }
 
     if let Some(stdout) = child.stdout.take() {
-        let mut reader = BufReader::new(stdout).lines();
-        let timeout = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        tokio::spawn(async move {
+            let mut reader = BufReader::new(stdout).lines();
+            let mut ready_tx = Some(ready_tx);
             while let Ok(Some(line)) = reader.next_line().await {
                 tracing::debug!(target: "capture", "{line}");
                 if line.trim() == "READY" {
-                    return Ok::<_, anyhow::Error>(());
+                    if let Some(tx) = ready_tx.take() {
+                        let _ = tx.send(());
+                    }
                 }
             }
-            Err(anyhow!("sidecar exited before READY"))
-        })
-        .await;
-        timeout.map_err(|_| anyhow!("sidecar startup timed out"))??;
+        });
+        let timeout = tokio::time::timeout(std::time::Duration::from_secs(5), ready_rx).await;
+        match timeout {
+            Ok(Ok(())) => {}
+            Ok(Err(_)) => return Err(anyhow!("sidecar exited before READY")),
+            Err(_) => return Err(anyhow!("sidecar startup timed out")),
+        }
     }
 
     Ok(CaptureProcess {
         child,
         backend: Backend::Sidecar,
+        stderr_tail,
     })
 }
 
@@ -131,6 +173,7 @@ async fn start_ffmpeg(output: &Path) -> Result<CaptureProcess> {
     Ok(CaptureProcess {
         child,
         backend: Backend::Ffmpeg,
+        stderr_tail: LogTail::default(),
     })
 }
 
@@ -263,7 +306,21 @@ fn is_plausible_physical_microphone_name(name: &str) -> bool {
 }
 
 impl CaptureProcess {
+    pub fn try_wait(&mut self) -> Result<Option<ExitStatus>> {
+        self.child.try_wait().map_err(Into::into)
+    }
+
     pub async fn stop(&mut self) -> Result<()> {
+        if let Some(status) = self.child.try_wait()? {
+            let details = self.stderr_tail.summary();
+            if details.is_empty() {
+                return Err(anyhow!("capture process exited before stop: {status}"));
+            }
+            return Err(anyhow!(
+                "capture process exited before stop: {status}: {details}"
+            ));
+        }
+
         match self.backend {
             Backend::Sidecar => {
                 if let Some(stdin) = self.child.stdin.as_mut() {
@@ -279,18 +336,28 @@ impl CaptureProcess {
                 }
             }
         }
-        // Give the encoder a moment to flush; then ensure exit.
-        let exit = tokio::time::timeout(std::time::Duration::from_secs(8), self.child.wait()).await;
+        // Give the encoder time to flush the MP4 trailer. Killing here leaves
+        // an mdat-only file with no moov atom, so timeout is an explicit error.
+        let timeout = match self.backend {
+            Backend::Sidecar => std::time::Duration::from_secs(60),
+            Backend::Ffmpeg => std::time::Duration::from_secs(30),
+        };
+        let exit = tokio::time::timeout(timeout, self.child.wait()).await;
         match exit {
             Ok(Ok(status)) => {
                 if !status.success() {
-                    tracing::warn!("capture exited with {status}");
+                    let details = self.stderr_tail.summary();
+                    if details.is_empty() {
+                        return Err(anyhow!("capture exited with {status}"));
+                    }
+                    return Err(anyhow!("capture exited with {status}: {details}"));
                 }
                 Ok(())
             }
-            _ => {
+            Ok(Err(err)) => Err(err.into()),
+            Err(_) => {
                 let _ = self.child.kill().await;
-                Ok(())
+                Err(anyhow!("capture finalization timed out after {timeout:?}"))
             }
         }
     }

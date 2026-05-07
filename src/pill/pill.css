@@ -22,7 +22,7 @@ html, body, #root {
 
   /* Same gray as the main app window background — keeps the pill, the
      main window, and the macOS app icon visually unified. */
-  background: oklch(0.20 0.012 257 / 0.94);
+  background: oklch(0.21 0.006 82 / 0.82);
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
@@ -78,7 +78,7 @@ html, body, #root {
 }
 
 .logo .logo__lens-fill {
-  fill: oklch(0.20 0.012 257 / 0.94);
+  fill: oklch(0.21 0.006 82 / 0.82);
   stroke: none;
 }
 
@@ -132,7 +132,7 @@ html, body, #root {
 
 .pill__review-btn--cancel {
   background: oklch(1 0 0 / 0.08);
-  color: oklch(0.92 0.005 257);
+  color: oklch(0.92 0.004 82);
 }
 .pill__review-btn--cancel:hover {
   background: oklch(0.66 0.22 22 / 0.32);
@@ -140,7 +140,7 @@ html, body, #root {
 
 .pill__review-btn--send {
   background: oklch(0.78 0.16 245);
-  color: oklch(0.16 0.012 257);
+  color: oklch(0.17 0.006 82);
   box-shadow: 0 2px 6px oklch(0.78 0.16 245 / 0.32);
 }
 .pill__review-btn--send:hover {
