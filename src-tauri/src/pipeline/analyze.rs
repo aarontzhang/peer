@@ -1,4 +1,4 @@
-//! Parallel OpenAI vision analysis with a Claude aggregator merge step.
+//! Parallel Claude vision analysis with a Claude aggregator merge step.
 //!
 //! Why parallel-then-aggregate? Each window only sees its slice of frames +
 //! transcript so per-call latency is bounded by the largest window, and the
@@ -23,7 +23,7 @@ use super::transcribe::Transcript;
 use super::{ChunkKind, ResultChunk};
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
-const OPENAI_WINDOW_MODEL: &str = "gpt-4o-mini";
+const WINDOW_MODEL: &str = "claude-sonnet-4-6";
 const AGGREGATOR_MODEL: &str = "claude-sonnet-4-6";
 const MAX_FRAMES_PER_WINDOW: usize = 6;
 const MAX_PARALLEL_WINDOWS: usize = 4;
@@ -41,7 +41,6 @@ pub struct AnalysisOutput {
 pub async fn analyze_and_aggregate(
     app: AppHandle,
     id: String,
-    openai_key: &str,
     anthropic_key: &str,
     frames: &[Keyframe],
     transcript: &Transcript,
@@ -53,24 +52,18 @@ pub async fn analyze_and_aggregate(
 
     let windows = window_frames(frames, total_secs);
     let window_ranges: Vec<(f64, f64)> = windows.iter().map(|w| (w.t_start, w.t_end)).collect();
-    let openai_client = Arc::new(
+    let client = Arc::new(
         reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(180))
             .build()?,
     );
-    let anthropic_client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(180))
-        .build()?;
     let sem = Arc::new(Semaphore::new(MAX_PARALLEL_WINDOWS));
 
     let vision_started = Instant::now();
     let mut tasks = FuturesUnordered::new();
     for (i, w) in windows.iter().enumerate() {
-        if w.frames.is_empty() {
-            continue;
-        }
-        let client = openai_client.clone();
-        let key = openai_key.to_string();
+        let client = client.clone();
+        let key = anthropic_key.to_string();
         let sem = sem.clone();
         let frames = w.frames.clone();
         let slice = transcript.slice(w.t_start, w.t_end);
@@ -78,7 +71,7 @@ pub async fn analyze_and_aggregate(
         let t_end = w.t_end;
         tasks.push(tokio::spawn(async move {
             let _permit = sem.acquire_owned().await.unwrap();
-            analyze_window_openai(&client, &key, i, t_start, t_end, &frames, &slice).await
+            analyze_window(&client, &key, i, t_start, t_end, &frames, &slice).await
         }));
     }
 
@@ -89,11 +82,11 @@ pub async fn analyze_and_aggregate(
             Ok(Ok(v)) => window_results.push(v),
             Ok(Err(err)) => {
                 failed_windows += 1;
-                tracing::warn!(?err, "OpenAI vision window failed");
+                tracing::warn!(?err, "Claude vision window failed");
             }
             Err(err) => {
                 failed_windows += 1;
-                tracing::warn!(?err, "OpenAI vision window task panicked");
+                tracing::warn!(?err, "Claude vision window task panicked");
             }
         }
     }
@@ -101,19 +94,19 @@ pub async fn analyze_and_aggregate(
         elapsed_ms = vision_started.elapsed().as_millis(),
         succeeded = window_results.len(),
         failed = failed_windows,
-        "stage OpenAI vision windows complete"
+        "stage Claude vision windows complete"
     );
     window_results.sort_by_key(|(i, _)| *i);
 
     if window_results.is_empty() && !frames.is_empty() {
         if transcript.entries.is_empty() {
             return Err(anyhow!(
-                "all OpenAI vision windows failed and no transcript exists"
+                "all Claude vision windows failed and no transcript exists"
             ));
         }
         tracing::warn!(
             failed = failed_windows,
-            "all OpenAI vision windows failed; continuing with transcript-only aggregation"
+            "all Claude vision windows failed; continuing with transcript-only aggregation"
         );
     }
 
@@ -135,7 +128,7 @@ pub async fn analyze_and_aggregate(
     let final_md = aggregate_streaming(
         app,
         id,
-        &anthropic_client,
+        &client,
         anthropic_key,
         &observations_json,
         &transcript_summary(transcript),
@@ -256,7 +249,7 @@ fn window_frames(frames: &[Keyframe], total_secs: f64) -> Vec<Window> {
     windows
 }
 
-async fn analyze_window_openai(
+async fn analyze_window(
     client: &reqwest::Client,
     key: &str,
     index: usize,
@@ -270,11 +263,12 @@ async fn analyze_window_openai(
     for frame in frames {
         let data = read_image_b64(&frame.path).await?;
         content.push(json!({
-            "type": "image_url",
-            "image_url": {
-                "url": format!("data:image/jpeg;base64,{data}"),
-                "detail": "low",
-            },
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/jpeg",
+                "data": data,
+            }
         }));
     }
     content.push(json!({
@@ -289,18 +283,22 @@ async fn analyze_window_openai(
     }));
 
     let body = json!({
-        "model": OPENAI_WINDOW_MODEL,
+        "model": WINDOW_MODEL,
         "max_tokens": 1024,
-        "temperature": 0,
-        "messages": [
-            { "role": "system", "content": prompts::WINDOW_SYSTEM },
-            { "role": "user", "content": content }
+        "system": [
+            {
+                "type": "text",
+                "text": prompts::WINDOW_SYSTEM,
+                "cache_control": { "type": "ephemeral" }
+            }
         ],
+        "messages": [{ "role": "user", "content": content }],
     });
 
     let res = client
-        .post("https://api.openai.com/v1/chat/completions")
-        .bearer_auth(key)
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", key)
+        .header("anthropic-version", ANTHROPIC_VERSION)
         .header("content-type", "application/json")
         .json(&body)
         .send()
@@ -309,22 +307,21 @@ async fn analyze_window_openai(
         let s = res.status();
         let t = res.text().await.unwrap_or_default();
         return Err(anyhow!(
-            "OpenAI vision window {idx}: {s} — {t}",
+            "Claude vision window {idx}: {s} — {t}",
             idx = index + 1
         ));
     }
     let payload: Value = res.json().await?;
-    let text = payload["choices"]
+    let text = payload["content"]
         .as_array()
-        .and_then(|a| a.first())
-        .and_then(|v| v["message"]["content"].as_str())
+        .and_then(|a| a.iter().find_map(|v| v["text"].as_str()))
         .unwrap_or_default()
         .trim()
         .to_string();
     tracing::info!(
         window = index + 1,
         elapsed_ms = started.elapsed().as_millis(),
-        "stage OpenAI vision window complete"
+        "stage Claude vision window complete"
     );
 
     let json_value = extract_json(&text)

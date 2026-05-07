@@ -184,7 +184,6 @@ pub async fn run(
     } = analyze::analyze_and_aggregate(
         app.clone(),
         id.clone(),
-        &openai,
         &anthropic,
         &frames,
         &transcript,

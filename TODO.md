@@ -3,13 +3,13 @@
 ## Processing Speed (active)
 
 - [x] Keep the current pipeline shape: ffprobe -> keyframes + transcription in parallel -> per-window visual notes in parallel -> final text aggregation.
-- [x] Replace per-window Claude visual analysis with OpenAI vision using `gpt-4o-mini` by default.
+- [x] Use Claude Sonnet 4.6 for per-window visual analysis.
 - [x] Preserve current OpenAI Whisper transcription for the first pass.
-- [x] Add stage timing logs for probe, keyframe extraction, audio extraction/transcription, OpenAI vision windows, Claude aggregation, and total time.
-- [x] Add failure isolation: failed OpenAI vision windows are logged and skipped; if all visual windows fail but transcript exists, Claude still runs with transcript-only context.
+- [x] Add stage timing logs for probe, keyframe extraction, audio extraction/transcription, Claude vision windows, Claude aggregation, and total time.
+- [x] Add failure isolation: failed Claude vision windows are logged and skipped; if all visual windows fail but transcript exists, Claude still runs with transcript-only context.
 - [x] Keep current UI behavior: transcript and thinking stream as they do now; final prompt still auto-copies.
 - [ ] Benchmark a typical short recording and confirm post-recording latency visibly improves, with a stretch target near 5 seconds.
-- [ ] If benchmarking shows transcription is the bottleneck, evaluate `gpt-4o-mini-transcribe` as a follow-up.
+- [ ] If benchmarking shows transcription is the bottleneck, evaluate newer transcription models as a follow-up.
 
 ## Configurable Recording Keybind (pending)
 
@@ -32,7 +32,7 @@
 
 ## Public Interfaces And Types
 
-- [x] Add a provider boundary for visual analysis so the pipeline can call OpenAI for window observations without changing downstream aggregation shape.
+- [x] Keep the visual analysis provider boundary so window observations can change provider without changing downstream aggregation shape.
 - [x] Keep the existing per-window observation JSON contract: `userSpeech`, `pointing`, and `visibleContext`.
 - [x] Add timing telemetry as internal structured logs first; no user-facing schema change required for Milestone 1.
 - [ ] Later milestones add backend auth/API interfaces.
