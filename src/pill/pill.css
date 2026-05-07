@@ -19,38 +19,29 @@ html, body, #root {
   padding: 6px 0 8px 0;
   gap: 6px;
   border-radius: 22px;
+  border: 1.5px solid transparent;
+  box-sizing: border-box;
 
   /* Same gray as the main app window background — keeps the pill, the
      main window, and the macOS app icon visually unified. */
   background: oklch(0.21 0.006 82 / 0.82);
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
-  box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
-              0 0 0 0.5px oklch(1 0 0 / 0.08) inset;
 
   user-select: none;
   transition: background var(--dur-fast) var(--ease-spring),
-              box-shadow var(--dur-fast) var(--ease-spring);
+              border-color var(--dur-fast) var(--ease-spring);
 }
 
-/* Recording: faint red rim around the pill so the user can tell at a
-   glance, even though the orb itself stays white. */
+/* Recording: clean red edge only, with no glow outside or inside the pill. */
 .pill[data-state='recording'] {
-  box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
-              0 0 0 0.5px oklch(1 0 0 / 0.08) inset,
-              0 0 0 1.5px oklch(0.66 0.22 22 / 0.55),
-              0 0 16px oklch(0.66 0.22 22 / 0.35);
+  border-color: oklch(0.66 0.22 22 / 0.75);
 }
 .pill[data-state='processing'] {
-  box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
-              0 0 0 0.5px oklch(1 0 0 / 0.08) inset,
-              0 0 0 1.5px oklch(0.78 0.16 245 / 0.45);
+  border-color: oklch(0.78 0.16 245 / 0.45);
 }
 .pill[data-state='done'] {
-  box-shadow: 0 6px 20px oklch(0 0 0 / 0.28),
-              0 0 0 0.5px oklch(1 0 0 / 0.08) inset,
-              0 0 0 1.5px oklch(0.74 0.16 156 / 0.62),
-              0 0 16px oklch(0.74 0.16 156 / 0.30);
+  border-color: oklch(0.74 0.16 156 / 0.62);
 }
 
 /* ─── Top area: logo button (idle / recording / processing / done) ─────── */
