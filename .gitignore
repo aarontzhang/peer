@@ -12,3 +12,5 @@ src-tauri/bin/PeerCapture*
 capture-sidecar/.build/
 .env
 .env.local
+.vercel
+.env*.local

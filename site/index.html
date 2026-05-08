@@ -3,68 +3,99 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peer</title>
+  <meta name="description" content="Peer turns a quick screen recording and narration into paste-ready instructions for coding agents.">
+  <title>Peer - Desktop prompt capture for coding agents</title>
   <link rel="stylesheet" href="/site/styles.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/">
-      <img src="/logos/preview.png" alt="" width="32" height="32">
+    <a class="brand" href="/" aria-label="Peer home">
+      <img src="/logos/straight.svg" alt="" width="32" height="32">
       <span>Peer</span>
     </a>
-    <nav>
-      <a href="/api/desktop-login">Account Login</a>
-      <a href="/download/latest">Download</a>
-    </nav>
+    <a class="nav-download" href="/download/latest">Download</a>
   </header>
 
   <main>
-    <section class="hero">
+    <section class="hero" aria-labelledby="hero-title">
       <div class="hero__copy">
-        <h1>Peer</h1>
-        <p>Mac screen recording and narration turned into a paste-ready instruction set for coding agents.</p>
-        <div class="hero__actions">
-          <a class="button button--primary" href="/download/latest">Download for macOS</a>
-          <a class="button" href="/api/desktop-login">Account login</a>
+        <p class="eyebrow">Desktop capture for agent workflows</p>
+        <h1 id="hero-title">Show don't tell. Peer writes the prompt.</h1>
+        <p class="lede">Tap Fn, narrate over the window in front of you, and get a clean instruction set ready for Cursor, Codex, Claude Code, or any coding agent.</p>
+        <div class="hero__actions" aria-label="Hero actions">
+          <a class="button button--primary" href="/download/latest">
+            <span aria-hidden="true">↓</span>
+            Download for macOS
+          </a>
+        </div>
+        <dl class="hero__facts" aria-label="Peer product facts">
+          <div>
+            <dt>Shortcut</dt>
+            <dd>Fn tap</dd>
+          </div>
+          <div>
+            <dt>Output</dt>
+            <dd>Paste-ready prompt</dd>
+          </div>
+          <div>
+            <dt>Build</dt>
+            <dd>macOS beta</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="hero__visual" aria-label="Peer desktop preview">
+        <div class="app-window">
+          <div class="window-chrome" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="recording-surface">
+            <div class="capture-target">
+              <div class="target-toolbar">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="target-grid">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="target-code">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+            <div class="pulse-ring" aria-hidden="true"></div>
+            <div class="voice-card">
+              <img src="/logos/straight.svg" alt="" width="36" height="36">
+              <div>
+                <strong>Recording context</strong>
+                <span>“Make the download page feel native, direct, and more polished.”</span>
+              </div>
+            </div>
+          </div>
+          <div class="prompt-panel">
+            <div class="prompt-panel__header">
+              <span>Generated instruction</span>
+              <b>Ready</b>
+            </div>
+            <p>Rebuild the desktop download page around one clear action. Keep the CTA above the fold, use a red capture target, and make the app preview feel like a live recording.</p>
+            <div class="prompt-tags" aria-label="Prompt tags">
+              <span>context</span>
+              <span>steps</span>
+              <span>constraints</span>
+            </div>
+          </div>
         </div>
       </div>
-      <img class="hero__image" src="/logos/preview.png" alt="Peer app icon">
     </section>
 
-    <section class="band">
-      <div class="grid">
-        <article>
-          <h2>Latest Release</h2>
-          <p>The first public build targets macOS only. The download link resolves to the latest signed DMG configured for this deployment.</p>
-        </article>
-        <article>
-          <h2>Free Beta</h2>
-          <p>Beta accounts use device tokens and monthly usage limits while the product shape is still settling.</p>
-        </article>
-        <article>
-          <h2>Managed Processing</h2>
-          <p>The desktop app signs in with a device token and routes model calls through the Peer backend instead of storing provider keys for production use.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="permissions">
-      <h2>Mac Permissions</h2>
-      <div class="permission-list">
-        <div>
-          <h3>Screen Recording</h3>
-          <p>Required so Peer can capture the app or browser window you are pointing at.</p>
-        </div>
-        <div>
-          <h3>Microphone</h3>
-          <p>Required so your narration can be transcribed and aligned with the recording.</p>
-        </div>
-        <div>
-          <h3>Accessibility</h3>
-          <p>Required for Fn tap and other modifier-only recording shortcuts.</p>
-        </div>
-      </div>
-    </section>
   </main>
 </body>
 </html>

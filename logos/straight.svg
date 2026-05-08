@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="235 235 554 554">
   <!-- straight -->
-  <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="#13161c"/>
   <g fill="none" stroke="#ffffff" stroke-linecap="round">
     <defs>
       <mask id="head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
@@ -14,8 +13,8 @@
     <circle cx="512" cy="512" r="259" stroke-width="21" mask="url(#head-mask)"/>
     <!-- glasses (translated as a group) -->
     <g stroke-width="18">
-      <circle cx="407" cy="512" r="61" fill="#13161c" stroke="none"/>
-      <circle cx="617" cy="512" r="61" fill="#13161c" stroke="none"/>
+      <circle cx="407" cy="512" r="61" fill="transparent" stroke="none"/>
+      <circle cx="617" cy="512" r="61" fill="transparent" stroke="none"/>
       <circle cx="407" cy="512" r="70"/>
       <circle cx="617" cy="512" r="70"/>
       <line x1="477" y1="512" x2="547" y2="512"/>
