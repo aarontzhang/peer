@@ -21,21 +21,21 @@
 - [x] Show a clear unavailable-state message if a chosen key requires Accessibility permission or cannot be registered.
 - [x] Keep pill click-to-record.
 
-## Ship-Ready SaaS Release (pending)
+## Ship-Ready SaaS Release (implemented)
 
-- [ ] Target macOS only for the first downloadable release.
-- [ ] Move from local provider keys to a managed SaaS backend using Vercel and Supabase.
-- [ ] Use a free beta release model with usage limits, not paid subscriptions on day one.
-- [ ] Add desktop authentication through browser login returning a device token or deep link, stored in macOS Keychain.
-- [ ] Build a download website with account login, latest macOS download, onboarding notes for Screen Recording/Microphone/Accessibility permissions, and basic release/version info.
-- [ ] Replace ad-hoc local signing with a proper macOS release path: production bundle identifier, Developer ID signing, notarization, DMG target, and release automation.
+- [x] Target macOS only for the first downloadable release.
+- [x] Move from local provider keys to a managed SaaS backend using Vercel and Supabase.
+- [x] Use a free beta release model with usage limits, not paid subscriptions on day one.
+- [x] Add desktop authentication through browser login returning a device token or deep link, stored in macOS Keychain.
+- [x] Build a download website with account login, latest macOS download, onboarding notes for Screen Recording/Microphone/Accessibility permissions, and basic release/version info.
+- [x] Replace ad-hoc local signing with a proper macOS release path: production bundle identifier, Developer ID signing, notarization, DMG target, and release automation.
 
 ## Public Interfaces And Types
 
 - [x] Keep the visual analysis provider boundary so window observations can change provider without changing downstream aggregation shape.
 - [x] Keep the existing per-window observation JSON contract: `userSpeech`, `pointing`, and `visibleContext`.
 - [x] Add timing telemetry as internal structured logs first; no user-facing schema change required for Milestone 1.
-- [ ] Later milestones add backend auth/API interfaces.
+- [x] Later milestones add backend auth/API interfaces.
 
 ## Test Plan
 

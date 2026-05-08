@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peer</title>
+  <link rel="stylesheet" href="/site/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <img src="/logos/preview.png" alt="" width="32" height="32">
+      <span>Peer</span>
+    </a>
+    <nav>
+      <a href="/api/desktop-login">Account Login</a>
+      <a href="/download/latest">Download</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero__copy">
+        <h1>Peer</h1>
+        <p>Mac screen recording and narration turned into a paste-ready instruction set for coding agents.</p>
+        <div class="hero__actions">
+          <a class="button button--primary" href="/download/latest">Download for macOS</a>
+          <a class="button" href="/api/desktop-login">Account login</a>
+        </div>
+      </div>
+      <img class="hero__image" src="/logos/preview.png" alt="Peer app icon">
+    </section>
+
+    <section class="band">
+      <div class="grid">
+        <article>
+          <h2>Latest Release</h2>
+          <p>The first public build targets macOS only. The download link resolves to the latest signed DMG configured for this deployment.</p>
+        </article>
+        <article>
+          <h2>Free Beta</h2>
+          <p>Beta accounts use device tokens and monthly usage limits while the product shape is still settling.</p>
+        </article>
+        <article>
+          <h2>Managed Processing</h2>
+          <p>The desktop app signs in with a device token and routes model calls through the Peer backend instead of storing provider keys for production use.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="permissions">
+      <h2>Mac Permissions</h2>
+      <div class="permission-list">
+        <div>
+          <h3>Screen Recording</h3>
+          <p>Required so Peer can capture the app or browser window you are pointing at.</p>
+        </div>
+        <div>
+          <h3>Microphone</h3>
+          <p>Required so your narration can be transcribed and aligned with the recording.</p>
+        </div>
+        <div>
+          <h3>Accessibility</h3>
+          <p>Required for Fn tap and other modifier-only recording shortcuts.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

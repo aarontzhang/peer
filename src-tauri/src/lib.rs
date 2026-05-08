@@ -9,6 +9,7 @@ mod hotkey;
 mod ipc;
 mod pipeline;
 mod recording;
+mod saas;
 mod state;
 
 pub use state::AppState;
@@ -68,6 +69,10 @@ pub fn run() {
             ipc::open_result_window,
             ipc::set_api_key,
             ipc::get_api_key_status,
+            ipc::get_account_status,
+            ipc::open_account_login,
+            ipc::set_device_token,
+            ipc::sign_out,
             ipc::get_hotkey_status,
             ipc::set_recording_keybind,
             ipc::move_pill,

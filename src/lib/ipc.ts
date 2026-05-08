@@ -36,6 +36,12 @@ export type ThinkingEvent = { id: string; thinking: string };
 
 export type ApiKeyStatus = { openai: boolean; anthropic: boolean };
 
+export type AccountStatus = {
+  signedIn: boolean;
+  backendUrl: string;
+  deviceId: string;
+};
+
 export type RecordingKeybind = 'rightOption' | 'fn' | 'cmdShiftR';
 
 export type HotkeyStatus = {
@@ -59,6 +65,10 @@ export const ipc = {
   setApiKey: (provider: 'openai' | 'anthropic', key: string) =>
     invoke<void>('set_api_key', { args: { provider, key } }),
   getApiKeyStatus: () => invoke<ApiKeyStatus>('get_api_key_status'),
+  getAccountStatus: () => invoke<AccountStatus>('get_account_status'),
+  openAccountLogin: () => invoke<string>('open_account_login'),
+  setDeviceToken: (token: string) => invoke<void>('set_device_token', { args: { token } }),
+  signOut: () => invoke<void>('sign_out'),
   getHotkeyStatus: () => invoke<HotkeyStatus>('get_hotkey_status'),
   setRecordingKeybind: (keybind: RecordingKeybind) =>
     invoke<HotkeyStatus>('set_recording_keybind', { keybind }),

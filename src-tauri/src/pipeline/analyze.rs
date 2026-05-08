@@ -17,6 +17,8 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Semaphore;
 
+use crate::saas::SaasClient;
+
 use super::keyframes::Keyframe;
 use super::prompts;
 use super::transcribe::Transcript;
@@ -46,6 +48,50 @@ pub async fn analyze_and_aggregate(
     transcript: &Transcript,
     total_secs: f64,
 ) -> Result<AnalysisOutput> {
+    analyze_and_aggregate_inner(
+        app,
+        id,
+        AnalysisProvider::Anthropic(anthropic_key.to_string()),
+        frames,
+        transcript,
+        total_secs,
+    )
+    .await
+}
+
+pub async fn analyze_and_aggregate_with_backend(
+    app: AppHandle,
+    id: String,
+    backend: &SaasClient,
+    frames: &[Keyframe],
+    transcript: &Transcript,
+    total_secs: f64,
+) -> Result<AnalysisOutput> {
+    analyze_and_aggregate_inner(
+        app,
+        id,
+        AnalysisProvider::Backend(backend.clone()),
+        frames,
+        transcript,
+        total_secs,
+    )
+    .await
+}
+
+#[derive(Clone)]
+enum AnalysisProvider {
+    Anthropic(String),
+    Backend(SaasClient),
+}
+
+async fn analyze_and_aggregate_inner(
+    app: AppHandle,
+    id: String,
+    provider: AnalysisProvider,
+    frames: &[Keyframe],
+    transcript: &Transcript,
+    total_secs: f64,
+) -> Result<AnalysisOutput> {
     if frames.is_empty() && transcript.entries.is_empty() {
         return Err(anyhow!("nothing to analyze — no frames or transcript"));
     }
@@ -63,7 +109,7 @@ pub async fn analyze_and_aggregate(
     let mut tasks = FuturesUnordered::new();
     for (i, w) in windows.iter().enumerate() {
         let client = client.clone();
-        let key = anthropic_key.to_string();
+        let provider = provider.clone();
         let sem = sem.clone();
         let frames = w.frames.clone();
         let slice = transcript.slice(w.t_start, w.t_end);
@@ -71,7 +117,7 @@ pub async fn analyze_and_aggregate(
         let t_end = w.t_end;
         tasks.push(tokio::spawn(async move {
             let _permit = sem.acquire_owned().await.unwrap();
-            analyze_window(&client, &key, i, t_start, t_end, &frames, &slice).await
+            analyze_window(&client, &provider, i, t_start, t_end, &frames, &slice).await
         }));
     }
 
@@ -125,16 +171,31 @@ pub async fn analyze_and_aggregate(
         window_results.into_iter().map(|(_, v)| v).collect(),
     ))?;
 
-    let final_md = aggregate_streaming(
-        app,
-        id,
-        &client,
-        anthropic_key,
-        &observations_json,
-        &transcript_summary(transcript),
-        total_secs,
-    )
-    .await?;
+    let final_md = match provider {
+        AnalysisProvider::Anthropic(key) => {
+            aggregate_streaming(
+                app,
+                id,
+                &client,
+                &key,
+                &observations_json,
+                &transcript_summary(transcript),
+                total_secs,
+            )
+            .await?
+        }
+        AnalysisProvider::Backend(backend) => {
+            aggregate_streaming_backend(
+                app,
+                id,
+                &backend,
+                &observations_json,
+                &transcript_summary(transcript),
+                total_secs,
+            )
+            .await?
+        }
+    };
 
     Ok(AnalysisOutput {
         final_md,
@@ -251,7 +312,7 @@ fn window_frames(frames: &[Keyframe], total_secs: f64) -> Vec<Window> {
 
 async fn analyze_window(
     client: &reqwest::Client,
-    key: &str,
+    provider: &AnalysisProvider,
     index: usize,
     t_start: f64,
     t_end: f64,
@@ -259,6 +320,38 @@ async fn analyze_window(
     transcript_slice: &str,
 ) -> Result<(usize, Value)> {
     let started = Instant::now();
+    if let AnalysisProvider::Backend(backend) = provider {
+        let mut encoded_frames = Vec::with_capacity(frames.len());
+        for frame in frames {
+            encoded_frames.push(json!({
+                "mediaType": "image/jpeg",
+                "data": read_image_b64(&frame.path).await?,
+            }));
+        }
+        let json_value: Value = backend
+            .post_json(
+                "/api/vision-window",
+                json!({
+                    "index": index,
+                    "tStart": t_start,
+                    "tEnd": t_end,
+                    "frames": encoded_frames,
+                    "transcriptSlice": transcript_slice,
+                }),
+            )
+            .await?;
+        tracing::info!(
+            window = index + 1,
+            elapsed_ms = started.elapsed().as_millis(),
+            "stage Peer backend vision window complete"
+        );
+        return Ok((index, json_value));
+    }
+
+    let AnalysisProvider::Anthropic(key) = provider else {
+        unreachable!();
+    };
+
     let mut content: Vec<Value> = Vec::with_capacity(frames.len() + 1);
     for frame in frames {
         let data = read_image_b64(&frame.path).await?;
@@ -447,6 +540,78 @@ async fn aggregate_streaming(
         elapsed_ms = started.elapsed().as_millis(),
         output_chars = acc.len(),
         "stage Claude aggregation complete"
+    );
+    Ok(acc.trim().to_string())
+}
+
+async fn aggregate_streaming_backend(
+    app: AppHandle,
+    id: String,
+    backend: &SaasClient,
+    observations_json: &str,
+    transcript_text: &str,
+    total_secs: f64,
+) -> Result<String> {
+    let started = Instant::now();
+    let res = backend
+        .post_stream("/api/aggregate")?
+        .json(&json!({
+            "observationsJson": observations_json,
+            "transcriptText": transcript_text,
+            "totalSecs": total_secs,
+        }))
+        .send()
+        .await?;
+
+    if !res.status().is_success() {
+        let s = res.status();
+        let t = res.text().await.unwrap_or_default();
+        return Err(anyhow!("Peer backend aggregator: {s} — {t}"));
+    }
+
+    let mut acc = String::new();
+    let mut stream = res.bytes_stream();
+    let mut buf = String::new();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        buf.push_str(&String::from_utf8_lossy(&chunk));
+        loop {
+            let Some(idx) = buf.find("\n\n") else { break };
+            let event_block = buf[..idx].to_string();
+            buf.drain(..=idx + 1);
+
+            for line in event_block.lines() {
+                let Some(data) = line.strip_prefix("data:") else {
+                    continue;
+                };
+                let data = data.trim();
+                if data.is_empty() || data == "[DONE]" {
+                    continue;
+                }
+                let Ok(v): Result<Value, _> = serde_json::from_str(data) else {
+                    continue;
+                };
+                let kind = v["type"].as_str().unwrap_or("");
+                if kind == "content_block_delta" {
+                    if let Some(text) = v["delta"]["text"].as_str() {
+                        acc.push_str(text);
+                        let chunk = ResultChunk {
+                            id: id.clone(),
+                            kind: ChunkKind::Delta,
+                            text: text.to_string(),
+                        };
+                        let _ = app.emit("result:chunk", &chunk);
+                    }
+                }
+            }
+        }
+    }
+
+    tracing::info!(
+        elapsed_ms = started.elapsed().as_millis(),
+        output_chars = acc.len(),
+        "stage Peer backend aggregation complete"
     );
     Ok(acc.trim().to_string())
 }

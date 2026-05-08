@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
+import { ipc, type AccountStatus, type HotkeyStatus, type Recording } from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
 import { toPlainText } from '@/lib/plainText';
 import { HistorySidebar } from './HistorySidebar';
@@ -59,6 +59,7 @@ export function App() {
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [keys, setKeys] = useState<{ openai: boolean; anthropic: boolean }>({ openai: false, anthropic: false });
+  const [account, setAccount] = useState<AccountStatus | null>(null);
   const [hotkey, setHotkey] = useState<HotkeyStatus | null>(null);
 
   const getMaxSidebarWidth = useCallback(() => {
@@ -133,6 +134,7 @@ export function App() {
   useEffect(() => {
     void refreshList();
     void ipc.getApiKeyStatus().then(setKeys);
+    void ipc.getAccountStatus().then(setAccount);
     void ipc.getHotkeyStatus().then(setHotkey);
     const unsub = ipc.onHotkeyStatus(setHotkey);
     return () => { void unsub.then((fn) => fn()); };
@@ -251,7 +253,7 @@ export function App() {
 
   const liveThinking = selectedId ? liveThinkingRef.current.get(selectedId) ?? null : null;
 
-  const needsKeys = !(keys.openai && keys.anthropic);
+  const needsKeys = !(account?.signedIn || (keys.openai && keys.anthropic));
   const hasContent = !!selected;
 
   const showHotkeyWarning = hotkey !== null && !hotkey.installed;
@@ -306,7 +308,10 @@ export function App() {
       <Settings
         open={showSettings}
         onClose={() => setShowSettings(false)}
-        onSaved={() => { void ipc.getApiKeyStatus().then(setKeys); }}
+        onSaved={() => {
+          void ipc.getApiKeyStatus().then(setKeys);
+          void ipc.getAccountStatus().then(setAccount);
+        }}
       />
     </div>
   );

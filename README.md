@@ -9,8 +9,8 @@ Recording keybind (Fn by default, Right Option/Cmd+Shift+R optional)
    └─ Rust orchestrator
        ├─ Swift sidecar (ScreenCaptureKit) → mp4
        ├─ ffmpeg scene-detect keyframes (uniform-fps fallback)
-       ├─ ffmpeg → mp3 → parallel Whisper chunks → dedupe
-       └─ parallel Claude window analyzers → aggregator → markdown stream
+       ├─ ffmpeg → mp3 → parallel transcription chunks → dedupe
+       └─ parallel vision window analyzers → aggregator → markdown stream
 ```
 
 Two windows: a 280×40 always-on-top **pill** (`pill.html`) and a 760×560 **result window** (`index.html`).
@@ -34,7 +34,35 @@ pnpm sidecar
 
 This requires **full Xcode** (not just Command Line Tools) so that `xcrun --sdk macosx --show-sdk-platform-path` resolves. If `swift build` errors with `unable to lookup item 'PlatformPath'`, install Xcode from the App Store and run `sudo xcode-select -s /Applications/Xcode.app`.
 
-API keys (OpenAI for Whisper, Anthropic for Claude) live in macOS Keychain. Add them via the Settings panel inside the result window.
+Production builds use a Peer account token stored in macOS Keychain and route model calls through the managed backend. Local OpenAI and Anthropic keys remain available in Settings as a development fallback.
+
+### Managed backend
+
+The Vercel API surface lives in `api/` and uses Supabase tables from `supabase/schema.sql`.
+
+Required Vercel environment:
+
+```sh
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
+PEER_BETA_INVITE_CODE=...
+PEER_MACOS_DOWNLOAD_URL=...
+PEER_FREE_BETA_MONTHLY_LIMIT=100
+```
+
+The public download/account site lives in `site/`. Desktop login opens `/api/desktop-login`, creates a device token, and the app stores that token in Keychain.
+
+### macOS release
+
+```sh
+APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+APPLE_NOTARYTOOL_PROFILE="peer-notary" \
+pnpm release:mac
+```
+
+The release script builds the Swift sidecar, builds the Tauri macOS app, signs with the hardened runtime, creates a DMG, signs the DMG, and notarizes/staples it when a notary profile is present.
 
 ## Layout
 

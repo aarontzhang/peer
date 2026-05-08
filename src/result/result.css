@@ -529,6 +529,11 @@ html, body {
   gap: 8px;
   align-items: center;
 }
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .field__hint,
 .field__error {
   margin: 0;

@@ -15,8 +15,8 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::db::RecordingStatus;
-use crate::ipc;
 use crate::recording::{emit, PillEvent};
+use crate::saas::SaasClient;
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, Clone)]
@@ -43,10 +43,23 @@ pub async fn run(
     duration_ms: u64,
 ) -> Result<()> {
     let total_started = Instant::now();
-    let openai =
-        ipc::read_api_key(&app, "openai").context("OpenAI key missing — set it in Settings")?;
-    let anthropic = ipc::read_api_key(&app, "anthropic")
-        .context("Anthropic key missing — set it in Settings")?;
+    let saas = SaasClient::from_keychain();
+    let openai = if saas.is_none() {
+        Some(
+            crate::ipc::read_api_key(&app, "openai")
+                .context("OpenAI key missing — sign in or set local dev keys in Settings")?,
+        )
+    } else {
+        None
+    };
+    let anthropic = if saas.is_none() {
+        Some(
+            crate::ipc::read_api_key(&app, "anthropic")
+                .context("Anthropic key missing — sign in or set local dev keys in Settings")?,
+        )
+    } else {
+        None
+    };
 
     // Mark processing.
     if let Some(mut rec) = state.db().get_recording(&id).await? {
@@ -102,6 +115,7 @@ pub async fn run(
     let id_tx = id.clone();
     let video_tx = video_path.clone();
     let openai_clone = openai.clone();
+    let saas_clone = saas.clone();
     let tx_handle = tokio::spawn(async move {
         let started = Instant::now();
         emit(
@@ -112,7 +126,20 @@ pub async fn run(
                 progress: 0.22,
             },
         );
-        let result = transcribe::transcribe(&video_tx, &openai_clone, total_secs).await;
+        let result = match saas_clone.as_ref() {
+            Some(client) => {
+                transcribe::transcribe_with_backend(&video_tx, client, total_secs).await
+            }
+            None => {
+                let key = openai_clone
+                    .as_deref()
+                    .context("OpenAI key missing — sign in or set local dev keys in Settings");
+                match key {
+                    Ok(key) => transcribe::transcribe(&video_tx, key, total_secs).await,
+                    Err(err) => Err(err),
+                }
+            }
+        };
         match &result {
             Ok(transcript) => tracing::info!(
                 elapsed_ms = started.elapsed().as_millis(),
@@ -181,15 +208,33 @@ pub async fn run(
     let analyze::AnalysisOutput {
         final_md,
         thinking_md,
-    } = analyze::analyze_and_aggregate(
-        app.clone(),
-        id.clone(),
-        &anthropic,
-        &frames,
-        &transcript,
-        total_secs,
-    )
-    .await?;
+    } = match saas.as_ref() {
+        Some(client) => {
+            analyze::analyze_and_aggregate_with_backend(
+                app.clone(),
+                id.clone(),
+                client,
+                &frames,
+                &transcript,
+                total_secs,
+            )
+            .await?
+        }
+        None => {
+            let key = anthropic
+                .as_deref()
+                .context("Anthropic key missing — sign in or set local dev keys in Settings")?;
+            analyze::analyze_and_aggregate(
+                app.clone(),
+                id.clone(),
+                key,
+                &frames,
+                &transcript,
+                total_secs,
+            )
+            .await?
+        }
+    };
 
     let final_text = normalize_prompt_text(&final_md);
     let summary = first_line(&final_text);

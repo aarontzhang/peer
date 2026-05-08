@@ -10,7 +10,7 @@ export function EmptyState({ needsKeys, onOpenSettings }: Props) {
         {needsKeys && (
           <div className="main__actions">
             <button className="btn btn--primary" onClick={onOpenSettings}>
-              Add API keys
+              Sign in
             </button>
           </div>
         )}

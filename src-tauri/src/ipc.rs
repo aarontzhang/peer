@@ -7,6 +7,7 @@ use crate::db::Recording;
 use crate::hotkey::{self, HotkeyStatus, RecordingKeybind};
 use crate::recording;
 use crate::reveal_result_window;
+use crate::saas::{self, AccountStatus, SetDeviceTokenArgs};
 use crate::state::AppState;
 
 /// Read API keys from `<app_data_dir>/keys.json` if present. Returns
@@ -181,6 +182,26 @@ pub fn get_api_key_status(app: AppHandle) -> Result<ApiKeyStatus, String> {
         openai: read_api_key(&app, "openai").is_some(),
         anthropic: read_api_key(&app, "anthropic").is_some(),
     })
+}
+
+#[tauri::command]
+pub fn get_account_status(app: AppHandle) -> Result<AccountStatus, String> {
+    Ok(saas::account_status(&app))
+}
+
+#[tauri::command]
+pub fn open_account_login(app: AppHandle) -> Result<String, String> {
+    saas::open_login(&app).map_err(err_to_string)
+}
+
+#[tauri::command]
+pub fn set_device_token(args: SetDeviceTokenArgs) -> Result<(), String> {
+    saas::set_device_token(args).map_err(err_to_string)
+}
+
+#[tauri::command]
+pub fn sign_out() -> Result<(), String> {
+    saas::sign_out().map_err(err_to_string)
 }
 
 /// Resolve an API key for `provider`. Order:
