@@ -22,6 +22,15 @@ pnpm install
 pnpm tauri dev
 ```
 
+Local development reads provider keys from `.env.local` as a fallback, so this
+is enough for model calls without signing in to the managed backend:
+
+```sh
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+PEER_BACKEND_URL=... # optional
+```
+
 The first run pulls Tauri 2 deps and compiles the Rust core (~60s the first time). Once the pill window appears, tap **Fn** to start a recording, tap **Fn** again to stop. You can switch the recording keybind in Settings.
 
 ### Swift sidecar (optional, for production capture quality)
@@ -34,7 +43,7 @@ pnpm sidecar
 
 This requires **full Xcode** (not just Command Line Tools) so that `xcrun --sdk macosx --show-sdk-platform-path` resolves. If `swift build` errors with `unable to lookup item 'PlatformPath'`, install Xcode from the App Store and run `sudo xcode-select -s /Applications/Xcode.app`.
 
-Production builds use a Peer account token stored in macOS Keychain and route model calls through the managed backend. Local OpenAI and Anthropic keys remain available in Settings as a development fallback.
+Production builds use a Peer account token stored in macOS Keychain and route model calls through the managed backend. Local OpenAI and Anthropic keys from `.env.local` (or pre-existing keychain entries) remain available as a development fallback when no account is signed in.
 
 ### Managed backend
 

@@ -56,7 +56,7 @@ impl AppState {
             frames_dir,
             bin_dir,
             current: Arc::new(Mutex::new(None)),
-            recording_keybind: Arc::new(Mutex::new(recording_keybind)),
+            recording_keybind: Arc::new(Mutex::new(recording_keybind.clone())),
             hotkey_availability: Arc::new(Mutex::new(HotkeyAvailability::default())),
             hotkey_status: Arc::new(Mutex::new(HotkeyStatus::unknown(recording_keybind))),
         })

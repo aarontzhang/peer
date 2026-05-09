@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ipc, type Recording, formatDuration, formatRelative } from '@/lib/ipc';
 import { firstPlainTextLine } from '@/lib/plainText';
 
@@ -7,9 +7,10 @@ type Props = {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onChanged: () => void;
+  footer?: ReactNode;
 };
 
-export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props) {
+export function HistorySidebar({ items, selectedId, onSelect, onChanged, footer }: Props) {
   const [busy, setBusy] = useState(false);
 
   const onDelete = async (rec: Recording, e: React.MouseEvent) => {
@@ -81,6 +82,7 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged }: Props
           );
         })}
       </div>
+      {footer}
     </aside>
   );
 }

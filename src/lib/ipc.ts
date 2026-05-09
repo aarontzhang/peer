@@ -30,19 +30,16 @@ export type ResultChunk = {
   text: string;
 };
 
-export type TranscriptEvent = { id: string; transcript: string };
-
 export type ThinkingEvent = { id: string; thinking: string };
-
-export type ApiKeyStatus = { openai: boolean; anthropic: boolean };
 
 export type AccountStatus = {
   signedIn: boolean;
-  backendUrl: string;
-  deviceId: string;
 };
 
-export type RecordingKeybind = 'rightOption' | 'fn' | 'cmdShiftR';
+export type RecordingKeybind =
+  | { kind: 'fn' }
+  | { kind: 'rightOption' }
+  | { kind: 'chord'; mods: string[]; code: string; label: string };
 
 export type HotkeyStatus = {
   keybind: RecordingKeybind;
@@ -62,9 +59,6 @@ export const ipc = {
   openResultWindow: () => invoke<void>('open_result_window'),
   movePill: (x: number, y: number) => invoke<void>('move_pill', { x, y }),
   cursorPosition: () => invoke<[number, number]>('cursor_position'),
-  setApiKey: (provider: 'openai' | 'anthropic', key: string) =>
-    invoke<void>('set_api_key', { args: { provider, key } }),
-  getApiKeyStatus: () => invoke<ApiKeyStatus>('get_api_key_status'),
   getAccountStatus: () => invoke<AccountStatus>('get_account_status'),
   openAccountLogin: () => invoke<string>('open_account_login'),
   setDeviceToken: (token: string) => invoke<void>('set_device_token', { args: { token } }),
@@ -77,8 +71,6 @@ export const ipc = {
     listen<PillEvent>('pill:state', (e) => cb(e.payload)),
   onResultChunk: (cb: (c: ResultChunk) => void): Promise<UnlistenFn> =>
     listen<ResultChunk>('result:chunk', (e) => cb(e.payload)),
-  onTranscript: (cb: (t: TranscriptEvent) => void): Promise<UnlistenFn> =>
-    listen<TranscriptEvent>('result:transcript', (e) => cb(e.payload)),
   onThinking: (cb: (t: ThinkingEvent) => void): Promise<UnlistenFn> =>
     listen<ThinkingEvent>('result:thinking', (e) => cb(e.payload)),
   onHotkeyStatus: (cb: (s: HotkeyStatus) => void): Promise<UnlistenFn> =>

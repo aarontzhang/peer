@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 
 use crate::db::Recording;
@@ -27,24 +26,47 @@ fn read_keys_file(app: &AppHandle) -> (Option<String>, Option<String>) {
         value
             .get(k)
             .and_then(|v| v.as_str())
+            .map(str::trim)
             .map(str::to_string)
             .filter(|s| !s.is_empty())
     };
     (pick("openai"), pick("anthropic"))
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ApiKeyStatus {
-    pub openai: bool,
-    pub anthropic: bool,
+/// Drop a provider entry from `<app_data_dir>/keys.json`. Used as
+/// defensive cleanup when a wrong-provider key is detected on read,
+/// so the same bad value doesn't keep getting silently filtered on
+/// every recording.
+fn purge_keys_file_entry(app: &AppHandle, provider: &str) {
+    let Ok(dir) = app.path().app_data_dir() else {
+        return;
+    };
+    let path = dir.join("keys.json");
+    let Ok(bytes) = std::fs::read(&path) else {
+        return;
+    };
+    let Ok(mut value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+        return;
+    };
+    let Some(map) = value.as_object_mut() else {
+        return;
+    };
+    if map.remove(provider).is_some() {
+        if let Ok(new_bytes) = serde_json::to_vec_pretty(&value) {
+            let _ = std::fs::write(&path, new_bytes);
+        }
+    }
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SetApiKeyArgs {
-    pub provider: String, // "openai" | "anthropic"
-    pub key: String,
+fn purge_keychain_entry(provider: &str) {
+    let account = match provider {
+        "openai" => "openai-api-key",
+        "anthropic" => "anthropic-api-key",
+        _ => return,
+    };
+    if let Ok(entry) = keyring::Entry::new("Peer", account) {
+        let _ = entry.delete_credential();
+    }
 }
 
 fn err_to_string(e: impl std::fmt::Display) -> String {
@@ -150,19 +172,6 @@ pub fn cursor_position() -> Result<[f64; 2], String> {
 }
 
 #[tauri::command]
-pub fn set_api_key(args: SetApiKeyArgs) -> Result<(), String> {
-    let service = "Peer";
-    let account = match args.provider.as_str() {
-        "openai" => "openai-api-key",
-        "anthropic" => "anthropic-api-key",
-        other => return Err(format!("unknown provider: {other}")),
-    };
-    let entry = keyring::Entry::new(service, account).map_err(err_to_string)?;
-    entry.set_password(&args.key).map_err(err_to_string)?;
-    Ok(())
-}
-
-#[tauri::command]
 pub fn get_hotkey_status(state: State<'_, Arc<AppState>>) -> Result<HotkeyStatus, String> {
     Ok(state.hotkey_status.lock().clone())
 }
@@ -177,16 +186,8 @@ pub fn set_recording_keybind(
 }
 
 #[tauri::command]
-pub fn get_api_key_status(app: AppHandle) -> Result<ApiKeyStatus, String> {
-    Ok(ApiKeyStatus {
-        openai: read_api_key(&app, "openai").is_some(),
-        anthropic: read_api_key(&app, "anthropic").is_some(),
-    })
-}
-
-#[tauri::command]
-pub fn get_account_status(app: AppHandle) -> Result<AccountStatus, String> {
-    Ok(saas::account_status(&app))
+pub fn get_account_status() -> Result<AccountStatus, String> {
+    Ok(saas::account_status())
 }
 
 #[tauri::command]
@@ -209,8 +210,9 @@ pub fn sign_out() -> Result<(), String> {
 ///   2. macOS Keychain — legacy Settings dialog
 ///   3. Process env (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) — dev fallback
 ///
-/// Settings wins over env so a stale `ANTHROPIC_API_KEY` in a user's shell
-/// can't silently override the key they just entered in the app.
+/// Settings wins over env so a stale key in a user's shell can't silently
+/// override the key they just entered in the app. Obvious cross-provider keys
+/// are skipped so `OPENAI_API_KEY=sk-ant-...` never reaches Whisper.
 pub fn read_api_key(app: &AppHandle, provider: &str) -> Option<String> {
     let (env_var, account) = match provider {
         "openai" => ("OPENAI_API_KEY", "openai-api-key"),
@@ -223,15 +225,74 @@ pub fn read_api_key(app: &AppHandle, provider: &str) -> Option<String> {
         "anthropic" => anthropic,
         _ => None,
     };
-    if from_file.is_some() {
-        return from_file;
+    if let Some(raw) = from_file.as_deref() {
+        if is_wrong_provider_key(provider, raw) {
+            tracing::warn!(
+                provider,
+                "purging cross-provider key from keys.json (was a {} key)",
+                key_provider_label(raw)
+            );
+            purge_keys_file_entry(app, provider);
+        } else if let Some(v) = clean_provider_key(provider, from_file.clone()) {
+            return Some(v);
+        }
     }
-    if let Some(v) = keyring::Entry::new("Peer", account)
+    let from_keyring = keyring::Entry::new("Peer", account)
         .and_then(|e| e.get_password())
-        .ok()
-        .filter(|s| !s.is_empty())
-    {
-        return Some(v);
+        .ok();
+    if let Some(raw) = from_keyring.as_deref() {
+        if is_wrong_provider_key(provider, raw) {
+            tracing::warn!(
+                provider,
+                "purging cross-provider key from Keychain (was a {} key)",
+                key_provider_label(raw)
+            );
+            purge_keychain_entry(provider);
+        } else if let Some(v) = clean_provider_key(provider, from_keyring.clone()) {
+            return Some(v);
+        }
     }
-    std::env::var(env_var).ok().filter(|s| !s.is_empty())
+    clean_provider_key(provider, std::env::var(env_var).ok())
+}
+
+fn clean_provider_key(provider: &str, key: Option<String>) -> Option<String> {
+    key.map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .filter(|s| !is_wrong_provider_key(provider, s))
+}
+
+fn is_wrong_provider_key(provider: &str, key: &str) -> bool {
+    match provider {
+        "openai" => key.starts_with("sk-ant-"),
+        "anthropic" => {
+            key.starts_with("sk-proj-") || (key.starts_with("sk-") && !key.starts_with("sk-ant-"))
+        }
+        _ => false,
+    }
+}
+
+fn key_provider_label(key: &str) -> &'static str {
+    if key.starts_with("sk-ant-") {
+        "Anthropic"
+    } else if key.starts_with("sk-proj-") || key.starts_with("sk-") {
+        "OpenAI"
+    } else {
+        "Provider"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_wrong_provider_key;
+
+    #[test]
+    fn rejects_cross_provider_keys() {
+        assert!(is_wrong_provider_key("openai", "sk-ant-example"));
+        assert!(is_wrong_provider_key("anthropic", "sk-proj-example"));
+        assert!(is_wrong_provider_key("anthropic", "sk-example"));
+
+        assert!(!is_wrong_provider_key("openai", "sk-proj-example"));
+        assert!(!is_wrong_provider_key("openai", "sk-example"));
+        assert!(!is_wrong_provider_key("anthropic", "sk-ant-example"));
+    }
 }

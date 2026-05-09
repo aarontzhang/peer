@@ -34,7 +34,7 @@ pub fn set_recording_keybind(
     state: Arc<AppState>,
     keybind: RecordingKeybind,
 ) -> Result<HotkeyStatus> {
-    save_recording_keybind(&state.data_dir, keybind)?;
+    save_recording_keybind(&state.data_dir, &keybind)?;
     {
         let mut selected = state.recording_keybind.lock();
         *selected = keybind;
@@ -81,12 +81,19 @@ enum Phase {
     Review,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
+/// User-selected recording trigger. `Fn` and `RightOption` use a CGEventTap
+/// to detect a tap of the modifier alone; `Chord` registers an arbitrary
+/// global accelerator via `tauri-plugin-global-shortcut`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
 pub enum RecordingKeybind {
-    RightOption,
     Fn,
-    CmdShiftR,
+    RightOption,
+    Chord {
+        mods: Vec<String>,
+        code: String,
+        label: String,
+    },
 }
 
 impl Default for RecordingKeybind {
@@ -96,12 +103,16 @@ impl Default for RecordingKeybind {
 }
 
 impl RecordingKeybind {
-    pub fn label(self) -> &'static str {
+    pub fn label(&self) -> String {
         match self {
-            Self::RightOption => "Right Option",
-            Self::Fn => "Fn",
-            Self::CmdShiftR => "Cmd+Shift+R",
+            Self::Fn => "Fn".into(),
+            Self::RightOption => "Right Option".into(),
+            Self::Chord { label, .. } => label.clone(),
         }
+    }
+
+    pub fn is_modifier_tap(&self) -> bool {
+        matches!(self, Self::Fn | Self::RightOption)
     }
 }
 
@@ -122,11 +133,11 @@ pub fn load_recording_keybind(data_dir: &Path) -> RecordingKeybind {
         .unwrap_or_default()
 }
 
-fn save_recording_keybind(data_dir: &Path, keybind: RecordingKeybind) -> Result<()> {
+fn save_recording_keybind(data_dir: &Path, keybind: &RecordingKeybind) -> Result<()> {
     std::fs::create_dir_all(data_dir)?;
     let path = data_dir.join("settings.json");
     let bytes = serde_json::to_vec_pretty(&SettingsFile {
-        recording_keybind: keybind,
+        recording_keybind: keybind.clone(),
     })
     .context("serialize hotkey settings")?;
     std::fs::write(path, bytes).context("write hotkey settings")
@@ -135,7 +146,7 @@ fn save_recording_keybind(data_dir: &Path, keybind: RecordingKeybind) -> Result<
 #[derive(Debug, Clone, Default)]
 pub struct HotkeyAvailability {
     pub modifier_tap: Option<std::result::Result<(), String>>,
-    pub cmd_shift_r: Option<std::result::Result<(), String>>,
+    pub chord: Option<std::result::Result<(), String>>,
 }
 
 pub fn set_modifier_tap_availability(
@@ -150,21 +161,21 @@ pub fn set_modifier_tap_availability(
     publish_status(app, state);
 }
 
-pub fn set_cmd_shift_r_availability(
+pub fn set_chord_availability(
     app: &AppHandle,
     state: &AppState,
     availability: std::result::Result<(), String>,
 ) {
     {
         let mut a = state.hotkey_availability.lock();
-        a.cmd_shift_r = Some(availability);
+        a.chord = Some(availability);
     }
     publish_status(app, state);
 }
 
 pub fn publish_status(app: &AppHandle, state: &AppState) -> HotkeyStatus {
-    let keybind = *state.recording_keybind.lock();
-    let status = status_for(keybind, &state.hotkey_availability.lock());
+    let keybind = state.recording_keybind.lock().clone();
+    let status = status_for(&keybind, &state.hotkey_availability.lock());
     {
         let mut s = state.hotkey_status.lock();
         *s = status.clone();
@@ -186,9 +197,10 @@ pub struct HotkeyStatus {
 
 impl HotkeyStatus {
     pub fn unknown(keybind: RecordingKeybind) -> Self {
+        let label = keybind.label();
         Self {
             keybind,
-            label: keybind.label().into(),
+            label,
             installed: false,
             reason: Some(
                 "Hotkey is initializing. If this persists, grant Peer \
@@ -200,24 +212,26 @@ impl HotkeyStatus {
     }
 }
 
-fn status_for(keybind: RecordingKeybind, availability: &HotkeyAvailability) -> HotkeyStatus {
-    let selected = match keybind {
-        RecordingKeybind::RightOption | RecordingKeybind::Fn => &availability.modifier_tap,
-        RecordingKeybind::CmdShiftR => &availability.cmd_shift_r,
+fn status_for(keybind: &RecordingKeybind, availability: &HotkeyAvailability) -> HotkeyStatus {
+    let selected = if keybind.is_modifier_tap() {
+        &availability.modifier_tap
+    } else {
+        &availability.chord
     };
+    let label = keybind.label();
     match selected {
         Some(Ok(())) => HotkeyStatus {
-            keybind,
-            label: keybind.label().into(),
+            keybind: keybind.clone(),
+            label,
             installed: true,
             reason: None,
         },
         Some(Err(reason)) => HotkeyStatus {
-            keybind,
-            label: keybind.label().into(),
+            keybind: keybind.clone(),
+            label,
             installed: false,
             reason: Some(reason.clone()),
         },
-        None => HotkeyStatus::unknown(keybind),
+        None => HotkeyStatus::unknown(keybind.clone()),
     }
 }

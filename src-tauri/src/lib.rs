@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindow, WindowEvent};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
@@ -16,6 +16,8 @@ pub use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    load_local_env();
+
     tracing_subscriber::registry()
         .with(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,peer=debug")),
@@ -67,8 +69,6 @@ pub fn run() {
             ipc::get_recording,
             ipc::delete_recording,
             ipc::open_result_window,
-            ipc::set_api_key,
-            ipc::get_api_key_status,
             ipc::get_account_status,
             ipc::open_account_login,
             ipc::set_device_token,
@@ -107,6 +107,22 @@ pub fn run() {
             }
             _ => {}
         });
+}
+
+fn load_local_env() {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let candidates = [
+        manifest_dir.parent().map(|p| p.join(".env.local")),
+        manifest_dir.parent().map(|p| p.join(".env")),
+        std::env::current_dir().ok().map(|p| p.join(".env.local")),
+        std::env::current_dir().ok().map(|p| p.join(".env")),
+    ];
+
+    for path in candidates.into_iter().flatten() {
+        if path.exists() {
+            let _ = dotenvy::from_path(path);
+        }
+    }
 }
 
 pub(crate) fn reveal_result_window(app: &AppHandle, center: bool) -> tauri::Result<()> {

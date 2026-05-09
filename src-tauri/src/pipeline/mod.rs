@@ -181,14 +181,6 @@ pub async fn run(
         state.db().update_recording(&rec).await?;
     }
 
-    let _ = app.emit(
-        "result:transcript",
-        &serde_json::json!({
-            "id": id,
-            "transcript": transcript.plain_text(),
-        }),
-    );
-
     emit(
         &app,
         &PillEvent::Processing {

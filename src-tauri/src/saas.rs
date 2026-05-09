@@ -15,8 +15,6 @@ const DEFAULT_BACKEND_URL: &str = "https://peer-app.vercel.app";
 #[serde(rename_all = "camelCase")]
 pub struct AccountStatus {
     pub signed_in: bool,
-    pub backend_url: String,
-    pub device_id: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -87,11 +85,9 @@ impl SaasClient {
     }
 }
 
-pub fn account_status(app: &AppHandle) -> AccountStatus {
+pub fn account_status() -> AccountStatus {
     AccountStatus {
         signed_in: read_device_token().is_some(),
-        backend_url: backend_url(),
-        device_id: load_or_create_device_id(app).unwrap_or_else(|_| "unknown".to_string()),
     }
 }
 

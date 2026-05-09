@@ -3,99 +3,279 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Peer turns a quick screen recording and narration into paste-ready instructions for coding agents.">
-  <title>Peer - Desktop prompt capture for coding agents</title>
-  <link rel="stylesheet" href="/site/styles.css">
+  <meta name="description" content="Peer turns a single screen recording into a reusable automation. Tap once, narrate, ship.">
+  <title>Peer — Show don't tell.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <link rel="stylesheet" href="/site/styles.css?v=6">
 </head>
 <body>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="grid-bg" aria-hidden="true"></div>
+
   <header class="topbar">
     <a class="brand" href="/" aria-label="Peer home">
-      <img src="/logos/straight.svg" alt="" width="32" height="32">
+      <img src="/logos/straight.svg" alt="" width="28" height="28">
       <span>Peer</span>
     </a>
-    <a class="nav-download" href="/download/latest">Download</a>
+    <nav class="topnav" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#use-cases">Use cases</a>
+    </nav>
+    <a class="nav-download" href="/download/latest">
+      <span class="rec-dot" aria-hidden="true"></span>
+      Download
+    </a>
   </header>
 
   <main>
+    <!-- HERO -->
     <section class="hero" aria-labelledby="hero-title">
-      <div class="hero__copy">
-        <p class="eyebrow">Desktop capture for agent workflows</p>
-        <h1 id="hero-title">Show don't tell. Peer writes the prompt.</h1>
-        <p class="lede">Tap Fn, narrate over the window in front of you, and get a clean instruction set ready for Cursor, Codex, Claude Code, or any coding agent.</p>
-        <div class="hero__actions" aria-label="Hero actions">
-          <a class="button button--primary" href="/download/latest">
-            <span aria-hidden="true">↓</span>
-            Download for macOS
-          </a>
-        </div>
-        <dl class="hero__facts" aria-label="Peer product facts">
-          <div>
-            <dt>Shortcut</dt>
-            <dd>Fn tap</dd>
-          </div>
-          <div>
-            <dt>Output</dt>
-            <dd>Paste-ready prompt</dd>
-          </div>
-          <div>
-            <dt>Build</dt>
-            <dd>macOS beta</dd>
-          </div>
-        </dl>
+      <div class="hero__meta">
+        <span class="meta-dot" aria-hidden="true"></span>
+        <span>v0.2 · macOS · Apple Silicon</span>
       </div>
 
-      <div class="hero__visual" aria-label="Peer desktop preview">
-        <div class="app-window">
-          <div class="window-chrome" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
+      <h1 id="hero-title" class="hero__title">
+        <span class="hero__line reveal" style="--d:0ms">Show don't tell.</span>
+      </h1>
+      <div class="hero__logo reveal" style="--d:140ms" aria-hidden="true">
+        <img src="/logos/straight.svg" alt="" width="220" height="220">
+      </div>
+
+      <p class="hero__lede reveal" style="--d:260ms">
+        Record yourself doing a task once. Peer turns it into an automation
+        you can run again, on anything.
+      </p>
+
+      <div class="hero__actions reveal" style="--d:380ms">
+        <a class="button button--primary" href="/download/latest">
+          <span class="btn-arrow" aria-hidden="true">↓</span>
+          Download for macOS
+        </a>
+        <a class="button button--ghost" href="#how">
+          See how it works
+          <span class="btn-arrow btn-arrow--right" aria-hidden="true">→</span>
+        </a>
+      </div>
+
+      <div class="hero__shortcut reveal" style="--d:500ms">
+        Press <kbd>fn</kbd> anywhere. Show what you do. Get an automation.
+      </div>
+
+      <!-- Compact showcase: abstract recording → automation -->
+      <div class="showcase reveal" style="--d:640ms" aria-label="Peer recording preview">
+        <div class="showcase__frame">
+          <div class="showcase__chrome" aria-hidden="true">
+            <span></span><span></span><span></span>
+            <div class="chrome-url">peer · recording your workflow</div>
+            <div class="chrome-rec">
+              <span class="rec-dot rec-dot--lg"></span>
+              <span class="chrome-time">00:00:42</span>
+            </div>
           </div>
-          <div class="recording-surface">
-            <div class="capture-target">
-              <div class="target-toolbar">
-                <span></span>
-                <span></span>
-                <span></span>
+
+          <div class="showcase__split">
+            <!-- Left: abstract "what you're doing" -->
+            <div class="show-side show-side--rec">
+              <div class="show-label">
+                <span class="rec-dot"></span>
+                <span>capturing</span>
               </div>
-              <div class="target-grid">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+              <div class="abstract-ui">
+                <div class="abs-bar"></div>
+                <div class="abs-grid">
+                  <div class="abs-cell"></div>
+                  <div class="abs-cell abs-cell--focus">
+                    <span class="caret" aria-hidden="true"></span>
+                  </div>
+                  <div class="abs-cell"></div>
+                  <div class="abs-cell"></div>
+                </div>
+                <div class="abs-cta"></div>
               </div>
-              <div class="target-code">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-            <div class="pulse-ring" aria-hidden="true"></div>
-            <div class="voice-card">
-              <img src="/logos/straight.svg" alt="" width="36" height="36">
-              <div>
-                <strong>Recording context</strong>
-                <span>“Make the download page feel native, direct, and more polished.”</span>
+              <div class="voice-bubble">
+                <span>"I take this, drop it in here, then submit."</span>
               </div>
             </div>
-          </div>
-          <div class="prompt-panel">
-            <div class="prompt-panel__header">
-              <span>Generated instruction</span>
-              <b>Ready</b>
-            </div>
-            <p>Rebuild the desktop download page around one clear action. Keep the CTA above the fold, use a red capture target, and make the app preview feel like a live recording.</p>
-            <div class="prompt-tags" aria-label="Prompt tags">
-              <span>context</span>
-              <span>steps</span>
-              <span>constraints</span>
+
+            <!-- Right: generated automation -->
+            <div class="show-side show-side--out">
+              <div class="show-label show-label--out">
+                <span class="dot dot--blue"></span>
+                <span>generated</span>
+              </div>
+              <pre class="output-body"><span class="o-comment">// recurring workflow</span>
+<span class="o-step">1.</span> open <span class="o-stable">the page you were on</span>
+<span class="o-step">2.</span> read <span class="o-slot">{the value to use}</span>
+<span class="o-step">3.</span> enter it into <span class="o-stable">the right field</span>
+<span class="o-step">4.</span> click <span class="o-stable">"Submit"</span></pre>
+              <div class="show-foot">
+                <span class="show-tag">cursor</span>
+                <span class="show-tag">claude code</span>
+                <span class="show-tag">zapier</span>
+                <span class="show-tag">your script</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- HOW IT WORKS -->
+    <section class="section" id="how" aria-labelledby="how-title">
+      <div class="section__head">
+        <span class="section__num">01</span>
+        <h2 id="how-title" class="section__title">
+          One tap. One demonstration.<br>
+          Replayable forever.
+        </h2>
+        <p class="section__lede">
+          Most automation tools ask you to wire up a flowchart. Peer asks you to do
+          the task — once — and watches over your shoulder.
+        </p>
+      </div>
+
+      <div class="how-grid">
+        <article class="how-step">
+          <header>
+            <span class="how-step__num">01</span>
+            <h3>Record</h3>
+          </header>
+          <p>Tap <kbd>fn</kbd> and walk through the task. Peer captures the window, follows your cursor, and listens.</p>
+        </article>
+
+        <article class="how-step">
+          <header>
+            <span class="how-step__num">02</span>
+            <h3>Generalize</h3>
+          </header>
+          <p>Peer separates the stable parts of the workflow from the values you'll change next time.</p>
+        </article>
+
+        <article class="how-step">
+          <header>
+            <span class="how-step__num">03</span>
+            <h3>Replay</h3>
+          </header>
+          <p>Hand the recipe to an agent, or wire it to a trigger. The same workflow runs on new inputs.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="section" id="use-cases" aria-labelledby="cases-title">
+      <div class="section__head">
+        <span class="section__num">02</span>
+        <h2 id="cases-title" class="section__title">
+          If you can show it,<br>Peer can replay it.
+        </h2>
+        <p class="section__lede">
+          Anything you do with a mouse, a keyboard, and a voice — repeated.
+        </p>
+      </div>
+
+      <div class="cases">
+        <article class="case">
+          <span class="case__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="8 6 2 12 8 18"></polyline>
+              <polyline points="16 6 22 12 16 18"></polyline>
+            </svg>
+          </span>
+          <h3>Coding agent prompts</h3>
+          <p>Show the file, point at the bug, narrate the fix. Get a paste-ready prompt for Cursor or Claude Code.</p>
+        </article>
+        <article class="case">
+          <span class="case__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="6.5"></circle>
+              <line x1="20" y1="20" x2="16" y2="16"></line>
+            </svg>
+          </span>
+          <h3>Research at scale</h3>
+          <p>Demo how you look up one company. Peer does it on the next two hundred — same fields, same notes.</p>
+        </article>
+        <article class="case">
+          <span class="case__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3.5" y="4.5" width="17" height="15" rx="2"></rect>
+              <line x1="3.5" y1="10" x2="20.5" y2="10"></line>
+              <line x1="9" y1="14" x2="15" y2="14"></line>
+            </svg>
+          </span>
+          <h3>Recurring data entry</h3>
+          <p>Walk through one form once. Peer fills it on every input that follows — invoices, tickets, applications.</p>
+        </article>
+        <article class="case">
+          <span class="case__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 17V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10"></path>
+              <path d="M4 17a3 3 0 0 0 3 3h10"></path>
+              <path d="M9 9h6"></path>
+              <path d="M9 13h4"></path>
+            </svg>
+          </span>
+          <h3>Tribal knowledge, captured</h3>
+          <p>The thing only you know how to do — recorded, replayable, hand-offable. Onboarding finally has a file format.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="section section--cta" aria-labelledby="cta-title">
+      <h2 id="cta-title" class="cta__title">
+        Stop describing<br>
+        your work.<br>
+        Start <span class="cta__hl">recording it.</span>
+      </h2>
+      <div class="cta__actions">
+        <a class="button button--primary button--lg" href="/download/latest">
+          <span class="btn-arrow" aria-hidden="true">↓</span>
+          Download for macOS
+        </a>
+        <span class="cta__meta">Free during beta · Apple Silicon</span>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="footer__row">
+        <div class="footer__brand">
+          <img src="/logos/straight.svg" alt="" width="22" height="22">
+          <span>Peer</span>
+        </div>
+        <div class="footer__copy">© 2026 Peer</div>
+      </div>
+    </footer>
   </main>
+
+  <script>
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          e.target.classList.add('is-in');
+          io.unobserve(e.target);
+        }
+      }
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+    document.querySelectorAll('.reveal, .section, .case, .how-step').forEach(el => {
+      el.classList.add('reveal');
+      io.observe(el);
+    });
+
+    const time = document.querySelector('.chrome-time');
+    if (time) {
+      let s = 42;
+      setInterval(() => {
+        s = (s + 1) % 3600;
+        const m = String(Math.floor(s / 60)).padStart(2, '0');
+        const sec = String(s % 60).padStart(2, '0');
+        time.textContent = `00:${m}:${sec}`;
+      }, 1000);
+    }
+  </script>
 </body>
 </html>

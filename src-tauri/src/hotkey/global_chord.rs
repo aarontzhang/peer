@@ -1,6 +1,9 @@
-//! Cmd+Shift+R global hotkey, registered via `tauri-plugin-global-shortcut`.
+//! User-defined chord global hotkey, registered via
+//! `tauri-plugin-global-shortcut`. The chord is rebuilt from the saved
+//! `RecordingKeybind::Chord` shape on every sync.
 
-use std::sync::Arc;
+use std::str::FromStr;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
@@ -9,9 +12,9 @@ use tokio::sync::mpsc;
 use crate::hotkey::{self, RecordingKeybind};
 use crate::state::AppState;
 
-fn toggle_shortcut() -> Shortcut {
-    Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyR)
-}
+/// Tracks the chord we're currently registered for so we can unregister it
+/// on change. Held inside the plugin handler closure.
+type RegisteredShortcut = Arc<Mutex<Option<Shortcut>>>;
 
 pub fn install(app: AppHandle, state: Arc<AppState>, tx: mpsc::UnboundedSender<()>) {
     if app
@@ -20,14 +23,16 @@ pub fn install(app: AppHandle, state: Arc<AppState>, tx: mpsc::UnboundedSender<(
     {
         let plugin_tx = tx.clone();
         let plugin_state = state.clone();
-        let toggle_for_handler = toggle_shortcut();
         let plugin = tauri_plugin_global_shortcut::Builder::new()
             .with_handler(move |_app, shortcut, event| {
-                let selected = *plugin_state.recording_keybind.lock();
-                if selected == RecordingKeybind::CmdShiftR
-                    && event.state() == ShortcutState::Pressed
-                    && shortcut == &toggle_for_handler
-                {
+                if event.state() != ShortcutState::Pressed {
+                    return;
+                }
+                let selected = plugin_state.recording_keybind.lock().clone();
+                let Some(target) = chord_from_keybind(&selected) else {
+                    return;
+                };
+                if shortcut == &target {
                     let _ = plugin_tx.send(());
                 }
             })
@@ -35,7 +40,7 @@ pub fn install(app: AppHandle, state: Arc<AppState>, tx: mpsc::UnboundedSender<(
         if let Err(err) = app.plugin(plugin) {
             let reason = format!("Could not install the global shortcut plugin: {err}");
             tracing::warn!(?err, "failed to register global-shortcut plugin");
-            hotkey::set_cmd_shift_r_availability(&app, &state, Err(reason));
+            hotkey::set_chord_availability(&app, &state, Err(reason));
             return;
         }
     }
@@ -44,12 +49,11 @@ pub fn install(app: AppHandle, state: Arc<AppState>, tx: mpsc::UnboundedSender<(
 }
 
 pub fn sync_registration(app: &AppHandle, state: &AppState) {
-    let selected = *state.recording_keybind.lock();
-    let shortcut = toggle_shortcut();
+    let selected = state.recording_keybind.lock().clone();
     let Some(global_shortcut) =
         app.try_state::<tauri_plugin_global_shortcut::GlobalShortcut<tauri::Wry>>()
     else {
-        hotkey::set_cmd_shift_r_availability(
+        hotkey::set_chord_availability(
             app,
             state,
             Err("The global shortcut plugin is unavailable.".into()),
@@ -57,30 +61,64 @@ pub fn sync_registration(app: &AppHandle, state: &AppState) {
         return;
     };
 
-    if selected == RecordingKeybind::CmdShiftR {
-        if global_shortcut.is_registered(shortcut.clone()) {
-            hotkey::set_cmd_shift_r_availability(app, state, Ok(()));
-            return;
+    // Track the previously registered chord across calls so we can unregister
+    // it when the user picks a new one.
+    static PREV: OnceLock<RegisteredShortcut> = OnceLock::new();
+    let mut prev = PREV
+        .get_or_init(|| Arc::new(Mutex::new(None)))
+        .lock()
+        .unwrap();
+    if let Some(old) = prev.take() {
+        if global_shortcut.is_registered(old.clone()) {
+            if let Err(err) = global_shortcut.unregister(old) {
+                tracing::warn!(?err, "failed to unregister previous chord");
+            }
         }
+    }
 
-        match global_shortcut.register(shortcut) {
+    match chord_from_keybind(&selected) {
+        Some(shortcut) => match global_shortcut.register(shortcut.clone()) {
             Ok(()) => {
-                eprintln!("[peer] Cmd+Shift+R hotkey installed.");
-                hotkey::set_cmd_shift_r_availability(app, state, Ok(()));
+                eprintln!("[peer] Chord hotkey installed: {}", selected.label());
+                *prev = Some(shortcut);
+                hotkey::set_chord_availability(app, state, Ok(()));
             }
             Err(err) => {
-                let reason = format!("Cmd+Shift+R could not be registered: {err}");
-                tracing::warn!(?err, "failed to register Cmd+Shift+R");
-                eprintln!("[peer] Cmd+Shift+R hotkey UNAVAILABLE: {err}");
-                hotkey::set_cmd_shift_r_availability(app, state, Err(reason));
+                let reason = format!("{} could not be registered: {err}", selected.label());
+                tracing::warn!(?err, "failed to register chord");
+                eprintln!("[peer] Chord hotkey UNAVAILABLE: {err}");
+                hotkey::set_chord_availability(app, state, Err(reason));
             }
+        },
+        None => {
+            // Fn / Right Option taps don't use the global-shortcut path.
+            hotkey::set_chord_availability(app, state, Ok(()));
         }
-    } else {
-        if global_shortcut.is_registered(shortcut.clone()) {
-            if let Err(err) = global_shortcut.unregister(shortcut) {
-                tracing::warn!(?err, "failed to unregister Cmd+Shift+R");
-            }
-        }
-        hotkey::set_cmd_shift_r_availability(app, state, Ok(()));
     }
+}
+
+fn chord_from_keybind(keybind: &RecordingKeybind) -> Option<Shortcut> {
+    let RecordingKeybind::Chord { mods, code, .. } = keybind else {
+        return None;
+    };
+    let mut modifiers = Modifiers::empty();
+    for m in mods {
+        match m.as_str() {
+            "super" | "cmd" | "meta" => modifiers |= Modifiers::SUPER,
+            "shift" => modifiers |= Modifiers::SHIFT,
+            "alt" | "option" => modifiers |= Modifiers::ALT,
+            "ctrl" | "control" => modifiers |= Modifiers::CONTROL,
+            other => {
+                tracing::warn!(modifier = other, "unknown chord modifier");
+                return None;
+            }
+        }
+    }
+    let parsed_code = Code::from_str(code).ok()?;
+    let mods = if modifiers.is_empty() {
+        None
+    } else {
+        Some(modifiers)
+    };
+    Some(Shortcut::new(mods, parsed_code))
 }

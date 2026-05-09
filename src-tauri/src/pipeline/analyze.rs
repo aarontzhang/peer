@@ -247,6 +247,60 @@ fn render_thinking(
             out.push_str("\n\n");
         }
 
+        let intent = v
+            .get("actionIntent")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim();
+        if !intent.is_empty() {
+            out.push_str("**Intent:** ");
+            out.push_str(intent);
+            out.push_str("\n\n");
+        }
+
+        if let Some(arr) = v.get("fields").and_then(Value::as_array) {
+            let mut wrote_header = false;
+            for f in arr {
+                let target = f.get("target").and_then(Value::as_str).unwrap_or("").trim();
+                let role = f.get("role").and_then(Value::as_str).unwrap_or("").trim();
+                let source = f.get("source").and_then(Value::as_str).unwrap_or("").trim();
+                let example = f
+                    .get("exampleValue")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .trim();
+                if target.is_empty() && role.is_empty() {
+                    continue;
+                }
+                if !wrote_header {
+                    out.push_str("**Fields filled:**\n");
+                    wrote_header = true;
+                }
+                out.push_str("- ");
+                if !target.is_empty() {
+                    out.push_str(target);
+                }
+                if !role.is_empty() {
+                    out.push_str(" — ");
+                    out.push_str(role);
+                }
+                if !source.is_empty() {
+                    out.push_str(" (source: ");
+                    out.push_str(source);
+                    out.push(')');
+                }
+                if !example.is_empty() {
+                    out.push_str(" [example: ");
+                    out.push_str(example);
+                    out.push(']');
+                }
+                out.push('\n');
+            }
+            if wrote_header {
+                out.push('\n');
+            }
+        }
+
         if let Some(arr) = v.get("visibleContext").and_then(Value::as_array) {
             let items: Vec<&str> = arr.iter().filter_map(Value::as_str).collect();
             if !items.is_empty() {
@@ -417,8 +471,15 @@ async fn analyze_window(
         "stage Claude vision window complete"
     );
 
-    let json_value = extract_json(&text)
-        .unwrap_or_else(|| json!({ "userSpeech": text, "visibleContext": [], "pointing": "" }));
+    let json_value = extract_json(&text).unwrap_or_else(|| {
+        json!({
+            "userSpeech": text,
+            "visibleContext": [],
+            "pointing": "",
+            "actionIntent": "",
+            "fields": [],
+        })
+    });
     Ok((index, json_value))
 }
 

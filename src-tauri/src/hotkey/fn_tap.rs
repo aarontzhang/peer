@@ -38,8 +38,8 @@ fn run_tap(app: AppHandle, app_state: Arc<AppState>, tx: mpsc::UnboundedSender<(
 
     let app_state_for_callback = app_state.clone();
     let callback = move |_proxy, event_type, event: &core_graphics::event::CGEvent| {
-        let selected = *app_state_for_callback.recording_keybind.lock();
-        let Some(target) = ModifierTapKey::from_keybind(selected) else {
+        let selected = app_state_for_callback.recording_keybind.lock().clone();
+        let Some(target) = ModifierTapKey::from_keybind(&selected) else {
             state.borrow_mut().down_at = None;
             return CallbackResult::Keep;
         };
@@ -114,11 +114,11 @@ enum ModifierTapKey {
 }
 
 impl ModifierTapKey {
-    fn from_keybind(keybind: RecordingKeybind) -> Option<Self> {
+    fn from_keybind(keybind: &RecordingKeybind) -> Option<Self> {
         match keybind {
             RecordingKeybind::RightOption => Some(Self::RightOption),
             RecordingKeybind::Fn => Some(Self::Fn),
-            RecordingKeybind::CmdShiftR => None,
+            RecordingKeybind::Chord { .. } => None,
         }
     }
 
