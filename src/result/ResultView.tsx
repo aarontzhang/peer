@@ -63,20 +63,41 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   }, [body, displayed]);
 
   // Stick-to-bottom: only auto-scroll while the user is already pinned near
-  // the end. The moment they scroll up to read, we stop yanking them back.
-  // (The programmatic scroll below always lands at the bottom, so it
-  // naturally keeps the flag true without needing to be filtered out.)
+  // the end. We listen for *user-driven* input (wheel, touch, keys) rather
+  // than the generic `scroll` event so our own programmatic scroll-to-bottom
+  // can't race the handler and clobber the user's intent.
   const stickToBottomRef = useRef(true);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const onScroll = () => {
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      stickToBottomRef.current = distanceFromBottom < 24;
+    const recheck = () => {
+      // Read after the browser has applied the user's scroll delta.
+      requestAnimationFrame(() => {
+        if (!el.isConnected) return;
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        stickToBottomRef.current = distanceFromBottom < 24;
+      });
     };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
+    const onKey = (e: KeyboardEvent) => {
+      // Arrow keys, page up/down, home/end, space — anything that moves the
+      // viewport. We don't try to enumerate; just recheck on any keydown
+      // while the scroll container has focus or is the scroll target.
+      if (
+        e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
+        e.key === 'PageUp' || e.key === 'PageDown' ||
+        e.key === 'Home' || e.key === 'End' ||
+        e.key === ' '
+      ) recheck();
+    };
+    el.addEventListener('wheel', recheck, { passive: true });
+    el.addEventListener('touchmove', recheck, { passive: true });
+    window.addEventListener('keydown', onKey);
+    return () => {
+      el.removeEventListener('wheel', recheck);
+      el.removeEventListener('touchmove', recheck);
+      window.removeEventListener('keydown', onKey);
+    };
   }, []);
 
   // Reset to "stuck" each time we switch into a streaming recording.
@@ -166,7 +187,6 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   // (or actively streaming it). Once the prompt is done it collapses again so
   // the refined output stays the focus.
   const thinkingOpen = isStreaming || !body;
-  const showCursor = isStreaming || displayed.length < body.length;
 
   return (
     <div className="main">
@@ -194,15 +214,10 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
           </details>
         )}
         {body ? (
-          <div className="prompt-body">
-            {displayed}
-            {showCursor && <span className="streaming-cursor" />}
-          </div>
+          <div className="prompt-body">{displayed}</div>
         ) : (
           <div className="md prompt-pending">
-            <p style={{ color: 'var(--color-fg-dim)' }}>
-              Writing the refined prompt…<span className="streaming-cursor" />
-            </p>
+            <p style={{ color: 'var(--color-fg-dim)' }}>Writing the refined prompt…</p>
           </div>
         )}
       </div>
