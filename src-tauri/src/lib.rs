@@ -31,7 +31,7 @@ pub fn run() {
             // a click while the app is already running just reactivates the
             // dock icon and the deep link is dropped on the floor.
             for arg in args.iter().skip(1) {
-                if arg.starts_with("peer://") {
+                if arg.starts_with("peer://") || arg.starts_with("peer-dev://") {
                     let app2 = app.clone();
                     let url = arg.clone();
                     tauri::async_runtime::spawn(async move {

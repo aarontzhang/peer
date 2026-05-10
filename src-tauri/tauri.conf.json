@@ -75,7 +75,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["peer"]
+        "schemes": ["peer", "peer-dev"]
       }
     }
   }

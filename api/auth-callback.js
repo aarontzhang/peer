@@ -26,9 +26,14 @@ export default function handler(req, res) {
   <script>
     (function () {
       var hash = window.location.hash || '';
-      var nonce = new URLSearchParams(window.location.search).get('nonce') || '';
+      var search = new URLSearchParams(window.location.search);
+      var nonce = search.get('nonce') || '';
+      var requestedScheme = search.get('scheme') || 'peer';
+      // Whitelist accepted schemes so this page can't be turned into an open
+      // redirector to arbitrary peer-* handlers.
+      var scheme = (requestedScheme === 'peer-dev') ? 'peer-dev' : 'peer';
       var query = nonce ? '?nonce=' + encodeURIComponent(nonce) : '';
-      var target = 'peer://auth' + query + hash;
+      var target = scheme + '://auth' + query + hash;
       var openBtn = document.getElementById('open');
       var status = document.getElementById('status');
       var errorBox = document.getElementById('error');

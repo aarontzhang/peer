@@ -31,15 +31,30 @@ if [[ "$(basename "${BIN}")" == "Peer" ]]; then
   fi
 
   # `tauri dev` executes the raw binary, but macOS URL schemes are registered
-  # through app bundles. Keep the debug bundle's plist in sync with our dev
-  # plist so `peer://...` links launched from the browser resolve to Peer.
-  APP_DIR="$(dirname "${BIN}")/Peer.app"
-  if [[ -d "${APP_DIR}" ]]; then
-    mkdir -p "${APP_DIR}/Contents/MacOS"
-    cp "Info.plist" "${APP_DIR}/Contents/Info.plist"
-    ln -sf "$(cd "$(dirname "${BIN}")" && pwd)/Peer" "${APP_DIR}/Contents/MacOS/Peer"
+  # through app bundles. Build a *distinct* dev bundle (Peer-dev.app, bundle
+  # id dev.aaronzhang.peer.dev, scheme peer-dev://) so a co-installed prod
+  # /Applications/Peer.app — same identifier, same peer:// scheme — can't
+  # win the LaunchServices lookup and steal our OAuth callback.
+  APP_DIR="$(dirname "${BIN}")/Peer-dev.app"
+  mkdir -p "${APP_DIR}/Contents/MacOS"
+  cp "Info.plist" "${APP_DIR}/Contents/Info.plist"
+  PLIST="${APP_DIR}/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier dev.aaronzhang.peer.dev" "${PLIST}" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Set :CFBundleName Peer-dev" "${PLIST}" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Peer-dev" "${PLIST}" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLName com.aaronzhang.peer.dev.auth" "${PLIST}" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLSchemes:0 peer-dev" "${PLIST}" 2>/dev/null || true
+  ln -sf "$(cd "$(dirname "${BIN}")" && pwd)/Peer" "${APP_DIR}/Contents/MacOS/Peer"
+  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+    -f "${APP_DIR}" 2>/dev/null || true
+
+  # Drop the legacy Peer.app dev bundle (pre-split) so it stops competing
+  # for the peer:// scheme alongside any installed prod build.
+  LEGACY_APP="$(dirname "${BIN}")/Peer.app"
+  if [[ -d "${LEGACY_APP}" ]]; then
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
-      -f "${APP_DIR}" 2>/dev/null || true
+      -u "${LEGACY_APP}" 2>/dev/null || true
+    rm -rf "${LEGACY_APP}"
   fi
 fi
 exec "${BIN}" "$@"

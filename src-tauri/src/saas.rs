@@ -175,10 +175,14 @@ pub fn open_login(_app: &AppHandle) -> Result<String> {
     // Carry the CSRF nonce through `redirect_to` rather than the OAuth `state`
     // param. Supabase wants to own `state` for its own implicit-flow validation;
     // passing our own value triggers a bad_oauth_state on the callback leg.
+    // `scheme` tells the Vercel callback page which deep-link scheme to bounce
+    // to — `peer-dev://` for debug builds so a co-installed prod /Applications/Peer.app
+    // doesn't intercept the callback.
     let callback = format!(
-        "{}/api/auth-callback?nonce={}",
+        "{}/api/auth-callback?nonce={}&scheme={}",
         backend_url().trim_end_matches('/'),
         percent_encode(&nonce),
+        deep_link_scheme(),
     );
     let url = format!(
         "{}/auth/v1/authorize?provider=google&redirect_to={}&flow_type=implicit",
@@ -206,7 +210,7 @@ pub fn open_login(_app: &AppHandle) -> Result<String> {
 /// out of any server log or `Referer` header, so we only ever see them here.
 pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
     let parsed = url::Url::parse(raw_url).context("parsing deep link URL")?;
-    if parsed.scheme() != "peer" {
+    if parsed.scheme() != deep_link_scheme() {
         return Err(anyhow!("unexpected deep link scheme: {}", parsed.scheme()));
     }
     let host_or_path = parsed.host_str().unwrap_or("").to_string() + parsed.path();
@@ -268,10 +272,26 @@ pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
 
     let Some(access_token) = access_token else {
         tracing::warn!("deep link missing access_token");
+        let _ = app.emit(
+            "auth:changed",
+            json!({
+                "signedIn": false,
+                "email": null,
+                "error": "Sign-in returned no tokens — try again.",
+            }),
+        );
         return Ok(());
     };
     let Some(refresh_token) = refresh_token else {
         tracing::warn!("deep link missing refresh_token");
+        let _ = app.emit(
+            "auth:changed",
+            json!({
+                "signedIn": false,
+                "email": null,
+                "error": "Sign-in returned no tokens — try again.",
+            }),
+        );
         return Ok(());
     };
 
@@ -508,6 +528,19 @@ fn anon_key() -> Option<String> {
                 .map(str::to_string)
                 .filter(|s| !s.trim().is_empty())
         })
+}
+
+/// `peer-dev://` in debug builds keeps a co-installed prod /Applications/Peer.app
+/// from intercepting OAuth deep links handed back by the browser.
+fn deep_link_scheme() -> &'static str {
+    #[cfg(debug_assertions)]
+    {
+        "peer-dev"
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        "peer"
+    }
 }
 
 fn percent_encode(input: &str) -> String {

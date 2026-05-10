@@ -155,7 +155,7 @@ export function Settings({ open, onClose }: Props) {
                 onClick={onLogin}
                 disabled={pendingSignIn}
               >
-                Continue with Google
+                Sign in
               </button>
             </div>
           )}
