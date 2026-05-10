@@ -603,20 +603,25 @@ html, body {
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--color-fg);
-  /* Solid pill so any content scrolling underneath is fully hidden — the
-     toggle is sticky and overlapping muddied the label otherwise. */
-  background: oklch(0.22 0.005 82);
-  border: 1px solid oklch(1 0 0 / 0.10);
+  /* Mirror the app's own background recipe so the pill composites the same
+     way as its surroundings — a near-opaque glass layer that hides scrolling
+     text without reading as a separate, darker chip. */
+  background:
+    linear-gradient(180deg, oklch(0.25 0.006 82 / 0.88), oklch(0.17 0.005 82 / 0.84)),
+    oklch(0.18 0.005 82 / 0.86);
+  backdrop-filter: blur(38px) saturate(165%);
+  -webkit-backdrop-filter: blur(38px) saturate(165%);
+  border: 0;
   padding: 6px 12px 6px 10px;
   border-radius: 999px;
   user-select: none;
   transition: color var(--dur-fast) var(--ease-spring),
-              background var(--dur-fast) var(--ease-spring),
-              border-color var(--dur-fast) var(--ease-spring);
+              background var(--dur-fast) var(--ease-spring);
 }
 .thinking-toggle:hover {
-  background: oklch(0.26 0.005 82);
-  border-color: oklch(1 0 0 / 0.16);
+  background:
+    linear-gradient(180deg, oklch(0.28 0.006 82 / 0.92), oklch(0.20 0.005 82 / 0.88)),
+    oklch(0.20 0.005 82 / 0.90);
 }
 .thinking-toggle:focus-visible {
   outline: 1px solid oklch(1 0 0 / 0.18);

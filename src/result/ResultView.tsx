@@ -98,23 +98,30 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
         stickToBottomRef.current = distanceFromBottom < 24;
       });
     };
+    // Break stick *synchronously* on any user-driven scroll input. If we
+    // wait for the rAF recheck, a streaming delta can land in between and
+    // re-snap the viewport to the bottom before we update the flag — which
+    // is what made it feel impossible to read the thinking pane while the
+    // prompt was still typing. The rAF recheck still runs and re-enables
+    // stick when the user has scrolled themselves back to the bottom.
+    const breakAndRecheck = () => {
+      stickToBottomRef.current = false;
+      recheck();
+    };
     const onKey = (e: KeyboardEvent) => {
-      // Arrow keys, page up/down, home/end, space — anything that moves the
-      // viewport. We don't try to enumerate; just recheck on any keydown
-      // while the scroll container has focus or is the scroll target.
       if (
         e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
         e.key === 'PageUp' || e.key === 'PageDown' ||
         e.key === 'Home' || e.key === 'End' ||
         e.key === ' '
-      ) recheck();
+      ) breakAndRecheck();
     };
-    el.addEventListener('wheel', recheck, { passive: true });
-    el.addEventListener('touchmove', recheck, { passive: true });
+    el.addEventListener('wheel', breakAndRecheck, { passive: true });
+    el.addEventListener('touchmove', breakAndRecheck, { passive: true });
     window.addEventListener('keydown', onKey);
     return () => {
-      el.removeEventListener('wheel', recheck);
-      el.removeEventListener('touchmove', recheck);
+      el.removeEventListener('wheel', breakAndRecheck);
+      el.removeEventListener('touchmove', breakAndRecheck);
       window.removeEventListener('keydown', onKey);
     };
   }, []);
