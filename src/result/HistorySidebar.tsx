@@ -198,12 +198,10 @@ function useRandomGaze(): [number, number] {
 }
 
 function PinIcon({ filled }: { filled: boolean }) {
-  // Tilted pushpin: head at top-left, shaft to bottom-right. Filled variant
-  // signals the row is pinned; outline variant is the resting/hover state.
   return (
     <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
       <path
-        d="M10.4 1.9 14.1 5.6M11 2.5 7.8 4.3 4.9 4.6 3.4 6.1l6.5 6.5 1.5-1.5.3-2.9 1.8-3.2M5.2 10.8 1.9 14.1"
+        d="M5.6 1.9 1.9 5.6M5 2.5 8.2 4.3 11.1 4.6 12.6 6.1l-6.5 6.5-1.5-1.5-.3-2.9-1.8-3.2M10.8 10.8 14.1 14.1"
         fill={filled ? 'currentColor' : 'none'}
         stroke="currentColor"
         strokeWidth="1.3"
