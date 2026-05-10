@@ -1,3 +1,4 @@
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use tauri::{AppHandle, Manager, State};
@@ -12,10 +13,27 @@ use crate::state::AppState;
 /// Read API keys from `<app_data_dir>/keys.json` if present. Returns
 /// `(openai, anthropic)`. Either may be `None`.
 fn read_keys_file(app: &AppHandle) -> (Option<String>, Option<String>) {
-    let Ok(dir) = app.path().app_data_dir() else {
-        return (None, None);
-    };
-    let path = dir.join("keys.json");
+    for path in keys_file_candidates(app) {
+        let keys = read_keys_file_at(&path);
+        if keys.0.is_some() || keys.1.is_some() {
+            return keys;
+        }
+    }
+    (None, None)
+}
+
+fn keys_file_candidates(app: &AppHandle) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if let Ok(dir) = app.path().app_data_dir() {
+        paths.push(dir.join("keys.json"));
+    }
+    if let Some(data_dir) = dirs::data_dir() {
+        paths.push(data_dir.join("dev.aaronzhang.peer").join("keys.json"));
+    }
+    paths
+}
+
+fn read_keys_file_at(path: &Path) -> (Option<String>, Option<String>) {
     let Ok(bytes) = std::fs::read(&path) else {
         return (None, None);
     };
@@ -55,17 +73,6 @@ fn purge_keys_file_entry(app: &AppHandle, provider: &str) {
         if let Ok(new_bytes) = serde_json::to_vec_pretty(&value) {
             let _ = std::fs::write(&path, new_bytes);
         }
-    }
-}
-
-fn purge_keychain_entry(provider: &str) {
-    let account = match provider {
-        "openai" => "openai-api-key",
-        "anthropic" => "anthropic-api-key",
-        _ => return,
-    };
-    if let Ok(entry) = keyring::Entry::new("Peer", account) {
-        let _ = entry.delete_credential();
     }
 }
 
@@ -202,16 +209,15 @@ pub fn sign_out(app: AppHandle) -> Result<(), String> {
 
 /// Resolve an API key for `provider`. Order:
 ///   1. `<app_data>/keys.json` — what the user typed in Settings, authoritative
-///   2. macOS Keychain — legacy Settings dialog
-///   3. Process env (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) — dev fallback
+///   2. Process env (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) — dev fallback
 ///
 /// Settings wins over env so a stale key in a user's shell can't silently
 /// override the key they just entered in the app. Obvious cross-provider keys
 /// are skipped so `OPENAI_API_KEY=sk-ant-...` never reaches Whisper.
 pub fn read_api_key(app: &AppHandle, provider: &str) -> Option<String> {
-    let (env_var, account) = match provider {
-        "openai" => ("OPENAI_API_KEY", "openai-api-key"),
-        "anthropic" => ("ANTHROPIC_API_KEY", "anthropic-api-key"),
+    let env_var = match provider {
+        "openai" => "OPENAI_API_KEY",
+        "anthropic" => "ANTHROPIC_API_KEY",
         _ => return None,
     };
     let (openai, anthropic) = read_keys_file(app);
@@ -229,21 +235,6 @@ pub fn read_api_key(app: &AppHandle, provider: &str) -> Option<String> {
             );
             purge_keys_file_entry(app, provider);
         } else if let Some(v) = clean_provider_key(provider, from_file.clone()) {
-            return Some(v);
-        }
-    }
-    let from_keyring = keyring::Entry::new("Peer", account)
-        .and_then(|e| e.get_password())
-        .ok();
-    if let Some(raw) = from_keyring.as_deref() {
-        if is_wrong_provider_key(provider, raw) {
-            tracing::warn!(
-                provider,
-                "purging cross-provider key from Keychain (was a {} key)",
-                key_provider_label(raw)
-            );
-            purge_keychain_entry(provider);
-        } else if let Some(v) = clean_provider_key(provider, from_keyring.clone()) {
             return Some(v);
         }
     }

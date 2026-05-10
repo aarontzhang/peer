@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
@@ -9,8 +10,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 
+#[cfg(not(debug_assertions))]
 const SERVICE: &str = "Peer";
+#[cfg(not(debug_assertions))]
 const SESSION_ACCOUNT: &str = "peer-session";
+#[cfg(not(debug_assertions))]
 const LEGACY_DEVICE_TOKEN_ACCOUNT: &str = "peer-device-token";
 const DEFAULT_BACKEND_URL: &str = "https://peer-wheat.vercel.app";
 const DEFAULT_SUPABASE_URL: &str = "https://hmkpgxlfxwztficbuktj.supabase.co";
@@ -51,10 +55,7 @@ impl SaasClient {
             Err(err) => {
                 tracing::warn!(?err, "proactive refresh failed; clearing session");
                 let _ = clear_session();
-                let _ = app.emit(
-                    "auth:changed",
-                    json!({ "signedIn": false, "email": null }),
-                );
+                let _ = app.emit("auth:changed", json!({ "signedIn": false, "email": null }));
                 return None;
             }
         }
@@ -283,10 +284,7 @@ pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
     write_session(&session)?;
 
     let email = decode_email_from_jwt(&session.access_token);
-    let _ = app.emit(
-        "auth:changed",
-        json!({ "signedIn": true, "email": email }),
-    );
+    let _ = app.emit("auth:changed", json!({ "signedIn": true, "email": email }));
     let _ = crate::reveal_result_window(app, true);
     Ok(())
 }
@@ -298,41 +296,113 @@ pub fn sign_out(app: &AppHandle) -> Result<()> {
 }
 
 fn read_session() -> Option<Session> {
-    let raw = match keyring::Entry::new(SERVICE, SESSION_ACCOUNT)
-        .and_then(|entry| entry.get_password())
+    #[cfg(debug_assertions)]
     {
-        Ok(s) => s,
-        Err(_) => {
-            // Silent migration from the old device-token model.
-            let _ = legacy_clear();
-            return None;
-        }
-    };
-    serde_json::from_str::<Session>(&raw).ok()
-}
+        return read_dev_session();
+    }
 
-fn write_session(s: &Session) -> Result<()> {
-    let json = serde_json::to_string(s)?;
-    keyring::Entry::new(SERVICE, SESSION_ACCOUNT)?
-        .set_password(&json)
-        .context("storing session in Keychain")?;
-    let _ = legacy_clear();
-    Ok(())
-}
-
-fn clear_session() -> Result<()> {
-    let entry = keyring::Entry::new(SERVICE, SESSION_ACCOUNT)?;
-    match entry.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(err) => Err(err).context("removing session from Keychain"),
+    #[cfg(not(debug_assertions))]
+    {
+        let raw = match keyring::Entry::new(SERVICE, SESSION_ACCOUNT)
+            .and_then(|entry| entry.get_password())
+        {
+            Ok(s) => s,
+            Err(_) => {
+                // Silent migration from the old device-token model.
+                let _ = legacy_clear();
+                return None;
+            }
+        };
+        serde_json::from_str::<Session>(&raw).ok()
     }
 }
 
+fn write_session(s: &Session) -> Result<()> {
+    #[cfg(debug_assertions)]
+    {
+        return write_dev_session(s);
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        let json = serde_json::to_string(s)?;
+        keyring::Entry::new(SERVICE, SESSION_ACCOUNT)?
+            .set_password(&json)
+            .context("storing session in Keychain")?;
+        let _ = legacy_clear();
+        Ok(())
+    }
+}
+
+fn clear_session() -> Result<()> {
+    #[cfg(debug_assertions)]
+    {
+        let path = dev_session_path();
+        match std::fs::remove_file(&path) {
+            Ok(()) => Ok(()),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(err) => Err(err).context("removing dev session file"),
+        }
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        let entry = keyring::Entry::new(SERVICE, SESSION_ACCOUNT)?;
+        match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(err) => Err(err).context("removing session from Keychain"),
+        }
+    }
+}
+
+#[cfg(not(debug_assertions))]
 fn legacy_clear() -> Result<()> {
     let entry = keyring::Entry::new(SERVICE, LEGACY_DEVICE_TOKEN_ACCOUNT)?;
     match entry.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(err) => Err(err).context("removing legacy device token"),
+    }
+}
+
+#[cfg(debug_assertions)]
+fn dev_session_path() -> PathBuf {
+    dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("com.aaronzhang.peer")
+        .join("peer-session.json")
+}
+
+#[cfg(debug_assertions)]
+fn read_dev_session() -> Option<Session> {
+    let bytes = std::fs::read(dev_session_path()).ok()?;
+    serde_json::from_slice::<Session>(&bytes).ok()
+}
+
+#[cfg(debug_assertions)]
+fn write_dev_session(s: &Session) -> Result<()> {
+    let path = dev_session_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let json = serde_json::to_vec(s)?;
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .mode(0o600)
+            .open(&path)?;
+        file.write_all(&json)?;
+        return Ok(());
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::write(&path, json)?;
+        Ok(())
     }
 }
 
@@ -366,8 +436,7 @@ async fn refresh_if_needed(session: &mut Session, force: bool) -> Result<bool> {
         return Err(anyhow!("refresh failed: {status} — {body}"));
     }
 
-    let v: Value =
-        serde_json::from_str(&body).context("parsing refresh response")?;
+    let v: Value = serde_json::from_str(&body).context("parsing refresh response")?;
     let access = v
         .get("access_token")
         .and_then(|x| x.as_str())
