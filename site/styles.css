@@ -28,10 +28,7 @@ body {
   min-height: 100%;
   position: relative;
   overflow-x: hidden;
-  background:
-    radial-gradient(1200px 600px at 50% -200px, rgba(142, 197, 255, 0.10), transparent 60%),
-    radial-gradient(900px 600px at 90% 30%, rgba(142, 197, 255, 0.04), transparent 60%),
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
   font-feature-settings: "ss01", "ss02";
@@ -165,7 +162,6 @@ main { position: relative; z-index: 2; overflow: visible; }
   justify-content: center;
   align-items: center;
   width: 100%;
-  filter: drop-shadow(0 12px 60px rgba(142, 197, 255, 0.18));
   animation: face-float 7s ease-in-out infinite;
 }
 .face-svg {
@@ -174,10 +170,9 @@ main { position: relative; z-index: 2; overflow: visible; }
   height: auto;
   color: var(--text);
 }
-.face-pupils {
+.face-glasses,
+.face-mask-holes {
   transition: transform 90ms linear;
-  transform-box: fill-box;
-  transform-origin: center;
 }
 @keyframes face-float {
   0%, 100% { transform: translateY(0); }
@@ -267,8 +262,7 @@ main { position: relative; z-index: 2; overflow: visible; }
   background: var(--blue);
   color: var(--ink);
   border-color: var(--blue);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset,
-              0 8px 24px rgba(142, 197, 255, 0.18);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.35) inset;
 }
 .button--primary:hover {
   background: var(--blue-2);
@@ -350,9 +344,7 @@ kbd {
 .hero-video__stage {
   position: relative;
   aspect-ratio: 16 / 10;
-  background:
-    radial-gradient(600px 240px at 50% 50%, rgba(142,197,255,0.05), transparent 70%),
-    var(--bg-soft);
+  background: var(--bg-soft);
 }
 .hero-video__media {
   position: absolute; inset: 0;
@@ -541,8 +533,6 @@ kbd {
 .section--cta {
   text-align: center;
   border-top: 1px solid var(--line);
-  background:
-    radial-gradient(800px 400px at 50% 100%, rgba(142,197,255,0.06), transparent 70%);
 }
 .cta__title {
   margin: 0 auto 36px;

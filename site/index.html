@@ -44,37 +44,26 @@
             role="img"
             aria-label="Peer logo">
             <defs>
+              <!-- The mask cutouts translate WITH the glasses so the head ring
+                   stays clean and the glasses never overlap it visually. -->
               <mask id="hero-head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
                 <rect x="0" y="0" width="1024" height="1024" fill="white"/>
-                <circle cx="407" cy="512" r="80" fill="black"/>
-                <circle cx="617" cy="512" r="80" fill="black"/>
+                <g class="face-mask-holes" fill="black">
+                  <circle cx="407" cy="512" r="80"/>
+                  <circle cx="617" cy="512" r="80"/>
+                </g>
               </mask>
-              <radialGradient id="hero-glow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%"  stop-color="#8ec5ff" stop-opacity="0.18"/>
-                <stop offset="60%" stop-color="#8ec5ff" stop-opacity="0.04"/>
-                <stop offset="100%" stop-color="#8ec5ff" stop-opacity="0"/>
-              </radialGradient>
             </defs>
 
-            <!-- soft glow behind the face -->
-            <circle cx="512" cy="512" r="320" fill="url(#hero-glow)"/>
-
             <g fill="none" stroke="currentColor" stroke-linecap="round">
-              <!-- head ring -->
+              <!-- head ring (stays put) -->
               <circle cx="512" cy="512" r="259" stroke-width="21" mask="url(#hero-head-mask)"/>
 
-              <!-- glasses + pupils (the .face-eyes group is what tracks the cursor) -->
-              <g class="face-eyes" stroke-width="18">
-                <!-- glass rims -->
+              <!-- glasses unit — translated by JS to follow the cursor -->
+              <g class="face-glasses" stroke-width="18">
                 <circle cx="407" cy="512" r="70"/>
                 <circle cx="617" cy="512" r="70"/>
-                <!-- bridge -->
                 <line x1="477" y1="512" x2="547" y2="512"/>
-                <!-- pupils — translated by JS to follow the cursor -->
-                <g class="face-pupils" fill="currentColor" stroke="none">
-                  <circle cx="407" cy="512" r="14"/>
-                  <circle cx="617" cy="512" r="14"/>
-                </g>
               </g>
             </g>
           </svg>
@@ -289,31 +278,34 @@
 
     /* ---------------------------------------------------------------
        Cursor-tracking glasses
-       Translates the .face-pupils group toward the mouse pointer,
-       clamped so pupils stay inside the glass rims.
+       Translates the entire .face-glasses group (and the matching
+       .face-mask-holes inside the head mask) toward the cursor, so
+       the head ring's transparent cutouts move in lockstep with the
+       glasses. Mirrors the technique used by the desktop pill.
        --------------------------------------------------------------- */
     (() => {
-      const svg    = document.querySelector('.face-svg');
-      const pupils = document.querySelector('.face-pupils');
-      if (!svg || !pupils) return;
+      const svg     = document.querySelector('.face-svg');
+      const glasses = document.querySelector('.face-glasses');
+      const holes   = document.querySelector('.face-mask-holes');
+      if (!svg || !glasses || !holes) return;
 
-      // Max travel inside the rim (rim r=70, pupil r=14 → 70-14-buffer)
-      const MAX_OFFSET = 38;
-      // How far (in screen px) the cursor must be for gaze to saturate
+      // Travel range in SVG units (viewBox 554). Restrained motion: the
+      // glasses shift but never escape the head silhouette.
+      const MAX_OFFSET  = 52;
       const SATURATE_PX = 520;
 
-      let target = { x: 0, y: 0 };
+      let target  = { x: 0, y: 0 };
       let current = { x: 0, y: 0 };
       let raf = 0;
 
       const onMove = (ev) => {
-        const r = svg.getBoundingClientRect();
+        const r  = svg.getBoundingClientRect();
         const cx = r.left + r.width  / 2;
         const cy = r.top  + r.height / 2;
         const dx = ev.clientX - cx;
         const dy = ev.clientY - cy;
-        const dist = Math.hypot(dx, dy);
-        const k = Math.min(dist, SATURATE_PX) / SATURATE_PX;
+        const dist  = Math.hypot(dx, dy);
+        const k     = Math.min(dist, SATURATE_PX) / SATURATE_PX;
         const angle = Math.atan2(dy, dx);
         target.x = Math.cos(angle) * MAX_OFFSET * k;
         target.y = Math.sin(angle) * MAX_OFFSET * k;
@@ -321,13 +313,11 @@
       };
 
       const tick = () => {
-        // simple spring-ish lerp
         current.x += (target.x - current.x) * 0.18;
         current.y += (target.y - current.y) * 0.18;
-        pupils.setAttribute(
-          'transform',
-          `translate(${current.x.toFixed(2)} ${current.y.toFixed(2)})`
-        );
+        const t = `translate(${current.x.toFixed(2)} ${current.y.toFixed(2)})`;
+        glasses.setAttribute('transform', t);
+        holes.setAttribute('transform', t);
         if (
           Math.abs(target.x - current.x) > 0.05 ||
           Math.abs(target.y - current.y) > 0.05
@@ -340,13 +330,14 @@
 
       window.addEventListener('mousemove', onMove, { passive: true });
 
-      // Idle wandering when no cursor input for a while
+      // Idle wandering: after 2.2s of no input, drift the glasses to a
+      // soft random offset so the face never looks frozen.
       let idleSince = Date.now();
       window.addEventListener('mousemove', () => { idleSince = Date.now(); });
       setInterval(() => {
         if (Date.now() - idleSince < 2200) return;
         const angle = Math.random() * Math.PI * 2;
-        const k = 0.35 + Math.random() * 0.3;
+        const k     = 0.35 + Math.random() * 0.3;
         target.x = Math.cos(angle) * MAX_OFFSET * k;
         target.y = Math.sin(angle) * MAX_OFFSET * k;
         if (!raf) raf = requestAnimationFrame(tick);
