@@ -10,7 +10,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::{Context, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tauri::{AppHandle, Emitter};
 
 use crate::db::RecordingStatus;
@@ -182,11 +183,16 @@ pub async fn run(
     .await?;
 
     let final_text = normalize_prompt_text(&final_md);
-    let summary = first_line(&final_text);
+    let fallback_summary = first_line(&final_text);
 
+    // Persist the prompt body and a provisional summary immediately so the
+    // sidebar updates as soon as the stream ends. The LLM-generated title
+    // arrives in a follow-up update below — a brief flicker from first-line
+    // to title is fine; making the user wait on Haiku before seeing the
+    // result row settle is not.
     if let Some(mut rec) = state.db().get_recording(&id).await? {
         rec.status = RecordingStatus::Done;
-        rec.summary = Some(summary);
+        rec.summary = Some(fallback_summary.clone());
         rec.body = Some(final_text.clone());
         rec.thinking = Some(thinking_md);
         state.db().update_recording(&rec).await?;
@@ -199,6 +205,27 @@ pub async fn run(
     };
     let _ = app.emit("result:chunk", &end);
 
+    // Codex-style short title via Haiku. The PillEvent::Done emitted after
+    // run() returns triggers the frontend to refresh the sidebar, so the
+    // updated summary is picked up without an extra event.
+    let title = match generate_title(&saas, &final_text).await {
+        Ok(t) if !t.is_empty() => t,
+        Ok(_) => {
+            tracing::warn!("title generation returned empty string; using first line");
+            fallback_summary.clone()
+        }
+        Err(err) => {
+            tracing::warn!(?err, "title generation failed; using first line");
+            fallback_summary.clone()
+        }
+    };
+    if title != fallback_summary {
+        if let Some(mut rec) = state.db().get_recording(&id).await? {
+            rec.summary = Some(title);
+            state.db().update_recording(&rec).await?;
+        }
+    }
+
     // Auto-copy.
     use tauri_plugin_clipboard_manager::ClipboardExt;
     let _ = app.clipboard().write_text(final_text);
@@ -209,6 +236,35 @@ pub async fn run(
     );
 
     Ok(())
+}
+
+#[derive(Deserialize)]
+struct TitleResponse {
+    title: Option<String>,
+}
+
+/// Ask the backend (Haiku) for a Codex-style 3-5 word title summarizing the
+/// finished prompt. Returns the trimmed title, or an error so the caller can
+/// fall back to `first_line`. Anything longer than ~12 words gets rejected
+/// since the row is single-line; better to fall back than to truncate awkwardly.
+async fn generate_title(saas: &SaasClient, prompt: &str) -> Result<String> {
+    let started = Instant::now();
+    let res: TitleResponse = saas
+        .post_json("/api/title", json!({ "prompt": prompt }))
+        .await?;
+    let title = res
+        .title
+        .map(|t| t.trim().to_string())
+        .unwrap_or_default();
+    tracing::info!(
+        elapsed_ms = started.elapsed().as_millis(),
+        chars = title.len(),
+        "stage Peer backend title complete"
+    );
+    if title.split_whitespace().count() > 12 {
+        return Err(anyhow::anyhow!("title too long: {title:?}"));
+    }
+    Ok(title)
 }
 
 fn first_line(s: &str) -> String {
