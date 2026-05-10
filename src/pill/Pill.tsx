@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { getCurrentWindow, currentMonitor } from '@tauri-apps/api/window';
 import { ipc, type PillEvent, formatDuration } from '@/lib/ipc';
 
 export function Pill() {
   const [event, setEvent] = useState<PillEvent>({ kind: 'idle' });
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const unsub = ipc.onPillEvent((e) => setEvent(e));
@@ -26,10 +28,10 @@ export function Pill() {
     : event.kind === 'done' ? 'done'
     : 'idle';
 
-  // Click on the logo or the dots: toggle recording. Drag on the dots moves
-  // the pill instead — see useDragHandle below for the click-vs-drag split.
-  // The configured recording keybind does the same thing without having to
-  // aim at the pill.
+  // Click on the logo: toggle recording. Holding anywhere on the pill and
+  // dragging moves the window instead — see useDragOnHold for the
+  // click-vs-drag split. The configured recording keybind does the same
+  // thing without having to aim at the pill.
   const toggleRecording = () => {
     if (state === 'recording') {
       void ipc.stopRecording();
@@ -67,11 +69,11 @@ export function Pill() {
     : event.kind === 'stopped' ? event.durationMs
     : 0;
 
-  const dragHandle = useDragHandle(toggleRecording);
+  const onPillPointerDown = useDragOnHold(rootRef);
   const gaze = useCursorGaze(state === 'recording');
 
   return (
-    <div className="pill" data-state={state}>
+    <div className="pill" data-state={state} ref={rootRef} onPointerDown={onPillPointerDown}>
       {state === 'stopped' ? (
         <div className="pill__review">
           <button
@@ -108,12 +110,7 @@ export function Pill() {
           <GlassesLogo state={state} dx={gaze[0]} dy={gaze[1]} />
         </button>
       )}
-      <div
-        className="pill__handle"
-        onPointerDown={dragHandle}
-        aria-label="Drag pill"
-        title="Drag"
-      >
+      <div className="pill__handle" aria-hidden>
         <span className="pill__dot" />
         <span className="pill__dot" />
         <span className="pill__dot" />
@@ -128,29 +125,49 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
 }
 
-/* ─── Drag handle: clamps the pill inside the current monitor ──────────── */
+/* ─── Drag-on-hold: clamps the pill near the current monitor ────────────── */
 //
 // We manage the drag in JS rather than `data-tauri-drag-region` so we can
-// (a) clamp against monitor bounds and (b) distinguish a clean click (fires
-// `onClick`) from an actual drag (moves the window). Without the clamp the
-// pill can be flung offscreen and become unrecoverable.
+// (a) clamp against monitor bounds and (b) distinguish a clean click on the
+// inner buttons from an actual drag. Pointerdown anywhere on the pill starts
+// the drag; if the pointer never moves past DRAG_THRESHOLD_PX, the underlying
+// button receives a normal click. Otherwise we swallow the trailing click so
+// dragging from the record/cancel/send buttons doesn't also trigger them.
+//
+// The pill *window* is larger than the visible pill (transparent padding for
+// shadow/breathing room), so we let the window bleed past the monitor edge
+// by `pillInset − EDGE_GAP_PX` on each side. That way the visible pill can
+// sit a small visual gap from the screen edge instead of stopping wherever
+// the invisible window edge happens to land.
 
 const DRAG_THRESHOLD_PX = 4;
+const EDGE_GAP_PX = 4;
 
-function useDragHandle(onClick: () => void) {
+function useDragOnHold(rootRef: RefObject<HTMLDivElement | null>) {
   const dragging = useRef(false);
+  const suppressClick = useRef(false);
+
+  useEffect(() => {
+    const onClickCapture = (e: MouseEvent) => {
+      if (!suppressClick.current) return;
+      suppressClick.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+    window.addEventListener('click', onClickCapture, true);
+    return () => window.removeEventListener('click', onClickCapture, true);
+  }, []);
 
   return async (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     if (dragging.current) return;
-    e.preventDefault();
     dragging.current = true;
 
     const win = getCurrentWindow();
     const monitor = await currentMonitor();
     const scale = monitor?.scaleFactor ?? 1;
 
-    // Logical bounds of the current monitor and pill window.
     const monLogicalX = monitor ? monitor.position.x / scale : 0;
     const monLogicalY = monitor ? monitor.position.y / scale : 0;
     const monLogicalW = monitor ? monitor.size.width / scale : Number.POSITIVE_INFINITY;
@@ -160,6 +177,18 @@ function useDragHandle(onClick: () => void) {
     const winW = winSize.width / scale;
     const winH = winSize.height / scale;
 
+    // Visible-pill inset within the (larger) window — read from the DOM so we
+    // don't hardcode magic numbers tied to padding/sizing in CSS.
+    let bleedL = 0, bleedT = 0, bleedR = 0, bleedB = 0;
+    const node = rootRef.current;
+    if (node) {
+      const rect = node.getBoundingClientRect();
+      bleedL = Math.max(0, rect.left - EDGE_GAP_PX);
+      bleedT = Math.max(0, rect.top - EDGE_GAP_PX);
+      bleedR = Math.max(0, window.innerWidth - rect.right - EDGE_GAP_PX);
+      bleedB = Math.max(0, window.innerHeight - rect.bottom - EDGE_GAP_PX);
+    }
+
     const startWinPos = await win.outerPosition();
     const startWinX = startWinPos.x / scale;
     const startWinY = startWinPos.y / scale;
@@ -167,10 +196,10 @@ function useDragHandle(onClick: () => void) {
     const startMouseX = e.screenX;
     const startMouseY = e.screenY;
 
-    const maxX = monLogicalX + monLogicalW - winW;
-    const maxY = monLogicalY + monLogicalH - winH;
-    const minX = monLogicalX;
-    const minY = monLogicalY;
+    const minX = monLogicalX - bleedL;
+    const minY = monLogicalY - bleedT;
+    const maxX = monLogicalX + monLogicalW - winW + bleedR;
+    const maxY = monLogicalY + monLogicalH - winH + bleedB;
 
     let movedPastThreshold = false;
     let pending: { x: number; y: number } | null = null;
@@ -204,8 +233,12 @@ function useDragHandle(onClick: () => void) {
         cancelAnimationFrame(raf);
         flush();
       }
-      // No drag movement → treat the press as a click.
-      if (!movedPastThreshold) onClick();
+      if (movedPastThreshold) {
+        // Eat the trailing click so a drag that started on a button doesn't
+        // also fire its onClick. Reset shortly in case no click ever comes.
+        suppressClick.current = true;
+        window.setTimeout(() => { suppressClick.current = false; }, 60);
+      }
     };
 
     window.addEventListener('pointermove', onMove);

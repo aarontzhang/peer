@@ -31,9 +31,11 @@ html, body, #root {
   -webkit-backdrop-filter: blur(40px) saturate(180%);
 
   user-select: none;
+  cursor: grab;
   transition: background var(--dur-fast) var(--ease-spring),
               border-color var(--dur-fast) var(--ease-spring);
 }
+.pill:active { cursor: grabbing; }
 
 /* Recording: clean red edge only, with no glow outside or inside the pill. */
 .pill[data-state='recording'] {
@@ -141,7 +143,7 @@ html, body, #root {
   background: oklch(0.84 0.16 245);
 }
 
-/* ─── Bottom: drag handle (3 dots) ─────────────────────────────────────── */
+/* ─── Bottom: 3-dot recording indicator ────────────────────────────────── */
 
 .pill__handle {
   display: flex;
@@ -149,9 +151,7 @@ html, body, #root {
   align-items: center;
   justify-content: center;
   padding: 4px 8px 2px 8px;
-  cursor: grab;
 }
-.pill__handle:active { cursor: grabbing; }
 
 .pill__dot {
   width: 3px;
@@ -159,4 +159,16 @@ html, body, #root {
   border-radius: 50%;
   background: oklch(1 0 0);
   opacity: 0.85;
+}
+
+/* Bounce the dots while recording so it reads as "live". */
+.pill[data-state='recording'] .pill__dot {
+  animation: pill-dot-bounce 0.9s ease-in-out infinite;
+}
+.pill[data-state='recording'] .pill__dot:nth-child(2) { animation-delay: 0.12s; }
+.pill[data-state='recording'] .pill__dot:nth-child(3) { animation-delay: 0.24s; }
+
+@keyframes pill-dot-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
 }
