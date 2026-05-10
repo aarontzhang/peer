@@ -1,4 +1,4 @@
-/* Result window — 760×560. Two-column. Bespoke sidebar + prompt pane. */
+/* Result window — single-pane feed with a top bar of tabs. */
 
 html, body, #root { height: 100%; }
 html, body {
@@ -7,9 +7,8 @@ html, body {
 
 .app {
   position: relative;
-  display: grid;
-  grid-template-columns: var(--sidebar-width, 218px) 1px minmax(0, 1fr);
-  grid-template-areas: "sidebar resizer main";
+  display: flex;
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
   background: transparent;
@@ -30,6 +29,264 @@ html, body {
   backdrop-filter: blur(38px) saturate(165%);
   -webkit-backdrop-filter: blur(38px) saturate(165%);
 }
+
+/* ─── top bar ──────────────────────────────────────────────────────────── */
+.topbar {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: 56px;
+  padding: 12px 16px 0 18px;
+  user-select: none;
+  flex: 0 0 auto;
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--color-fg);
+}
+.topbar__brandOrb {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  opacity: 0.95;
+}
+.topbar__brandName {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  line-height: 1;
+  color: var(--color-fg);
+}
+
+.topbar__tabs {
+  justify-self: center;
+  display: inline-flex;
+  gap: 2px;
+  background: oklch(1 0 0 / 0.05);
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-fg-dim);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-spring),
+              background var(--dur-fast) var(--ease-spring);
+}
+.tab:hover { color: var(--color-fg); }
+.tab--active {
+  background: oklch(1 0 0 / 0.12);
+  color: var(--color-fg);
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.06);
+}
+
+.topbar__actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.topbar__gear {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-fg-dim);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring),
+              color var(--dur-fast) var(--ease-spring);
+}
+.topbar__gear:hover {
+  background: oklch(1 0 0 / 0.08);
+  color: var(--color-fg);
+}
+
+/* ─── feed ─────────────────────────────────────────────────────────────── */
+.feed {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 6px 14px 32px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.feed::-webkit-scrollbar { width: 0; height: 0; }
+
+.feed-empty {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 80px 48px;
+  color: var(--color-fg-muted);
+}
+.feed-empty__title { font-size: 17px; font-weight: 600; color: var(--color-fg); margin-bottom: 6px; }
+.feed-empty__sub { font-size: 13px; max-width: 360px; line-height: 1.6; }
+
+/* ─── card ─────────────────────────────────────────────────────────────── */
+.card {
+  position: relative;
+  border-radius: 10px;
+  transition: background var(--dur-fast) var(--ease-spring);
+}
+.card + .card { margin-top: 1px; }
+.card:hover { background: oklch(1 0 0 / 0.035); }
+.card[data-expanded='true'] {
+  background: oklch(1 0 0 / 0.055);
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.07);
+}
+
+.card__header {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 11px 12px 11px 14px;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  -webkit-app-region: no-drag;
+}
+.card__time {
+  font-size: 12px;
+  color: var(--color-fg-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.card__title {
+  font-size: 13.5px;
+  color: var(--color-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-spring);
+}
+.card:hover .card__title,
+.card[data-expanded='true'] .card__title { color: var(--color-fg); }
+
+.card__duration {
+  font-size: 11px;
+  color: var(--color-fg-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-spring);
+}
+.card:hover .card__actions,
+.card:focus-within .card__actions,
+.card[data-expanded='true'] .card__actions {
+  opacity: 1;
+}
+/* Always-visible pin badge on the row when this row is saved but neither
+   hovered nor expanded. Once the row reveals its action set we fall back
+   to the active pin button. */
+.card__pin-badge {
+  width: 26px;
+  height: 26px;
+  display: none;
+  place-items: center;
+  color: var(--color-fg-muted);
+}
+.card[data-pinned='true']:not(:hover):not([data-expanded='true']) .card__pin-badge {
+  display: grid;
+}
+.card[data-pinned='true']:not(:hover):not([data-expanded='true']) .card__actions {
+  opacity: 1;
+}
+.card[data-pinned='true']:not(:hover):not([data-expanded='true']) .card-icon-btn {
+  display: none;
+}
+
+.card-icon-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-fg-dim);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--dur-fast) var(--ease-spring),
+              color var(--dur-fast) var(--ease-spring),
+              transform 120ms var(--ease-spring);
+}
+.card-icon-btn:hover:not(:disabled) {
+  background: oklch(1 0 0 / 0.10);
+  color: var(--color-fg);
+}
+.card-icon-btn:active:not(:disabled) { transform: scale(0.94); }
+.card-icon-btn:disabled { opacity: 0.4; cursor: default; }
+.card-icon-btn--solid {
+  background: var(--color-fg);
+  color: oklch(0.18 0.005 82);
+}
+.card-icon-btn--solid:hover:not(:disabled) {
+  background: var(--color-fg);
+  color: oklch(0.18 0.005 82);
+}
+.card-icon-btn--pinActive { color: var(--color-fg-muted); }
+.card-icon-btn--danger:hover:not(:disabled) {
+  background: oklch(0.66 0.22 22 / 0.18);
+  color: oklch(0.86 0.18 22);
+}
+
+/* Status pip — small left-edge accent on cards that aren't simply 'done'. */
+.card::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: 5px;
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: transparent;
+}
+.card[data-status='processing']::before { background: var(--color-accent); animation: pip 1.2s var(--ease-spring) infinite; }
+.card[data-status='recording']::before  { background: var(--color-rec); animation: pip 1.2s var(--ease-spring) infinite; }
+.card[data-status='stopped']::before    { background: oklch(0.78 0.14 80); }
+.card[data-status='failed']::before     { background: oklch(0.66 0.20 22); }
+.card[data-status='canceled']::before   { background: var(--color-fg-dim); opacity: 0.55; }
+@keyframes pip { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
+
+.card__body {
+  padding: 4px 18px 18px 92px;
+  color: var(--color-fg);
+}
+.card__muted { color: var(--color-fg-dim); margin: 0; }
+.card__error { color: oklch(0.86 0.18 22); margin: 0; }
 
 /* ─── sidebar ──────────────────────────────────────────────────────────── */
 .sidebar {

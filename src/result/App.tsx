@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
 import { toPlainText } from '@/lib/plainText';
-import { HistorySidebar } from './HistorySidebar';
-import { ResultView } from './ResultView';
-import { EmptyState } from './EmptyState';
+import { MessageCard } from './MessageCard';
 import { Settings } from './Settings';
-import { SidebarAccount } from './SidebarAccount';
 import { ConfirmDialog } from './ConfirmDialog';
 
 async function copyBodyToClipboard(text: string) {
@@ -23,8 +19,10 @@ async function copyBodyToClipboard(text: string) {
   }
 }
 
-const SIDEBAR_WIDTH_KEY = 'peer:result-sidebar-width';
 const PINNED_IDS_KEY = 'peer:pinned-recording-ids';
+const ACTIVE_TAB_KEY = 'peer:active-tab';
+
+type Tab = 'history' | 'saved';
 
 function getStoredPinnedIds(): Set<string> {
   try {
@@ -37,38 +35,26 @@ function getStoredPinnedIds(): Set<string> {
   }
 }
 
-const SIDEBAR_DEFAULT_WIDTH = 218;
-const SIDEBAR_MIN_WIDTH = 176;
-const SIDEBAR_MAX_WIDTH = 420;
-const MAIN_MIN_WIDTH = 360;
-
-function clampSidebarWidth(width: number, maxWidth = SIDEBAR_MAX_WIDTH) {
-  return Math.min(Math.max(width, SIDEBAR_MIN_WIDTH), maxWidth);
-}
-
-function getStoredSidebarWidth() {
-  const raw = window.localStorage.getItem(SIDEBAR_WIDTH_KEY);
-  const width = raw ? Number.parseInt(raw, 10) : SIDEBAR_DEFAULT_WIDTH;
-  return Number.isFinite(width) ? clampSidebarWidth(width) : SIDEBAR_DEFAULT_WIDTH;
+function getStoredTab(): Tab {
+  const raw = window.localStorage.getItem(ACTIVE_TAB_KEY);
+  return raw === 'saved' ? 'saved' : 'history';
 }
 
 export function App() {
-  const appRef = useRef<HTMLDivElement>(null);
   const [recordings, setRecordings] = useState<Recording[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(getStoredSidebarWidth);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>(getStoredTab);
 
   // Live streaming buffer per-recording; cleared when stream ends.
   const liveRef = useRef<{ id: string; body: string } | null>(null);
-  // Thinking arrives ahead of the streamed prompt and is cached per-recording
-  // so switching to another row and back doesn't drop it.
+  // Thinking arrives ahead of the streamed prompt and is cached per-recording.
   const liveThinkingRef = useRef<Map<string, string>>(new Map());
   const [, force] = useState(0);
   const triggerRender = useCallback(() => force((n) => n + 1), []);
 
   // Tracks the most recent recording id we've auto-jumped to. The pill emits
   // a `recording` event on every elapsed-time tick; without this we'd reset
-  // the user's manual sidebar selection on every tick.
+  // the user's manual expansion on every tick.
   const autoSelectedRecRef = useRef<string | null>(null);
 
   const [streamingId, setStreamingId] = useState<string | null>(null);
@@ -85,6 +71,10 @@ export function App() {
       JSON.stringify(Array.from(pinnedIds)),
     );
   }, [pinnedIds]);
+
+  useEffect(() => {
+    window.localStorage.setItem(ACTIVE_TAB_KEY, tab);
+  }, [tab]);
 
   const togglePin = useCallback((id: string) => {
     setPinnedIds((cur) => {
@@ -110,70 +100,10 @@ export function App() {
     });
   }, [recordings]);
 
-  const getMaxSidebarWidth = useCallback(() => {
-    const appWidth = appRef.current?.clientWidth ?? window.innerWidth;
-    return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, appWidth - MAIN_MIN_WIDTH));
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(Math.round(sidebarWidth)));
-  }, [sidebarWidth]);
-
-  useEffect(() => {
-    const syncWidthToWindow = () => {
-      setSidebarWidth((width) => clampSidebarWidth(width, getMaxSidebarWidth()));
-    };
-
-    syncWidthToWindow();
-    window.addEventListener('resize', syncWidthToWindow);
-    return () => window.removeEventListener('resize', syncWidthToWindow);
-  }, [getMaxSidebarWidth]);
-
-  const resizeSidebarBy = useCallback((delta: number) => {
-    setSidebarWidth((width) => clampSidebarWidth(width + delta, getMaxSidebarWidth()));
-  }, [getMaxSidebarWidth]);
-
-  const onSidebarResizePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = sidebarWidth;
-    const previousCursor = document.body.style.cursor;
-    const previousUserSelect = document.body.style.userSelect;
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-
-    const onPointerMove = (moveEvent: globalThis.PointerEvent) => {
-      const nextWidth = startWidth + moveEvent.clientX - startX;
-      setSidebarWidth(clampSidebarWidth(nextWidth, getMaxSidebarWidth()));
-    };
-
-    const onPointerUp = () => {
-      document.removeEventListener('pointermove', onPointerMove);
-      document.removeEventListener('pointerup', onPointerUp);
-      document.removeEventListener('pointercancel', onPointerUp);
-      document.body.style.cursor = previousCursor;
-      document.body.style.userSelect = previousUserSelect;
-    };
-
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp, { once: true });
-    document.addEventListener('pointercancel', onPointerUp, { once: true });
-  }, [getMaxSidebarWidth, sidebarWidth]);
-
-  const onSidebarResizeKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    const step = event.shiftKey ? 32 : 12;
-    resizeSidebarBy(event.key === 'ArrowRight' ? step : -step);
-  }, [resizeSidebarBy]);
-
   const refreshList = useCallback(async () => {
     const list = await ipc.listRecordings();
     setRecordings(list);
-    setSelectedId((cur) => {
+    setExpandedId((cur) => {
       if (cur && list.some((r) => r.id === cur)) return cur;
       return list[0]?.id ?? null;
     });
@@ -196,18 +126,19 @@ export function App() {
       ) {
         void refreshList();
       }
-      // Auto-jump to a recording only on the first tick of a new session,
-      // so manual sidebar clicks aren't yanked back on subsequent ticks.
+      // Auto-expand a fresh recording — but only on the first tick of a new
+      // session so manual clicks aren't yanked back on subsequent ticks. Also
+      // hop the user back to History so they see the live entry instead of
+      // staring at a stale Saved view.
       if (e.kind === 'recording' && autoSelectedRecRef.current !== e.id) {
         autoSelectedRecRef.current = e.id;
-        setSelectedId(e.id);
+        setExpandedId(e.id);
+        setTab('history');
       }
     });
     return () => { void unsub.then((fn) => fn()); };
   }, [refreshList]);
 
-  // Thinking arrives once per-window analyses finish, before the prompt
-  // streams. Stash it so ResultView can show it above the streaming body.
   useEffect(() => {
     const unsub = ipc.onThinking((t) => {
       liveThinkingRef.current.set(t.id, t.thinking);
@@ -216,15 +147,12 @@ export function App() {
     return () => { void unsub.then((fn) => fn()); };
   }, [triggerRender]);
 
-  // Streaming chunks.
   useEffect(() => {
     const unsub = ipc.onResultChunk((c) => {
       if (c.kind === 'begin') {
         liveRef.current = { id: c.id, body: '' };
         setStreamingId(c.id);
-        // Don't force the selection — if the user is browsing other
-        // history entries, leave them where they are. The streaming
-        // result is still accessible by clicking its row.
+        setExpandedId(c.id);
         triggerRender();
         return;
       }
@@ -241,35 +169,28 @@ export function App() {
         setStreamingId(null);
         triggerRender();
         void refreshList();
-        // Auto-copy the finished prompt so it's ready to paste into Claude Code.
         if (c.text) void copyBodyToClipboard(c.text);
       }
     });
     return () => { void unsub.then((fn) => fn()); };
   }, [refreshList, triggerRender]);
 
-  // Recordings, pinned-first, preserving creation-time order within each group.
-  // This is the order shown in the sidebar; keyboard nav follows the same.
-  const orderedRecordings = useMemo(() => {
-    if (pinnedIds.size === 0) return recordings;
-    const pinned: Recording[] = [];
-    const rest: Recording[] = [];
-    for (const r of recordings) {
-      if (pinnedIds.has(r.id)) pinned.push(r);
-      else rest.push(r);
-    }
-    return [...pinned, ...rest];
-  }, [recordings, pinnedIds]);
+  // History shows everything, newest first (already the storage order).
+  // Saved filters down to pinned items, preserving the same chronology.
+  const visibleRecordings = useMemo(() => {
+    if (tab === 'saved') return recordings.filter((r) => pinnedIds.has(r.id));
+    return recordings;
+  }, [recordings, pinnedIds, tab]);
 
-  // ↑/↓ navigate the sidebar.
+  // ↑/↓ navigate the visible list (expand prev/next card).
   useGlobalKey(['ArrowDown', 'ArrowUp'], (e) => {
     if (showSettings) return;
-    if (orderedRecordings.length === 0) return;
-    const idx = orderedRecordings.findIndex((r) => r.id === selectedId);
+    if (visibleRecordings.length === 0) return;
+    const idx = visibleRecordings.findIndex((r) => r.id === expandedId);
     const next = e.key === 'ArrowDown'
-      ? Math.min(orderedRecordings.length - 1, (idx < 0 ? 0 : idx + 1))
+      ? Math.min(visibleRecordings.length - 1, (idx < 0 ? 0 : idx + 1))
       : Math.max(0, (idx <= 0 ? 0 : idx - 1));
-    setSelectedId(orderedRecordings[next].id);
+    setExpandedId(visibleRecordings[next].id);
     e.preventDefault();
   });
 
@@ -277,7 +198,8 @@ export function App() {
   // confirmation mirror those two pill buttons.
   useGlobalKey(['Enter', 'Delete', 'Backspace'], (e) => {
     if (showSettings || isEditableTarget(e.target)) return;
-    if (selected?.status !== 'stopped') return;
+    const expanded = recordings.find((r) => r.id === expandedId) ?? null;
+    if (expanded?.status !== 'stopped') return;
 
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -293,35 +215,21 @@ export function App() {
   useGlobalKey('c', (e) => {
     if (!(e.metaKey || e.ctrlKey)) return;
     const sel = window.getSelection?.();
-    if (sel && sel.toString().length > 0) return; // user selected text → default copy
-    const visible = liveBody ?? selected?.body;
+    if (sel && sel.toString().length > 0) return;
+    const expanded = recordings.find((r) => r.id === expandedId) ?? null;
+    const liveBody = liveRef.current && liveRef.current.id === expandedId
+      ? liveRef.current.body : null;
+    const visible = liveBody ?? expanded?.body;
     if (visible) {
       e.preventDefault();
       void copyBodyToClipboard(toPlainText(visible));
     }
   });
 
-  const selected = useMemo(
-    () => recordings.find((r) => r.id === selectedId) ?? null,
-    [recordings, selectedId],
-  );
-
-  const liveBody = liveRef.current && liveRef.current.id === selectedId
-    ? liveRef.current.body
-    : null;
-
-  const liveThinking = selectedId ? liveThinkingRef.current.get(selectedId) ?? null : null;
-
-  const hasContent = !!selected;
-
   const showHotkeyWarning = hotkey !== null && !hotkey.installed;
 
   return (
-    <div
-      ref={appRef}
-      className="app"
-      style={{ '--sidebar-width': `${Math.round(sidebarWidth)}px` } as CSSProperties}
-    >
+    <div className="app">
       {showHotkeyWarning && (
         <div className="hotkey-banner" role="status">
           <span className="hotkey-banner__dot" aria-hidden />
@@ -331,52 +239,84 @@ export function App() {
           </span>
         </div>
       )}
-      <HistorySidebar
-        items={recordings}
-        selectedId={selectedId}
-        pinnedIds={pinnedIds}
-        onSelect={setSelectedId}
-        onTogglePin={togglePin}
-        footer={<SidebarAccount onOpenSettings={() => setShowSettings(true)} />}
-      />
-      <div
-        className="sidebar-resizer"
-        role="separator"
-        aria-label="Resize history sidebar"
-        aria-orientation="vertical"
-        aria-valuemin={SIDEBAR_MIN_WIDTH}
-        aria-valuemax={getMaxSidebarWidth()}
-        aria-valuenow={Math.round(sidebarWidth)}
-        tabIndex={0}
-        data-no-drag
-        onPointerDown={onSidebarResizePointerDown}
-        onKeyDown={onSidebarResizeKeyDown}
-      />
-      {hasContent ? (
-        <ResultView
-          recording={selected}
-          liveBody={liveBody}
-          liveThinking={liveThinking}
-          isStreaming={streamingId === selectedId}
-          onCopyPrompt={(text) => {
-            return copyBodyToClipboard(text);
-          }}
-          onRequestDelete={() => selected && setPendingDeleteId(selected.id)}
-          onRetry={async () => {
-            if (!selected || retrying) return;
-            setRetrying(true);
-            try {
-              await ipc.retryRecording(selected.id);
-              await refreshList();
-            } finally {
-              setRetrying(false);
-            }
-          }}
-          retryDisabled={retrying}
-        />
-      ) : (
-        <EmptyState />
-      )}
+      <header className="topbar" data-tauri-drag-region>
+        <div className="topbar__brand">
+          <BrandMark />
+          <span className="topbar__brandName">Peer</span>
+        </div>
+        <nav className="topbar__tabs" role="tablist" data-no-drag>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'history'}
+            className={`tab${tab === 'history' ? ' tab--active' : ''}`}
+            onClick={() => setTab('history')}
+          >
+            History
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'saved'}
+            className={`tab${tab === 'saved' ? ' tab--active' : ''}`}
+            onClick={() => setTab('saved')}
+          >
+            Saved
+          </button>
+        </nav>
+        <div className="topbar__actions" data-no-drag>
+          <button
+            type="button"
+            className="topbar__gear"
+            onClick={() => setShowSettings(true)}
+            aria-label="Open settings"
+            title="Settings"
+          >
+            <GearIcon />
+          </button>
+        </div>
+      </header>
+      <main className="feed" role="list" aria-label="Recordings">
+        {visibleRecordings.length === 0 ? (
+          <FeedEmpty tab={tab} />
+        ) : (
+          visibleRecordings.map((rec) => {
+            const isStreaming = streamingId === rec.id;
+            const liveBody = liveRef.current && liveRef.current.id === rec.id
+              ? liveRef.current.body
+              : null;
+            const liveThinking = liveThinkingRef.current.get(rec.id) ?? null;
+            return (
+              <MessageCard
+                key={rec.id}
+                recording={rec}
+                isPinned={pinnedIds.has(rec.id)}
+                isExpanded={expandedId === rec.id}
+                isStreaming={isStreaming}
+                liveBody={liveBody}
+                liveThinking={liveThinking}
+                onToggleExpand={() =>
+                  setExpandedId((cur) => (cur === rec.id ? null : rec.id))
+                }
+                onTogglePin={() => togglePin(rec.id)}
+                onCopy={copyBodyToClipboard}
+                onDelete={() => setPendingDeleteId(rec.id)}
+                onRetry={async () => {
+                  if (retrying) return;
+                  setRetrying(true);
+                  try {
+                    await ipc.retryRecording(rec.id);
+                    await refreshList();
+                  } finally {
+                    setRetrying(false);
+                  }
+                }}
+                retryDisabled={retrying}
+              />
+            );
+          })
+        )}
+      </main>
       <Settings
         open={showSettings}
         onClose={() => setShowSettings(false)}
@@ -407,8 +347,127 @@ export function App() {
   );
 }
 
+function FeedEmpty({ tab }: { tab: Tab }) {
+  if (tab === 'saved') {
+    return (
+      <div className="feed-empty">
+        <div className="feed-empty__title">Nothing saved yet.</div>
+        <div className="feed-empty__sub">
+          Hover a recording in History and click the pin to keep it here.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="feed-empty">
+      <div className="feed-empty__title">Show, don't tell.</div>
+      <div className="feed-empty__sub">
+        Click the orb on the floating pill to start recording. Peer turns your
+        screen + narration into a paste-ready instruction set for Claude Code.
+      </div>
+    </div>
+  );
+}
+
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
   return target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
+}
+
+/** Face + round glasses — same brand mark used elsewhere in the app. */
+function BrandMark() {
+  const maskId = 'topbar-brand-head-mask';
+  const [dx, dy] = useRandomGaze();
+  const gazeTransform = `translate(${dx}px, ${dy}px)`;
+  return (
+    <svg
+      viewBox="-50 -50 100 100"
+      aria-hidden
+      className="topbar__brandOrb"
+    >
+      <defs>
+        <mask id={maskId} maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
+          <rect x="-50" y="-50" width="100" height="100" fill="white" />
+          <g style={{ transform: gazeTransform }} fill="black">
+            <circle cx="-15" cy="0" r="11.5" />
+            <circle cx="15" cy="0" r="11.5" />
+          </g>
+        </mask>
+      </defs>
+      <g fill="none" stroke="currentColor" strokeLinecap="round">
+        <circle cx="0" cy="0" r="37" strokeWidth="3" mask={`url(#${maskId})`} />
+        <g strokeWidth="2.5" style={{ transform: gazeTransform }}>
+          <circle cx="-15" cy="0" r="10" />
+          <circle cx="15"  cy="0" r="10" />
+          <line x1="-5" y1="0" x2="5" y2="0" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+const GAZE_MAX = 16;
+const GAZE_LERP = 0.16;
+const GAZE_EPSILON = 0.05;
+const HOLD_MIN_MS = 1400;
+const HOLD_MAX_MS = 3200;
+const REST_PROBABILITY = 0.25;
+
+function useRandomGaze(): [number, number] {
+  const [gaze, setGaze] = useState<[number, number]>([0, 0]);
+  const target = useRef<[number, number]>([0, 0]);
+  const current = useRef<[number, number]>([0, 0]);
+
+  useEffect(() => {
+    let timer: number | undefined;
+    const pick = () => {
+      if (Math.random() < REST_PROBABILITY) {
+        target.current = [0, 0];
+      } else {
+        const angle = Math.random() * Math.PI * 2;
+        const r = GAZE_MAX * (0.55 + Math.random() * 0.45);
+        target.current = [Math.cos(angle) * r, Math.sin(angle) * r];
+      }
+      const hold = HOLD_MIN_MS + Math.random() * (HOLD_MAX_MS - HOLD_MIN_MS);
+      timer = window.setTimeout(pick, hold);
+    };
+    pick();
+    return () => { if (timer !== undefined) window.clearTimeout(timer); };
+  }, []);
+
+  useEffect(() => {
+    let raf = 0;
+    let stopped = false;
+    const step = () => {
+      const [tx, ty] = target.current;
+      const [cx, cy] = current.current;
+      const nx = cx + (tx - cx) * GAZE_LERP;
+      const ny = cy + (ty - cy) * GAZE_LERP;
+      current.current = [nx, ny];
+      const settledX = Math.abs(nx - tx) < GAZE_EPSILON;
+      const settledY = Math.abs(ny - ty) < GAZE_EPSILON;
+      setGaze([settledX ? tx : nx, settledY ? ty : ny]);
+      if (!stopped) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => { stopped = true; cancelAnimationFrame(raf); };
+  }, []);
+
+  return gaze;
+}
+
+function GearIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
 }
