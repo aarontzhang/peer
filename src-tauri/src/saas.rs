@@ -12,7 +12,7 @@ use tauri::{AppHandle, Emitter};
 const SERVICE: &str = "Peer";
 const SESSION_ACCOUNT: &str = "peer-session";
 const LEGACY_DEVICE_TOKEN_ACCOUNT: &str = "peer-device-token";
-const DEFAULT_BACKEND_URL: &str = "https://peer-app.vercel.app";
+const DEFAULT_BACKEND_URL: &str = "https://peer-wheat.vercel.app";
 const DEFAULT_SUPABASE_URL: &str = "https://hmkpgxlfxwztficbuktj.supabase.co";
 
 /// CSRF state generated when launching the OAuth browser leg, consumed when
