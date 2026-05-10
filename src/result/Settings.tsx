@@ -138,19 +138,21 @@ export function Settings({ open, onClose }: Props) {
         <section className="settings__section">
           <div className="settings__sectionHead">
             <h3 className="settings__sectionTitle">Account</h3>
-            {account?.signedIn && <span className="settings__pill">Signed in</span>}
           </div>
           {account?.signedIn ? (
             <div className="settings__row">
-              <span className="settings__email">{account.email ?? 'Signed in'}</span>
-              <button className="btn btn--ghost" type="button" onClick={onSignOut}>
+              <span className="settings__email">
+                <span className="settings__emailLabel">Email:</span>{' '}
+                {account.email ?? 'Signed in'}
+              </span>
+              <button className="btn btn--neutral" type="button" onClick={onSignOut}>
                 Sign out
               </button>
             </div>
           ) : (
             <div className="settings__row">
               <button
-                className="btn btn--primary"
+                className="btn btn--neutral"
                 type="button"
                 onClick={onLogin}
                 disabled={pendingSignIn}
@@ -187,7 +189,7 @@ export function Settings({ open, onClose }: Props) {
             </button>
             {capturing ? (
               <button
-                className="btn btn--ghost"
+                className="btn btn--neutral"
                 type="button"
                 onClick={() => setCapturing(false)}
               >
@@ -195,7 +197,7 @@ export function Settings({ open, onClose }: Props) {
               </button>
             ) : (
               <button
-                className="btn btn--ghost"
+                className="btn btn--neutral"
                 type="button"
                 onClick={() => {
                   setCapturing(true);
@@ -218,11 +220,11 @@ export function Settings({ open, onClose }: Props) {
         </section>
 
         <div className="settings__actions">
-          <button className="btn btn--ghost" onClick={onClose} disabled={saving}>
+          <button className="btn btn--neutral btn--neutralDark" onClick={onClose} disabled={saving}>
             Cancel
           </button>
           <button
-            className="btn btn--primary"
+            className="btn btn--neutral btn--neutralLight"
             onClick={onSave}
             disabled={saving}
           >

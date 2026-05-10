@@ -19,6 +19,13 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   // analyses finish, well before the prompt finishes streaming.
   const thinking = liveThinking ?? recording?.thinking ?? null;
 
+  // User-controlled override of the thinking pane's open state. Null = follow
+  // the auto rule (open while streaming, collapsed once the prompt lands);
+  // boolean = the user clicked the toggle and wants their choice respected.
+  const [thinkingOverride, setThinkingOverride] = useState<boolean | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<number | null>(null);
+
   // Typewriter buffer: the source `body` arrives in chunky deltas from the
   // model. We drain those chunks character-by-character on rAF so the user
   // sees a smooth ChatGPT-style stream instead of step jumps.
@@ -29,9 +36,21 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   // never want to typewrite an already-finished history entry.
   useEffect(() => {
     setDisplayed(body);
+    setThinkingOverride(null);
+    setCopied(false);
+    if (copiedTimer.current) {
+      window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = null;
+    }
     // intentionally only on recordingId change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordingId]);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (displayed === body) return;
@@ -181,38 +200,53 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   const onCopy = async () => {
     if (!body) return;
     await onCopyPrompt(body);
+    setCopied(true);
+    if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
+    copiedTimer.current = window.setTimeout(() => {
+      setCopied(false);
+      copiedTimer.current = null;
+    }, 1600);
   };
 
   // Auto-expand the thinking pane while we're still waiting on the prompt
   // (or actively streaming it). Once the prompt is done it collapses again so
-  // the refined output stays the focus.
-  const thinkingOpen = isStreaming || !body;
+  // the refined output stays the focus — unless the user has clicked the
+  // toggle, in which case their choice wins.
+  const autoOpen = isStreaming || !body;
+  const thinkingOpen = thinkingOverride ?? autoOpen;
+  const onToggleThinking = () => setThinkingOverride(!thinkingOpen);
 
   return (
     <div className="main">
       <div className="main__bar" data-tauri-drag-region>
         <div className="main__actions">
           <button
-            className="icon-btn"
+            className={`icon-btn${copied ? ' icon-btn--solid' : ''}`}
             onClick={onCopy}
             disabled={!body}
-            aria-label="Copy"
-            title="Copy"
+            aria-label={copied ? 'Copied' : 'Copy'}
+            title={copied ? 'Copied' : 'Copy'}
           >
-            <CopyIcon />
+            {copied ? <CheckIcon /> : <CopyIcon />}
           </button>
         </div>
       </div>
       <div className="main__scroll" ref={scrollRef}>
         {thinking && (
-          <details className="thinking thinking--top" open={thinkingOpen}>
-            <summary className="thinking__summary">
+          <div className={`thinking-wrap${thinkingOpen ? ' thinking-wrap--open' : ''}`}>
+            <button
+              type="button"
+              className="thinking-toggle"
+              onClick={onToggleThinking}
+              aria-expanded={thinkingOpen}
+            >
               <ChevronIcon />
-              <span>{thinkingOpen ? 'Thinking' : 'Show thinking'}</span>
-            </summary>
-            <div className="thinking__body">{thinking}</div>
-          </details>
+              <span>{thinkingOpen ? 'Hide thinking' : 'Show thinking'}</span>
+            </button>
+            {thinkingOpen && <div className="thinking__body">{thinking}</div>}
+          </div>
         )}
+        {thinking && body && <hr className="thinking-sep" />}
         {body ? (
           <div className="prompt-body">{displayed}</div>
         ) : (
@@ -222,6 +256,21 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
         )}
       </div>
     </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+      <path
+        d="M3.5 8.4l3 3 6-6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

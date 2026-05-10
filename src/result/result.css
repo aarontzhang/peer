@@ -141,8 +141,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  border-top: 1px solid oklch(1 0 0 / 0.06);
-  background: oklch(0.18 0.005 82 / 0.32);
+  background: transparent;
 }
 
 .account-trigger {
@@ -435,6 +434,36 @@ html, body {
 .btn--primary:hover { background: oklch(0.78 0.16 245 / 0.28); }
 .btn--ghost { background: transparent; border-color: transparent; color: var(--color-fg-muted); }
 
+/* Neutral buttons — translucent glass look, no accent color. Used as a pair
+   on the settings dialog so Cancel and Done sit at two different lightnesses
+   of the same neutral palette. */
+.btn--neutral {
+  background: oklch(1 0 0 / 0.08);
+  color: var(--color-fg);
+  border: 1px solid oklch(1 0 0 / 0.14);
+}
+.btn--neutral:hover {
+  background: oklch(1 0 0 / 0.13);
+  border-color: oklch(1 0 0 / 0.22);
+}
+.btn--neutralDark {
+  background: oklch(1 0 0 / 0.04);
+  color: var(--color-fg-muted);
+  border-color: oklch(1 0 0 / 0.10);
+}
+.btn--neutralDark:hover {
+  background: oklch(1 0 0 / 0.08);
+  color: var(--color-fg);
+}
+.btn--neutralLight {
+  background: oklch(1 0 0 / 0.16);
+  color: var(--color-fg);
+  border-color: oklch(1 0 0 / 0.22);
+}
+.btn--neutralLight:hover {
+  background: oklch(1 0 0 / 0.22);
+}
+
 .icon-btn {
   width: 30px;
   height: 30px;
@@ -458,6 +487,19 @@ html, body {
 }
 .icon-btn:active:not(:disabled) { transform: scale(0.94); }
 .icon-btn:disabled { opacity: 0.4; cursor: default; }
+/* Solid confirmation state used after a successful copy — opaque background
+   instead of a translucent highlight, so the check reads as "done" rather
+   than "hovered". */
+.icon-btn--solid {
+  background: var(--color-fg);
+  color: oklch(0.18 0.005 82);
+  border-color: var(--color-fg);
+}
+.icon-btn--solid:hover:not(:disabled) {
+  background: var(--color-fg);
+  color: oklch(0.18 0.005 82);
+  border-color: var(--color-fg);
+}
 
 .main__scroll {
   flex: 1;
@@ -538,52 +580,65 @@ html, body {
 .hotkey-banner__msg strong { color: oklch(0.98 0.02 80); font-weight: 600; }
 
 /* ─── thinking dropdown ────────────────────────────────────────────────── */
-.thinking {
-  margin-top: 32px;
-  padding-top: 18px;
-  border-top: 1px solid var(--color-line);
-}
-.thinking--top {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
-  margin-bottom: 22px;
+.thinking-wrap {
+  margin-bottom: 18px;
 }
 .prompt-pending {
   color: var(--color-fg-dim);
 }
-.thinking__summary {
+/* Sticky toggle stays pinned to the top of the scroll area so users can
+   collapse a long thinking pane without scrolling back up. The negative
+   horizontal margin + matching padding lets the blurred backdrop bleed all
+   the way to the pane edges, hiding any text scrolling underneath. */
+.thinking-toggle {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  font: inherit;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--color-fg-muted);
-  padding: 4px 10px 4px 8px;
+  background: transparent;
+  border: 0;
+  padding: 6px 10px 6px 8px;
   margin-left: -8px;
   border-radius: 8px;
-  list-style: none;
   user-select: none;
   transition: color var(--dur-fast) var(--ease-spring),
               background var(--dur-fast) var(--ease-spring);
 }
-.thinking__summary::-webkit-details-marker { display: none; }
-.thinking__summary:hover {
+.thinking-toggle:hover {
   color: var(--color-fg);
-  background: oklch(1 0 0 / 0.04);
+  background: oklch(1 0 0 / 0.06);
 }
-.thinking__chev {
+.thinking-toggle:focus-visible {
+  outline: 1px solid oklch(1 0 0 / 0.18);
+  outline-offset: 2px;
+}
+.thinking-toggle .thinking__chev {
   transition: transform var(--dur-fast) var(--ease-spring);
   opacity: 0.7;
 }
-.thinking[open] .thinking__chev { transform: rotate(90deg); }
+.thinking-wrap--open .thinking-toggle .thinking__chev { transform: rotate(90deg); }
 .thinking__body {
-  margin-top: 14px;
+  margin-top: 12px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--color-fg);
+}
+
+/* Visible separator between the thinking pane and the prompt body so the
+   reader always knows where one ends and the other begins. */
+.thinking-sep {
+  border: 0;
+  height: 1px;
+  background: oklch(1 0 0 / 0.10);
+  margin: 18px 0 18px 0;
 }
 
 .streaming-cursor {
@@ -722,6 +777,10 @@ html, body {
   font-family: var(--font-sans);
   font-size: 12.5px;
   color: var(--color-fg-muted);
+}
+.settings__emailLabel {
+  color: var(--color-fg-dim);
+  margin-right: 2px;
 }
 
 .settings__hint {
