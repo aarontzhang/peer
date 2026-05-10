@@ -612,8 +612,8 @@ html, body {
   color: var(--color-fg-muted);
   background: oklch(1 0 0 / 0.04);
   border: 1px solid var(--color-line);
-  padding: 6px 12px 6px 10px;
-  border-radius: 999px;
+  padding: 6px 10px;
+  border-radius: 8px;
   user-select: none;
   transition: color var(--dur-fast) var(--ease-spring),
               background var(--dur-fast) var(--ease-spring),
