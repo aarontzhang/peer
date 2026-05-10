@@ -2,13 +2,15 @@
   "builds": [
     { "src": "api/**/*.js", "use": "@vercel/node" },
     { "src": "site/**", "use": "@vercel/static" },
-    { "src": "logos/**", "use": "@vercel/static" }
+    { "src": "logos/**", "use": "@vercel/static" },
+    { "src": "styles/**", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/", "dest": "/site/index.html" },
     { "src": "/download/latest", "dest": "/api/download-latest.js" },
     { "src": "/site/(.*)", "dest": "/site/$1" },
     { "src": "/logos/(.*)", "dest": "/logos/$1" },
+    { "src": "/styles/(.*)", "dest": "/styles/$1" },
     { "src": "/api/(.*)", "dest": "/api/$1.js" }
   ]
 }

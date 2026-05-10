@@ -1,0 +1,106 @@
+/* =====================================================================
+   peer — unified design tokens
+   Single source of truth for both the marketing site (site/) and the
+   Tauri desktop app (src/). Dark only. Manrope everywhere. Warm graphite
+   blacks (OKLch hue 82) so translucent surfaces feel native on macOS.
+   ===================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces — warm graphite (OKLch hue 82) -------------------------- */
+  --color-bg:           oklch(0.17 0.006 82);   /* base surface */
+  --color-bg-soft:      oklch(0.19 0.006 82);   /* between base and elevated */
+  --color-bg-elevated:  oklch(0.22 0.007 82);   /* cards, panels */
+  --color-bg-raised:    oklch(0.25 0.007 82);   /* hover / sub-panel */
+  --color-bg-translucent: oklch(0.24 0.008 82 / 0.64);
+
+  /* Text — warm off-white, never pure white -------------------------- */
+  --color-fg:           oklch(0.96 0.004 82);   /* primary text */
+  --color-fg-2:         oklch(0.86 0.005 82);   /* body emphasis */
+  --color-fg-muted:     oklch(0.75 0.006 82);   /* secondary */
+  --color-fg-dim:       oklch(0.56 0.007 82);   /* tertiary / captions */
+  --color-fg-faint:     oklch(0.30 0.005 82);   /* very low emphasis */
+
+  /* Lines & borders -------------------------------------------------- */
+  --color-line:         oklch(1 0 0 / 0.07);
+  --color-line-strong:  oklch(1 0 0 / 0.12);
+  --color-line-bright:  oklch(1 0 0 / 0.22);
+
+  /* Brand & status --------------------------------------------------- */
+  --color-accent:       #8ec5ff;                /* peer blue */
+  --color-accent-2:     #b8dcff;                /* lighter accent */
+  --color-accent-soft:  rgba(142, 197, 255, 0.12);
+  --color-accent-glow:  rgba(142, 197, 255, 0.55);
+
+  --color-rec:          oklch(0.66 0.22 22);    /* recording red */
+  --color-rec-glow:     oklch(0.66 0.22 22 / 0.55);
+
+  --color-slot:         #d6b66a;                /* warm parchment for {slots} */
+
+  /* Typography — Manrope only, JetBrains Mono for code/timestamps ---- */
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, -apple-system,
+                BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Radii ------------------------------------------------------------ */
+  --radius-sm:  6px;
+  --radius:     10px;
+  --radius-lg:  16px;
+  --radius-xl:  24px;
+
+  /* Motion ----------------------------------------------------------- */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out:    cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast:    160ms;
+  --dur-base:    240ms;
+  --dur-slow:    480ms;
+
+  /* Shadow ----------------------------------------------------------- */
+  --shadow-pill:  0 8px 32px oklch(0 0 0 / 0.18),
+                  0 1px 0 oklch(1 0 0 / 0.08) inset;
+  --shadow-card:  0 1px 0 oklch(1 0 0 / 0.04) inset,
+                  0 8px 24px oklch(0 0 0 / 0.35);
+  --shadow-hero:  0 60px 120px oklch(0 0 0 / 0.55),
+                  0 8px 30px oklch(0 0 0 / 0.35),
+                  inset 0 1px 0 oklch(1 0 0 / 0.06);
+
+  /* Layout ----------------------------------------------------------- */
+  --page-pad: clamp(20px, 5vw, 72px);
+  --max:      1200px;
+
+  /* ----- Site-side aliases (back-compat with existing class names) -- */
+  --bg:           var(--color-bg);
+  --bg-soft:      var(--color-bg-soft);
+  --panel:        var(--color-bg-elevated);
+  --panel-2:      var(--color-bg-raised);
+  --panel-3:      oklch(0.28 0.008 82);
+
+  --line:         var(--color-line);
+  --line-strong:  var(--color-line-strong);
+  --line-bright:  var(--color-line-bright);
+
+  --text:         var(--color-fg);
+  --text-2:       var(--color-fg-2);
+  --muted:        var(--color-fg-muted);
+  --dim:          var(--color-fg-dim);
+  --faint:        var(--color-fg-faint);
+
+  --blue:         var(--color-accent);
+  --blue-2:       var(--color-accent-2);
+  --slot:         var(--color-slot);
+  --stable:       var(--color-accent);
+
+  --red:          var(--color-rec);
+  --red-2:        oklch(0.74 0.18 22);
+  --green:        var(--color-accent);  /* legacy alias — use blue */
+  --amber:        #f6c25e;
+
+  --ink:          var(--color-bg);
+
+  --font-display: var(--font-sans);
+  --font-body:    var(--font-sans);
+}
+
+/* Kill italic emphasis everywhere — peer never uses italics ----------- */
+em, i { font-style: normal; }

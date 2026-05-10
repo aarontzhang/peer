@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Peer turns a single screen recording into a reusable automation. Tap once, narrate, ship.">
   <title>Peer — Show don't tell.</title>
+
+  <!-- Manrope (display + body) and JetBrains Mono (timestamps, code, slots) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
   <meta http-equiv="Cache-Control" content="no-store">
-  <link rel="stylesheet" href="/site/styles.css?v=6">
+  <link rel="stylesheet" href="/styles/tokens.css?v=1">
+  <link rel="stylesheet" href="/site/styles.css?v=7">
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -20,111 +24,125 @@
       <img src="/logos/straight.svg" alt="" width="28" height="28">
       <span>Peer</span>
     </a>
-    <nav class="topnav" aria-label="Primary">
-      <a href="#how">How it works</a>
-      <a href="#use-cases">Use cases</a>
-    </nav>
     <a class="nav-download" href="/download/latest">
-      <span class="rec-dot" aria-hidden="true"></span>
+      <span class="btn-arrow" aria-hidden="true">↓</span>
       Download
     </a>
   </header>
 
   <main>
-    <!-- HERO -->
+    <!-- HERO ============================================================ -->
     <section class="hero" aria-labelledby="hero-title">
-      <div class="hero__meta">
-        <span class="meta-dot" aria-hidden="true"></span>
-        <span>v0.2 · macOS · Apple Silicon</span>
-      </div>
+      <div class="hero__grid">
 
-      <h1 id="hero-title" class="hero__title">
-        <span class="hero__line reveal" style="--d:0ms">Show don't tell.</span>
-      </h1>
-      <div class="hero__logo reveal" style="--d:140ms" aria-hidden="true">
-        <img src="/logos/straight.svg" alt="" width="220" height="220">
-      </div>
+        <!-- Left: cursor-tracking face -->
+        <div class="hero__face" aria-hidden="true">
+          <svg
+            class="face-svg"
+            viewBox="235 235 554 554"
+            xmlns="http://www.w3.org/2000/svg"
+            role="img"
+            aria-label="Peer logo">
+            <defs>
+              <mask id="hero-head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+                <rect x="0" y="0" width="1024" height="1024" fill="white"/>
+                <circle cx="407" cy="512" r="80" fill="black"/>
+                <circle cx="617" cy="512" r="80" fill="black"/>
+              </mask>
+              <radialGradient id="hero-glow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"  stop-color="#8ec5ff" stop-opacity="0.18"/>
+                <stop offset="60%" stop-color="#8ec5ff" stop-opacity="0.04"/>
+                <stop offset="100%" stop-color="#8ec5ff" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
 
-      <p class="hero__lede reveal" style="--d:260ms">
-        Record yourself doing a task once. Peer turns it into an automation
-        you can run again, on anything.
-      </p>
+            <!-- soft glow behind the face -->
+            <circle cx="512" cy="512" r="320" fill="url(#hero-glow)"/>
 
-      <div class="hero__actions reveal" style="--d:380ms">
-        <a class="button button--primary" href="/download/latest">
-          <span class="btn-arrow" aria-hidden="true">↓</span>
-          Download for macOS
-        </a>
-        <a class="button button--ghost" href="#how">
-          See how it works
-          <span class="btn-arrow btn-arrow--right" aria-hidden="true">→</span>
-        </a>
-      </div>
+            <g fill="none" stroke="currentColor" stroke-linecap="round">
+              <!-- head ring -->
+              <circle cx="512" cy="512" r="259" stroke-width="21" mask="url(#hero-head-mask)"/>
 
-      <div class="hero__shortcut reveal" style="--d:500ms">
-        Press <kbd>fn</kbd> anywhere. Show what you do. Get an automation.
-      </div>
+              <!-- glasses + pupils (the .face-eyes group is what tracks the cursor) -->
+              <g class="face-eyes" stroke-width="18">
+                <!-- glass rims -->
+                <circle cx="407" cy="512" r="70"/>
+                <circle cx="617" cy="512" r="70"/>
+                <!-- bridge -->
+                <line x1="477" y1="512" x2="547" y2="512"/>
+                <!-- pupils — translated by JS to follow the cursor -->
+                <g class="face-pupils" fill="currentColor" stroke="none">
+                  <circle cx="407" cy="512" r="14"/>
+                  <circle cx="617" cy="512" r="14"/>
+                </g>
+              </g>
+            </g>
+          </svg>
+        </div>
 
-      <!-- Compact showcase: abstract recording → automation -->
-      <div class="showcase reveal" style="--d:640ms" aria-label="Peer recording preview">
-        <div class="showcase__frame">
-          <div class="showcase__chrome" aria-hidden="true">
-            <span></span><span></span><span></span>
-            <div class="chrome-url">peer · recording your workflow</div>
-            <div class="chrome-rec">
-              <span class="rec-dot rec-dot--lg"></span>
-              <span class="chrome-time">00:00:42</span>
-            </div>
+        <!-- Right: title + CTA -->
+        <div class="hero__content">
+          <div class="hero__meta reveal" style="--d:0ms">
+            <span class="meta-dot" aria-hidden="true"></span>
+            <span>v0.2 · macOS · Apple Silicon</span>
           </div>
 
-          <div class="showcase__split">
-            <!-- Left: abstract "what you're doing" -->
-            <div class="show-side show-side--rec">
-              <div class="show-label">
-                <span class="rec-dot"></span>
-                <span>capturing</span>
-              </div>
-              <div class="abstract-ui">
-                <div class="abs-bar"></div>
-                <div class="abs-grid">
-                  <div class="abs-cell"></div>
-                  <div class="abs-cell abs-cell--focus">
-                    <span class="caret" aria-hidden="true"></span>
-                  </div>
-                  <div class="abs-cell"></div>
-                  <div class="abs-cell"></div>
-                </div>
-                <div class="abs-cta"></div>
-              </div>
-              <div class="voice-bubble">
-                <span>"I take this, drop it in here, then submit."</span>
-              </div>
-            </div>
+          <h1 id="hero-title" class="hero__title reveal" style="--d:120ms">
+            Show don't <span class="hero__title-accent">tell.</span>
+          </h1>
 
-            <!-- Right: generated automation -->
-            <div class="show-side show-side--out">
-              <div class="show-label show-label--out">
-                <span class="dot dot--blue"></span>
-                <span>generated</span>
-              </div>
-              <pre class="output-body"><span class="o-comment">// recurring workflow</span>
-<span class="o-step">1.</span> open <span class="o-stable">the page you were on</span>
-<span class="o-step">2.</span> read <span class="o-slot">{the value to use}</span>
-<span class="o-step">3.</span> enter it into <span class="o-stable">the right field</span>
-<span class="o-step">4.</span> click <span class="o-stable">"Submit"</span></pre>
-              <div class="show-foot">
-                <span class="show-tag">cursor</span>
-                <span class="show-tag">claude code</span>
-                <span class="show-tag">zapier</span>
-                <span class="show-tag">your script</span>
-              </div>
+          <p class="hero__lede reveal" style="--d:240ms">
+            Record yourself doing a task once. Peer turns it into an automation
+            you can run again, on anything.
+          </p>
+
+          <div class="hero__actions reveal" style="--d:360ms">
+            <a class="button button--primary button--lg" href="/download/latest">
+              <span class="btn-arrow" aria-hidden="true">↓</span>
+              Download for macOS
+            </a>
+            <a class="button button--ghost button--lg" href="#how">
+              See how it works
+              <span class="btn-arrow btn-arrow--right" aria-hidden="true">→</span>
+            </a>
+          </div>
+
+          <div class="hero__shortcut reveal" style="--d:480ms">
+            Press <kbd>fn</kbd> anywhere. Show what you do. Get an automation.
+          </div>
+        </div>
+      </div>
+
+      <!-- Demo video — autoplay placeholder, drop file at /site/demo.mp4 -->
+      <div class="hero-video reveal" style="--d:600ms" aria-label="Peer demo">
+        <div class="hero-video__frame">
+          <div class="hero-video__chrome" aria-hidden="true">
+            <span></span><span></span><span></span>
+            <div class="chrome-url">peer · live demo</div>
+          </div>
+          <div class="hero-video__stage">
+            <video
+              class="hero-video__media"
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              poster="/site/demo-poster.svg">
+              <!-- Drop the file at site/demo.mp4 (and optionally site/demo.webm) -->
+              <source src="/site/demo.webm" type="video/webm">
+              <source src="/site/demo.mp4" type="video/mp4">
+            </video>
+            <div class="hero-video__placeholder" aria-hidden="true">
+              <span class="hero-video__pulse"></span>
+              <span class="hero-video__placeholder-label">demo coming soon</span>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- HOW IT WORKS -->
+    <!-- HOW IT WORKS ==================================================== -->
     <section class="section" id="how" aria-labelledby="how-title">
       <div class="section__head">
         <span class="section__num">01</span>
@@ -165,7 +183,7 @@
       </div>
     </section>
 
-    <!-- USE CASES -->
+    <!-- USE CASES ======================================================= -->
     <section class="section" id="use-cases" aria-labelledby="cases-title">
       <div class="section__head">
         <span class="section__num">02</span>
@@ -224,7 +242,7 @@
       </div>
     </section>
 
-    <!-- FINAL CTA -->
+    <!-- FINAL CTA ======================================================= -->
     <section class="section section--cta" aria-labelledby="cta-title">
       <h2 id="cta-title" class="cta__title">
         Stop describing<br>
@@ -252,6 +270,9 @@
   </main>
 
   <script>
+    /* ---------------------------------------------------------------
+       Reveal-on-scroll
+       --------------------------------------------------------------- */
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) {
         if (e.isIntersecting) {
@@ -266,16 +287,71 @@
       io.observe(el);
     });
 
-    const time = document.querySelector('.chrome-time');
-    if (time) {
-      let s = 42;
+    /* ---------------------------------------------------------------
+       Cursor-tracking glasses
+       Translates the .face-pupils group toward the mouse pointer,
+       clamped so pupils stay inside the glass rims.
+       --------------------------------------------------------------- */
+    (() => {
+      const svg    = document.querySelector('.face-svg');
+      const pupils = document.querySelector('.face-pupils');
+      if (!svg || !pupils) return;
+
+      // Max travel inside the rim (rim r=70, pupil r=14 → 70-14-buffer)
+      const MAX_OFFSET = 38;
+      // How far (in screen px) the cursor must be for gaze to saturate
+      const SATURATE_PX = 520;
+
+      let target = { x: 0, y: 0 };
+      let current = { x: 0, y: 0 };
+      let raf = 0;
+
+      const onMove = (ev) => {
+        const r = svg.getBoundingClientRect();
+        const cx = r.left + r.width  / 2;
+        const cy = r.top  + r.height / 2;
+        const dx = ev.clientX - cx;
+        const dy = ev.clientY - cy;
+        const dist = Math.hypot(dx, dy);
+        const k = Math.min(dist, SATURATE_PX) / SATURATE_PX;
+        const angle = Math.atan2(dy, dx);
+        target.x = Math.cos(angle) * MAX_OFFSET * k;
+        target.y = Math.sin(angle) * MAX_OFFSET * k;
+        if (!raf) raf = requestAnimationFrame(tick);
+      };
+
+      const tick = () => {
+        // simple spring-ish lerp
+        current.x += (target.x - current.x) * 0.18;
+        current.y += (target.y - current.y) * 0.18;
+        pupils.setAttribute(
+          'transform',
+          `translate(${current.x.toFixed(2)} ${current.y.toFixed(2)})`
+        );
+        if (
+          Math.abs(target.x - current.x) > 0.05 ||
+          Math.abs(target.y - current.y) > 0.05
+        ) {
+          raf = requestAnimationFrame(tick);
+        } else {
+          raf = 0;
+        }
+      };
+
+      window.addEventListener('mousemove', onMove, { passive: true });
+
+      // Idle wandering when no cursor input for a while
+      let idleSince = Date.now();
+      window.addEventListener('mousemove', () => { idleSince = Date.now(); });
       setInterval(() => {
-        s = (s + 1) % 3600;
-        const m = String(Math.floor(s / 60)).padStart(2, '0');
-        const sec = String(s % 60).padStart(2, '0');
-        time.textContent = `00:${m}:${sec}`;
-      }, 1000);
-    }
+        if (Date.now() - idleSince < 2200) return;
+        const angle = Math.random() * Math.PI * 2;
+        const k = 0.35 + Math.random() * 0.3;
+        target.x = Math.cos(angle) * MAX_OFFSET * k;
+        target.y = Math.sin(angle) * MAX_OFFSET * k;
+        if (!raf) raf = requestAnimationFrame(tick);
+      }, 2400);
+    })();
   </script>
 </body>
 </html>
