@@ -66,33 +66,48 @@ html, body {
 .topbar__tabs {
   justify-self: center;
   display: inline-flex;
-  gap: 3px;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Tab buttons borrow the back-button recipe — pill, icon + label, subtle
+   translucent shell at rest. The active tab pops with a brighter fill so the
+   pair reads as a segmented choice without needing a connecting track. */
+.tab {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   background: oklch(1 0 0 / 0.05);
   border: 1px solid var(--color-line);
   border-radius: 999px;
-  padding: 4px;
-}
-
-.tab {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  border-radius: 999px;
-  padding: 7px 18px;
+  padding: 6px 14px 6px 12px;
   font: inherit;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
-  color: var(--color-fg-dim);
+  color: var(--color-fg-muted);
   cursor: pointer;
   transition: color var(--dur-fast) var(--ease-spring),
-              background var(--dur-fast) var(--ease-spring);
+              background var(--dur-fast) var(--ease-spring),
+              border-color var(--dur-fast) var(--ease-spring);
 }
-.tab:hover { color: var(--color-fg); }
-.tab--active {
-  background: oklch(1 0 0 / 0.12);
+.tab:hover {
+  background: oklch(1 0 0 / 0.10);
+  border-color: var(--color-line-strong);
   color: var(--color-fg);
-  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.06);
 }
+.tab--active {
+  background: oklch(1 0 0 / 0.14);
+  border-color: oklch(1 0 0 / 0.22);
+  color: var(--color-fg);
+}
+.tab__icon {
+  display: grid;
+  place-items: center;
+  color: currentColor;
+  opacity: 0.8;
+}
+.tab--active .tab__icon { opacity: 1; }
 
 .topbar__actions {
   justify-self: end;
@@ -924,129 +939,37 @@ html, body {
   opacity: 0.7;
 }
 .thinking-toggle:hover .thinking__chev { opacity: 1; }
+.thinking-toggle[aria-expanded='true'] .thinking__chev {
+  transform: rotate(90deg);
+}
 
-/* ─── thinking page ────────────────────────────────────────────────────── */
-/* Full-window overlay shown when the user opens the thinking for a card.
-   Has its own scroll container so very long thinking doesn't force the user
-   to scroll through it to get back to the feed — they hit Back (or Esc)
-   and the feed scroll position is preserved. */
-.thinking-page {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  display: flex;
-  flex-direction: column;
-  background:
-    linear-gradient(180deg, oklch(0.22 0.006 82 / 0.92), oklch(0.16 0.005 82 / 0.92)),
-    oklch(0.18 0.005 82 / 0.85);
-  backdrop-filter: blur(42px) saturate(170%);
-  -webkit-backdrop-filter: blur(42px) saturate(170%);
-}
-.thinking-page__bar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 16px;
-  height: 76px;
-  padding: 30px 22px 0 22px;
-  flex: 0 0 auto;
-  user-select: none;
-  border-bottom: 1px solid oklch(1 0 0 / 0.05);
-}
-.thinking-page__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: oklch(1 0 0 / 0.05);
+/* Inline thinking panel — same translucent recipe as the toggle so the two
+   read as one connected block. Sits *above* the prompt body so scrolling
+   keeps thinking pinned to its prompt rather than hiding it. */
+.thinking-inline {
+  margin-top: 4px;
+  padding: 12px 14px;
+  background: oklch(1 0 0 / 0.035);
   border: 1px solid var(--color-line);
+  border-radius: 10px;
   color: var(--color-fg-muted);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  border-radius: 999px;
-  padding: 6px 12px 6px 10px;
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-spring),
-              border-color var(--dur-fast) var(--ease-spring),
-              color var(--dur-fast) var(--ease-spring);
-  -webkit-app-region: no-drag;
-}
-.thinking-page__back:hover {
-  background: oklch(1 0 0 / 0.10);
-  border-color: var(--color-line-strong);
-  color: var(--color-fg);
-}
-.thinking-page__heading {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.thinking-page__eyebrow {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.10em;
-  font-weight: 600;
-  color: var(--color-fg-dim);
-}
-.thinking-page__title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-fg);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-.thinking-page__meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--color-fg-dim);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.thinking-page__body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-  padding: 24px 36px 56px 36px;
-  outline: none;
-}
-.thinking-page__body::-webkit-scrollbar { width: 0; height: 0; }
-.thinking-page__text {
-  max-width: 760px;
-  margin: 0 auto;
+  font-size: 13.5px;
+  line-height: 1.65;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: var(--color-fg-muted);
-  font-size: 14px;
-  line-height: 1.7;
-}
-.thinking-page__empty {
-  max-width: 480px;
-  margin: 40px auto 0 auto;
-  text-align: center;
-  color: var(--color-fg-dim);
-  font-size: 13px;
 }
 
 /* ─── recording detail page ────────────────────────────────────────────── */
 /* Full-window overlay for an individual recording, opened from the feed.
-   Shares the same glass/typography recipe as the thinking page so the two
-   views feel like the same surface. */
+   Transparent so the .app::before glass shows through — that way the detail
+   view sits on the *same* background as the feed instead of doubling up. */
 .recording-page {
   position: absolute;
   inset: 0;
   z-index: 4;
   display: flex;
   flex-direction: column;
-  background:
-    linear-gradient(180deg, oklch(0.22 0.006 82 / 0.92), oklch(0.16 0.005 82 / 0.92)),
-    oklch(0.18 0.005 82 / 0.85);
-  backdrop-filter: blur(42px) saturate(170%);
-  -webkit-backdrop-filter: blur(42px) saturate(170%);
+  background: transparent;
 }
 .recording-page__bar {
   display: grid;

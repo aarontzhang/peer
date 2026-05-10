@@ -11,7 +11,6 @@ type Props = {
   onTogglePin: () => void;
   onCopy: (text: string) => Promise<void>;
   onDelete: () => void;
-  onOpenThinking: () => void;
   onRetry: () => void;
   retryDisabled?: boolean;
 };
@@ -25,7 +24,6 @@ export function RecordingPage({
   onTogglePin,
   onCopy,
   onDelete,
-  onOpenThinking,
   onRetry,
   retryDisabled,
 }: Props) {
@@ -52,6 +50,7 @@ export function RecordingPage({
   const resetKey = `${recording.id}|${recording.status === 'canceled' ? 'C' : 'L'}`;
   const [displayed, setDisplayed] = useState(body);
   const [copied, setCopied] = useState(false);
+  const [thinkingOpen, setThinkingOpen] = useState(false);
   const copiedTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -188,15 +187,28 @@ export function RecordingPage({
           ) : (
             <>
               {thinking && (
-                <button
-                  type="button"
-                  className="thinking-toggle"
-                  onClick={onOpenThinking}
-                  aria-label="Open thinking"
-                >
-                  <ChevronIcon />
-                  <span>Show thinking</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="thinking-toggle"
+                    onClick={() => setThinkingOpen((v) => !v)}
+                    aria-expanded={thinkingOpen}
+                    aria-controls="thinking-inline"
+                  >
+                    <ChevronIcon />
+                    <span>{thinkingOpen ? 'Hide thinking' : 'Show thinking'}</span>
+                  </button>
+                  {thinkingOpen && (
+                    <div
+                      id="thinking-inline"
+                      className="thinking-inline"
+                      role="region"
+                      aria-label="Thinking"
+                    >
+                      {thinking}
+                    </div>
+                  )}
+                </>
               )}
               {body ? (
                 <div className="prompt-body">{displayed}</div>

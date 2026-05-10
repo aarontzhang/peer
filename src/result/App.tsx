@@ -4,7 +4,6 @@ import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
 import { toPlainText } from '@/lib/plainText';
 import { MessageCard } from './MessageCard';
-import { ThinkingPage } from './ThinkingPage';
 import { RecordingPage } from './RecordingPage';
 import { Settings } from './Settings';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -66,7 +65,6 @@ export function App() {
   const [deleting, setDeleting] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [detailForId, setDetailForId] = useState<string | null>(null);
-  const [thinkingForId, setThinkingForId] = useState<string | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -183,13 +181,8 @@ export function App() {
     return recordings;
   }, [recordings, pinnedIds, tab]);
 
-  // Esc closes the topmost overlay: thinking first, then the recording detail.
+  // Esc closes the recording detail overlay.
   useGlobalKey('Escape', (e) => {
-    if (thinkingForId !== null) {
-      e.preventDefault();
-      setThinkingForId(null);
-      return;
-    }
     if (detailForId !== null) {
       e.preventDefault();
       setDetailForId(null);
@@ -198,7 +191,7 @@ export function App() {
 
   // ↑/↓ navigate the visible list (highlight prev/next card).
   useGlobalKey(['ArrowDown', 'ArrowUp'], (e) => {
-    if (showSettings || thinkingForId !== null || detailForId !== null) return;
+    if (showSettings || detailForId !== null) return;
     if (visibleRecordings.length === 0) return;
     const idx = visibleRecordings.findIndex((r) => r.id === expandedId);
     const next = e.key === 'ArrowDown'
@@ -242,9 +235,11 @@ export function App() {
 
   const showHotkeyWarning = hotkey !== null && !hotkey.installed;
 
+  const detailOpen = detailForId !== null;
+
   return (
     <div className="app">
-      {showHotkeyWarning && (
+      {showHotkeyWarning && !detailOpen && (
         <div className="hotkey-banner" role="status">
           <span className="hotkey-banner__dot" aria-hidden />
           <span className="hotkey-banner__msg">
@@ -253,81 +248,87 @@ export function App() {
           </span>
         </div>
       )}
-      <header className="topbar" data-tauri-drag-region>
-        <div className="topbar__brand">
-          <BrandMark />
-          <span className="topbar__brandName">Peer</span>
-        </div>
-        <nav className="topbar__tabs" role="tablist" data-no-drag>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'history'}
-            className={`tab${tab === 'history' ? ' tab--active' : ''}`}
-            onClick={() => setTab('history')}
-          >
-            History
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'saved'}
-            className={`tab${tab === 'saved' ? ' tab--active' : ''}`}
-            onClick={() => setTab('saved')}
-          >
-            Saved
-          </button>
-        </nav>
-        <div className="topbar__actions" data-no-drag>
-          <button
-            type="button"
-            className="topbar__gear"
-            onClick={() => setShowSettings(true)}
-            aria-label="Open settings"
-            title="Settings"
-          >
-            <GearIcon />
-          </button>
-        </div>
-      </header>
-      <main className="feed" role="list" aria-label="Recordings">
-        {visibleRecordings.length === 0 ? (
-          <FeedEmpty tab={tab} />
-        ) : (
-          visibleRecordings.map((rec) => {
-            const liveBody = liveRef.current && liveRef.current.id === rec.id
-              ? liveRef.current.body
-              : null;
-            return (
-              <MessageCard
-                key={rec.id}
-                recording={rec}
-                isPinned={pinnedIds.has(rec.id)}
-                isSelected={expandedId === rec.id}
-                liveBody={liveBody}
-                onOpen={() => {
-                  setExpandedId(rec.id);
-                  setDetailForId(rec.id);
-                }}
-                onTogglePin={() => togglePin(rec.id)}
-                onCopy={copyBodyToClipboard}
-                onDelete={() => setPendingDeleteId(rec.id)}
-                onRetry={async () => {
-                  if (retrying) return;
-                  setRetrying(true);
-                  try {
-                    await ipc.retryRecording(rec.id);
-                    await refreshList();
-                  } finally {
-                    setRetrying(false);
-                  }
-                }}
-                retryDisabled={retrying}
-              />
-            );
-          })
-        )}
-      </main>
+      {!detailOpen && (
+        <header className="topbar" data-tauri-drag-region>
+          <div className="topbar__brand">
+            <BrandMark />
+            <span className="topbar__brandName">Peer</span>
+          </div>
+          <nav className="topbar__tabs" role="tablist" data-no-drag>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'history'}
+              className={`tab${tab === 'history' ? ' tab--active' : ''}`}
+              onClick={() => setTab('history')}
+            >
+              <span className="tab__icon" aria-hidden><HistoryIcon /></span>
+              <span>History</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'saved'}
+              className={`tab${tab === 'saved' ? ' tab--active' : ''}`}
+              onClick={() => setTab('saved')}
+            >
+              <span className="tab__icon" aria-hidden><SavedIcon /></span>
+              <span>Saved</span>
+            </button>
+          </nav>
+          <div className="topbar__actions" data-no-drag>
+            <button
+              type="button"
+              className="topbar__gear"
+              onClick={() => setShowSettings(true)}
+              aria-label="Open settings"
+              title="Settings"
+            >
+              <GearIcon />
+            </button>
+          </div>
+        </header>
+      )}
+      {!detailOpen && (
+        <main className="feed" role="list" aria-label="Recordings">
+          {visibleRecordings.length === 0 ? (
+            <FeedEmpty tab={tab} />
+          ) : (
+            visibleRecordings.map((rec) => {
+              const liveBody = liveRef.current && liveRef.current.id === rec.id
+                ? liveRef.current.body
+                : null;
+              return (
+                <MessageCard
+                  key={rec.id}
+                  recording={rec}
+                  isPinned={pinnedIds.has(rec.id)}
+                  isSelected={expandedId === rec.id}
+                  liveBody={liveBody}
+                  onOpen={() => {
+                    setExpandedId(rec.id);
+                    setDetailForId(rec.id);
+                  }}
+                  onTogglePin={() => togglePin(rec.id)}
+                  onCopy={copyBodyToClipboard}
+                  onDelete={() => setPendingDeleteId(rec.id)}
+                  onRetry={async () => {
+                    if (retrying) return;
+                    setRetrying(true);
+                    try {
+                      await ipc.retryRecording(rec.id);
+                      await refreshList();
+                    } finally {
+                      setRetrying(false);
+                    }
+                  }}
+                  retryDisabled={retrying}
+                />
+              );
+            })
+          )}
+        </main>
+      )}
       {detailForId !== null && (() => {
         const rec = recordings.find((r) => r.id === detailForId) ?? null;
         if (!rec) return null;
@@ -345,7 +346,6 @@ export function App() {
             onTogglePin={() => togglePin(rec.id)}
             onCopy={copyBodyToClipboard}
             onDelete={() => setPendingDeleteId(rec.id)}
-            onOpenThinking={() => setThinkingForId(rec.id)}
             onRetry={async () => {
               if (retrying) return;
               setRetrying(true);
@@ -357,19 +357,6 @@ export function App() {
               }
             }}
             retryDisabled={retrying}
-          />
-        );
-      })()}
-      {thinkingForId !== null && (() => {
-        const rec = recordings.find((r) => r.id === thinkingForId) ?? null;
-        if (!rec) return null;
-        const live = liveThinkingRef.current.get(thinkingForId) ?? null;
-        const text = live ?? rec.thinking ?? '';
-        return (
-          <ThinkingPage
-            recording={rec}
-            thinking={text}
-            onBack={() => setThinkingForId(null)}
           />
         );
       })()}
@@ -393,7 +380,6 @@ export function App() {
           try {
             await ipc.deleteRecording(pendingDeleteId);
             if (detailForId === pendingDeleteId) setDetailForId(null);
-            if (thinkingForId === pendingDeleteId) setThinkingForId(null);
             setPendingDeleteId(null);
             await refreshList();
           } finally {
@@ -513,6 +499,55 @@ function useRandomGaze(): [number, number] {
   }, []);
 
   return gaze;
+}
+
+/** Clock with a counter-clockwise rewind arrow — symbolizes time travel
+ *  back through past recordings. */
+function HistoryIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+      <path
+        d="M3.2 4.4A6 6 0 1 1 2.5 9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M1.5 2.5v3h3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 5v3.2l2 1.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Push-pin glyph — the same shape used on the per-card save toggle, so the
+ *  Saved tab visually echoes the action that fills it. */
+function SavedIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+      <path
+        d="M10.4 1.9 14.1 5.6M11 2.5 7.8 4.3 4.9 4.6 3.4 6.1l6.5 6.5 1.5-1.5.3-2.9 1.8-3.2M5.2 10.8 1.9 14.1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 function GearIcon() {
