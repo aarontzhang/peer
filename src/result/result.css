@@ -126,7 +126,10 @@ html, body {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
-  padding: 6px 14px 32px 14px;
+  /* Generous top padding leaves a clean translucent gap between the tab pill
+     and the first card so the chrome breathes; tabs aren't pressed against
+     content. */
+  padding: 20px 14px 32px 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -264,7 +267,7 @@ html, body {
 @keyframes pip { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
 
 .card__body {
-  padding: 4px 18px 18px 110px;
+  padding: 12px 18px 18px 110px;
   color: var(--color-fg);
 }
 .card__muted { color: var(--color-fg-dim); margin: 0; }
@@ -924,21 +927,113 @@ html, body {
   transition: transform var(--dur-fast) var(--ease-spring);
   opacity: 0.7;
 }
-.thinking-toggle--open .thinking__chev { transform: rotate(90deg); }
-.thinking__body {
-  margin-top: 4px;
+.thinking-toggle:hover .thinking__chev { opacity: 1; }
+
+/* ─── thinking page ────────────────────────────────────────────────────── */
+/* Full-window overlay shown when the user opens the thinking for a card.
+   Has its own scroll container so very long thinking doesn't force the user
+   to scroll through it to get back to the feed — they hit Back (or Esc)
+   and the feed scroll position is preserved. */
+.thinking-page {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(180deg, oklch(0.22 0.006 82 / 0.92), oklch(0.16 0.005 82 / 0.92)),
+    oklch(0.18 0.005 82 / 0.85);
+  backdrop-filter: blur(42px) saturate(170%);
+  -webkit-backdrop-filter: blur(42px) saturate(170%);
+}
+.thinking-page__bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  height: 76px;
+  padding: 30px 22px 0 22px;
+  flex: 0 0 auto;
+  user-select: none;
+  border-bottom: 1px solid oklch(1 0 0 / 0.05);
+}
+.thinking-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: oklch(1 0 0 / 0.05);
+  border: 1px solid var(--color-line);
+  color: var(--color-fg-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 6px 12px 6px 10px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring),
+              border-color var(--dur-fast) var(--ease-spring),
+              color var(--dur-fast) var(--ease-spring);
+  -webkit-app-region: no-drag;
+}
+.thinking-page__back:hover {
+  background: oklch(1 0 0 / 0.10);
+  border-color: var(--color-line-strong);
+  color: var(--color-fg);
+}
+.thinking-page__heading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.thinking-page__eyebrow {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-weight: 600;
+  color: var(--color-fg-dim);
+}
+.thinking-page__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.thinking-page__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-fg-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.thinking-page__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 24px 36px 56px 36px;
+  outline: none;
+}
+.thinking-page__body::-webkit-scrollbar { width: 0; height: 0; }
+.thinking-page__text {
+  max-width: 760px;
+  margin: 0 auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--color-fg-muted);
+  font-size: 14px;
+  line-height: 1.7;
 }
-
-/* Visible separator between the thinking pane and the prompt body so the
-   reader always knows where one ends and the other begins. */
-.thinking-sep {
-  border: 0;
-  height: 1px;
-  background: oklch(1 0 0 / 0.10);
-  margin: 18px 0 18px 0;
+.thinking-page__empty {
+  max-width: 480px;
+  margin: 40px auto 0 auto;
+  text-align: center;
+  color: var(--color-fg-dim);
+  font-size: 13px;
 }
 
 .streaming-cursor {

@@ -4,6 +4,7 @@ import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
 import { toPlainText } from '@/lib/plainText';
 import { MessageCard } from './MessageCard';
+import { ThinkingPage } from './ThinkingPage';
 import { Settings } from './Settings';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -57,13 +58,13 @@ export function App() {
   // the user's manual expansion on every tick.
   const autoSelectedRecRef = useRef<string | null>(null);
 
-  const [streamingId, setStreamingId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [hotkey, setHotkey] = useState<HotkeyStatus | null>(null);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(getStoredPinnedIds);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [thinkingForId, setThinkingForId] = useState<string | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -151,7 +152,6 @@ export function App() {
     const unsub = ipc.onResultChunk((c) => {
       if (c.kind === 'begin') {
         liveRef.current = { id: c.id, body: '' };
-        setStreamingId(c.id);
         setExpandedId(c.id);
         triggerRender();
         return;
@@ -166,7 +166,6 @@ export function App() {
       }
       if (c.kind === 'end') {
         liveRef.current = { id: c.id, body: c.text };
-        setStreamingId(null);
         triggerRender();
         void refreshList();
         if (c.text) void copyBodyToClipboard(c.text);
@@ -182,9 +181,17 @@ export function App() {
     return recordings;
   }, [recordings, pinnedIds, tab]);
 
+  // Esc closes the thinking page if it's open.
+  useGlobalKey('Escape', (e) => {
+    if (thinkingForId !== null) {
+      e.preventDefault();
+      setThinkingForId(null);
+    }
+  });
+
   // ↑/↓ navigate the visible list (expand prev/next card).
   useGlobalKey(['ArrowDown', 'ArrowUp'], (e) => {
-    if (showSettings) return;
+    if (showSettings || thinkingForId !== null) return;
     if (visibleRecordings.length === 0) return;
     const idx = visibleRecordings.findIndex((r) => r.id === expandedId);
     const next = e.key === 'ArrowDown'
@@ -281,7 +288,6 @@ export function App() {
           <FeedEmpty tab={tab} />
         ) : (
           visibleRecordings.map((rec) => {
-            const isStreaming = streamingId === rec.id;
             const liveBody = liveRef.current && liveRef.current.id === rec.id
               ? liveRef.current.body
               : null;
@@ -292,7 +298,6 @@ export function App() {
                 recording={rec}
                 isPinned={pinnedIds.has(rec.id)}
                 isExpanded={expandedId === rec.id}
-                isStreaming={isStreaming}
                 liveBody={liveBody}
                 liveThinking={liveThinking}
                 onToggleExpand={() =>
@@ -301,6 +306,7 @@ export function App() {
                 onTogglePin={() => togglePin(rec.id)}
                 onCopy={copyBodyToClipboard}
                 onDelete={() => setPendingDeleteId(rec.id)}
+                onOpenThinking={() => setThinkingForId(rec.id)}
                 onRetry={async () => {
                   if (retrying) return;
                   setRetrying(true);
@@ -317,6 +323,19 @@ export function App() {
           })
         )}
       </main>
+      {thinkingForId !== null && (() => {
+        const rec = recordings.find((r) => r.id === thinkingForId) ?? null;
+        if (!rec) return null;
+        const live = liveThinkingRef.current.get(thinkingForId) ?? null;
+        const text = live ?? rec.thinking ?? '';
+        return (
+          <ThinkingPage
+            recording={rec}
+            thinking={text}
+            onBack={() => setThinkingForId(null)}
+          />
+        );
+      })()}
       <Settings
         open={showSettings}
         onClose={() => setShowSettings(false)}

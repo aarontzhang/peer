@@ -6,13 +6,13 @@ type Props = {
   recording: Recording;
   isPinned: boolean;
   isExpanded: boolean;
-  isStreaming: boolean;
   liveBody: string | null;
   liveThinking: string | null;
   onToggleExpand: () => void;
   onTogglePin: () => void;
   onCopy: (text: string) => Promise<void>;
   onDelete: () => void;
+  onOpenThinking: () => void;
   onRetry: () => void;
   retryDisabled?: boolean;
 };
@@ -21,13 +21,13 @@ export function MessageCard({
   recording,
   isPinned,
   isExpanded,
-  isStreaming,
   liveBody,
   liveThinking,
   onToggleExpand,
   onTogglePin,
   onCopy,
   onDelete,
+  onOpenThinking,
   onRetry,
   retryDisabled,
 }: Props) {
@@ -53,13 +53,11 @@ export function MessageCard({
   // Typewriter effect for the streaming body.
   const resetKey = `${recording.id}|${recording.status === 'canceled' ? 'C' : 'L'}`;
   const [displayed, setDisplayed] = useState(body);
-  const [thinkingOverride, setThinkingOverride] = useState<boolean | null>(null);
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<number | null>(null);
 
   useEffect(() => {
     setDisplayed(body);
-    setThinkingOverride(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
@@ -121,11 +119,9 @@ export function MessageCard({
     onRetry();
   };
 
-  const autoOpenThinking = isStreaming || !body;
-  const thinkingOpen = thinkingOverride ?? autoOpenThinking;
-  const onToggleThinking = (e: React.MouseEvent) => {
+  const onOpenThinkingClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setThinkingOverride(!thinkingOpen);
+    onOpenThinking();
   };
 
   const showCopy = !!body;
@@ -220,18 +216,14 @@ export function MessageCard({
               {thinking && (
                 <button
                   type="button"
-                  className={`thinking-toggle${thinkingOpen ? ' thinking-toggle--open' : ''}`}
-                  onClick={onToggleThinking}
-                  aria-expanded={thinkingOpen}
+                  className="thinking-toggle"
+                  onClick={onOpenThinkingClick}
+                  aria-label="Open thinking"
                 >
                   <ChevronIcon />
-                  <span>{thinkingOpen ? 'Hide thinking' : 'Show thinking'}</span>
+                  <span>Show thinking</span>
                 </button>
               )}
-              {thinking && thinkingOpen && (
-                <div className="thinking__body">{thinking}</div>
-              )}
-              {thinking && thinkingOpen && body && <hr className="thinking-sep" />}
               {body ? (
                 <div className="prompt-body">{displayed}</div>
               ) : (
