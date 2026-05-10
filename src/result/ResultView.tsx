@@ -226,6 +226,20 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   return (
     <div className="main">
       <div className="main__bar" data-tauri-drag-region>
+        {thinking && (
+          <div className="main__leading">
+            <button
+              type="button"
+              className={`thinking-toggle${thinkingOpen ? ' thinking-toggle--open' : ''}`}
+              onClick={onToggleThinking}
+              aria-expanded={thinkingOpen}
+              data-no-drag
+            >
+              <ChevronIcon />
+              <span>{thinkingOpen ? 'Hide thinking' : 'Show thinking'}</span>
+            </button>
+          </div>
+        )}
         <div className="main__actions">
           <button
             className={`icon-btn${copied ? ' icon-btn--solid' : ''}`}
@@ -239,21 +253,10 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
         </div>
       </div>
       <div className="main__scroll" ref={scrollRef}>
-        {thinking && (
-          <div className={`thinking-wrap${thinkingOpen ? ' thinking-wrap--open' : ''}`}>
-            <button
-              type="button"
-              className="thinking-toggle"
-              onClick={onToggleThinking}
-              aria-expanded={thinkingOpen}
-            >
-              <ChevronIcon />
-              <span>{thinkingOpen ? 'Hide thinking' : 'Show thinking'}</span>
-            </button>
-            {thinkingOpen && <div className="thinking__body">{thinking}</div>}
-          </div>
+        {thinking && thinkingOpen && (
+          <div className="thinking__body">{thinking}</div>
         )}
-        {thinking && body && <hr className="thinking-sep" />}
+        {thinking && thinkingOpen && body && <hr className="thinking-sep" />}
         {body ? (
           <div className="prompt-body">{displayed}</div>
         ) : (

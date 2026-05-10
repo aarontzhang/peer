@@ -579,21 +579,24 @@ html, body {
 }
 .hotkey-banner__msg strong { color: oklch(0.98 0.02 80); font-weight: 600; }
 
-/* ─── thinking dropdown ────────────────────────────────────────────────── */
-.thinking-wrap {
-  margin-bottom: 18px;
-}
+/* ─── thinking toggle ──────────────────────────────────────────────────── */
 .prompt-pending {
   color: var(--color-fg-dim);
 }
-/* Sticky toggle stays pinned to the top of the scroll area so users can
-   collapse a long thinking pane without scrolling back up. The negative
-   horizontal margin + matching padding lets the blurred backdrop bleed all
-   the way to the pane edges, hiding any text scrolling underneath. */
+/* The toggle lives inside .main__bar — that strip sits over the app's glass
+   background but is *not* the scroll container, so prompt text never passes
+   underneath. That lets the pill use the same subtle translucent recipe as
+   the other bar/button chrome instead of needing an opaque blocker that
+   reads as a darker chip. */
+.main__leading {
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  display: flex;
+  z-index: 3;
+  -webkit-app-region: no-drag;
+}
 .thinking-toggle {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -601,27 +604,21 @@ html, body {
   font: inherit;
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--color-fg);
-  /* Mirror the app's own background recipe so the pill composites the same
-     way as its surroundings — a near-opaque glass layer that hides scrolling
-     text without reading as a separate, darker chip. */
-  background:
-    linear-gradient(180deg, oklch(0.25 0.006 82 / 0.88), oklch(0.17 0.005 82 / 0.84)),
-    oklch(0.18 0.005 82 / 0.86);
-  backdrop-filter: blur(38px) saturate(165%);
-  -webkit-backdrop-filter: blur(38px) saturate(165%);
-  border: 0;
+  letter-spacing: 0.01em;
+  color: var(--color-fg-muted);
+  background: oklch(1 0 0 / 0.04);
+  border: 1px solid var(--color-line);
   padding: 6px 12px 6px 10px;
   border-radius: 999px;
   user-select: none;
   transition: color var(--dur-fast) var(--ease-spring),
-              background var(--dur-fast) var(--ease-spring);
+              background var(--dur-fast) var(--ease-spring),
+              border-color var(--dur-fast) var(--ease-spring);
 }
 .thinking-toggle:hover {
-  background:
-    linear-gradient(180deg, oklch(0.28 0.006 82 / 0.92), oklch(0.20 0.005 82 / 0.88)),
-    oklch(0.20 0.005 82 / 0.90);
+  color: var(--color-fg);
+  background: oklch(1 0 0 / 0.10);
+  border-color: var(--color-line-strong);
 }
 .thinking-toggle:focus-visible {
   outline: 1px solid oklch(1 0 0 / 0.18);
@@ -631,9 +628,9 @@ html, body {
   transition: transform var(--dur-fast) var(--ease-spring);
   opacity: 0.7;
 }
-.thinking-wrap--open .thinking-toggle .thinking__chev { transform: rotate(90deg); }
+.thinking-toggle--open .thinking__chev { transform: rotate(90deg); }
 .thinking__body {
-  margin-top: 12px;
+  margin-top: 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--color-fg);
