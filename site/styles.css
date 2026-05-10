@@ -17,6 +17,16 @@ html {
 
 * { box-sizing: border-box; }
 
+/* Hide scrollbars while preserving scroll behavior. */
+html {
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE 10+ / legacy Edge */
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;               /* Chrome, Safari, modern Edge */
+}
+
 html {
   min-height: 100%;
   scroll-behavior: smooth;
