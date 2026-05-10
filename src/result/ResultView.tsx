@@ -37,6 +37,11 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   // model. We drain those chunks character-by-character on rAF so the user
   // sees a smooth ChatGPT-style stream instead of step jumps.
   const recordingId = recording?.id ?? null;
+  // Transitioning out of `canceled` (via Retry) keeps the same id but swaps
+  // the whole view from the cancelled placeholder to a live/done result.
+  // Include that in the reset key so the typewriter snaps to the new body
+  // instead of staying stuck at '' from the cancelled render.
+  const resetKey = `${recordingId ?? ''}|${recording?.status === 'canceled' ? 'C' : 'L'}`;
   const [displayed, setDisplayed] = useState(body);
 
   // Snap to the current body whenever the user switches recordings — we
@@ -49,9 +54,9 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
       window.clearTimeout(copiedTimer.current);
       copiedTimer.current = null;
     }
-    // intentionally only on recordingId change.
+    // intentionally only on resetKey change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recordingId]);
+  }, [resetKey]);
 
   useEffect(() => {
     return () => {
