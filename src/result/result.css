@@ -637,7 +637,7 @@ html, body {
   margin-top: 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: var(--color-fg);
+  color: var(--color-fg-muted);
 }
 
 /* Visible separator between the thinking pane and the prompt body so the

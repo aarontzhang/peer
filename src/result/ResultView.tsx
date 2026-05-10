@@ -17,7 +17,11 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
 
   // Prefer the live thinking event so it's visible the instant per-window
   // analyses finish, well before the prompt finishes streaming.
-  const thinking = liveThinking ?? recording?.thinking ?? null;
+  const rawThinking = liveThinking ?? recording?.thinking ?? null;
+  const thinking = useMemo(
+    () => (rawThinking ? toPlainText(rawThinking) : null),
+    [rawThinking],
+  );
 
   // User-controlled override of the thinking pane's open state. Null = follow
   // the auto rule (open while streaming, collapsed once the prompt lands);
