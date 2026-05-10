@@ -141,10 +141,10 @@ html, body {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
-  /* Generous top padding leaves a clean translucent gap between the tab pill
-     and the first card so the chrome breathes; tabs aren't pressed against
-     content. */
-  padding: 36px 14px 40px 14px;
+  /* No top padding so the at-rest scroll position lines up exactly with the
+     cutoff at the top of the feed — otherwise you can keep scrolling cards
+     past the resting first-card position, which reads as a stray gap. */
+  padding: 0 14px 40px 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
