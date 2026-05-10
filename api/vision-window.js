@@ -3,7 +3,7 @@ import {
   extractJson,
   handleError,
   readJson,
-  requireDeviceAuth,
+  requireUser,
   requiredEnv,
   sendJson,
 } from './_backend.js';
@@ -15,7 +15,7 @@ export const config = {
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
-    await requireDeviceAuth(req);
+    await requireUser(req);
 
     const body = await readJson(req);
     const frames = Array.isArray(body.frames) ? body.frames : [];

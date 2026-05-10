@@ -1,3 +1,5 @@
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
 export const WINDOW_SYSTEM = `You take one window of a screen recording (a few keyframes plus the user's narration over that window) and return a compact JSON note. A downstream model will combine the per-window notes into a single, refined instruction prompt for a coding agent.
 
 You will receive:
@@ -64,32 +66,55 @@ export function bearerToken(req) {
   return match?.[1]?.trim() || null;
 }
 
-export async function requireDeviceAuth(req) {
+let cachedSecret = null;
+function jwtSecret() {
+  if (!cachedSecret) {
+    cachedSecret = new TextEncoder().encode(requiredEnv('SUPABASE_JWT_SECRET'));
+  }
+  return cachedSecret;
+}
+
+let cachedJwks = null;
+function supabaseJwks() {
+  if (!cachedJwks) {
+    const supabaseUrl = requiredEnv('SUPABASE_URL').replace(/\/$/, '');
+    cachedJwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
+  }
+  return cachedJwks;
+}
+
+async function verifySupabaseJwt(token) {
+  try {
+    return await jwtVerify(token, supabaseJwks(), {
+      audience: 'authenticated',
+      algorithms: ['ES256', 'RS256', 'EdDSA'],
+    });
+  } catch (jwksError) {
+    try {
+      return await jwtVerify(token, jwtSecret(), {
+        audience: 'authenticated',
+        algorithms: ['HS256'],
+      });
+    } catch {
+      throw jwksError;
+    }
+  }
+}
+
+export async function requireUser(req) {
   const token = bearerToken(req);
   if (!token) throw httpError(401, 'missing bearer token');
 
   if (process.env.PEER_BACKEND_BYPASS_AUTH === '1') {
-    return { userId: 'dev', token };
+    return { userId: 'dev', email: 'dev@local', token };
   }
 
-  const supabaseUrl = requiredEnv('SUPABASE_URL');
-  const serviceKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
-  const url = `${supabaseUrl.replace(/\/$/, '')}/rest/v1/device_tokens?token=eq.${encodeURIComponent(token)}&select=user_id,expires_at&limit=1`;
-  const response = await fetch(url, {
-    headers: {
-      apikey: serviceKey,
-      authorization: `Bearer ${serviceKey}`,
-    },
-  });
-
-  if (!response.ok) throw httpError(502, `Supabase auth lookup failed: ${response.status}`);
-  const rows = await response.json();
-  const row = rows[0];
-  if (!row) throw httpError(401, 'invalid device token');
-  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) {
-    throw httpError(401, 'expired device token');
+  try {
+    const { payload } = await verifySupabaseJwt(token);
+    return { userId: payload.sub, email: payload.email ?? null, token };
+  } catch {
+    throw httpError(401, 'invalid or expired token');
   }
-  return { userId: row.user_id, token };
 }
 
 export async function recordUsage(auth, kind) {
@@ -107,32 +132,6 @@ export async function recordUsage(auth, kind) {
     },
     body: JSON.stringify({ user_id: auth.userId, kind }),
   }).catch(() => {});
-}
-
-export async function enforceUsageLimit(auth) {
-  if (process.env.PEER_BACKEND_BYPASS_AUTH === '1') return;
-  const limit = Number.parseInt(process.env.PEER_FREE_BETA_MONTHLY_LIMIT || '100', 10);
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey || !Number.isFinite(limit) || limit <= 0) return;
-
-  const since = new Date();
-  since.setUTCDate(1);
-  since.setUTCHours(0, 0, 0, 0);
-  const url = `${supabaseUrl.replace(/\/$/, '')}/rest/v1/recording_usage?user_id=eq.${encodeURIComponent(auth.userId)}&created_at=gte.${encodeURIComponent(since.toISOString())}&select=id`;
-  const response = await fetch(url, {
-    headers: {
-      apikey: serviceKey,
-      authorization: `Bearer ${serviceKey}`,
-      prefer: 'count=exact',
-      range: '0-0',
-    },
-  });
-  const contentRange = response.headers.get('content-range') || '';
-  const count = Number.parseInt(contentRange.split('/')[1] || '0', 10);
-  if (Number.isFinite(count) && count >= limit) {
-    throw httpError(429, 'free beta monthly usage limit reached');
-  }
 }
 
 export function requiredEnv(name) {

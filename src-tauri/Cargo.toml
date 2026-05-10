@@ -24,6 +24,10 @@ tauri = { version = "2", features = ["macos-private-api"] }
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+url = "2"
+rand = "0.8"
 window-vibrancy = "0.7.1"
 
 serde = { version = "1", features = ["derive"] }

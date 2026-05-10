@@ -72,5 +72,11 @@
     "resources": [],
     "externalBin": ["bin/PeerCapture"]
   },
-  "plugins": {}
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["peer"]
+      }
+    }
+  }
 }

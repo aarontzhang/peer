@@ -26,12 +26,55 @@ pub fn run() {
         .init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // Forward any peer:// URL handed in on relaunch — without this,
+            // a click while the app is already running just reactivates the
+            // dock icon and the deep link is dropped on the floor.
+            for arg in args.iter().skip(1) {
+                if arg.starts_with("peer://") {
+                    let app2 = app.clone();
+                    let url = arg.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(err) = saas::handle_deep_link(&app2, &url) {
+                            tracing::warn!(?err, "deep link (single-instance) failed");
+                        }
+                    });
+                }
+            }
+            let _ = reveal_result_window(app, true);
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
         .setup(|app| {
             let handle = app.handle().clone();
             let state = Arc::new(AppState::new(&handle)?);
             app.manage(state.clone());
+
+            // Register on_open_url before any slow setup work so buffered
+            // launch URLs (cold-start sign-in flow) are replayed instead of
+            // dropped.
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                let dl_handle = handle.clone();
+                app.deep_link().on_open_url(move |event| {
+                    for url in event.urls() {
+                        let url_string = url.to_string();
+                        let app2 = dl_handle.clone();
+                        if let Err(err) = saas::handle_deep_link(&app2, &url_string) {
+                            tracing::warn!(?err, url = %url_string, "deep link handler failed");
+                        }
+                    }
+                });
+
+                // Bundled apps register peer:// via Info.plist; `tauri dev`
+                // launches a raw binary that Launch Services doesn't see, so
+                // register at runtime in debug builds.
+                #[cfg(debug_assertions)]
+                {
+                    let _ = app.deep_link().register("peer");
+                }
+            }
 
             #[cfg(target_os = "macos")]
             set_app_icon(&handle)?;
@@ -69,9 +112,8 @@ pub fn run() {
             ipc::get_recording,
             ipc::delete_recording,
             ipc::open_result_window,
-            ipc::get_account_status,
-            ipc::open_account_login,
-            ipc::set_device_token,
+            ipc::get_session,
+            ipc::start_google_sign_in,
             ipc::sign_out,
             ipc::get_hotkey_status,
             ipc::set_recording_keybind,

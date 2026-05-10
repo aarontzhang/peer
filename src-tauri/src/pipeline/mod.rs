@@ -43,7 +43,7 @@ pub async fn run(
     duration_ms: u64,
 ) -> Result<()> {
     let total_started = Instant::now();
-    let saas = SaasClient::from_keychain();
+    let saas = SaasClient::from_keychain(app.clone()).await;
     let openai = if saas.is_none() {
         Some(
             crate::ipc::read_api_key(&app, "openai")

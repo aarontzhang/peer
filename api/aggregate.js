@@ -1,10 +1,9 @@
 import {
   AGGREGATOR_SYSTEM,
-  enforceUsageLimit,
   handleError,
   readJson,
   recordUsage,
-  requireDeviceAuth,
+  requireUser,
   requiredEnv,
   sendJson,
 } from './_backend.js';
@@ -16,8 +15,7 @@ export const config = {
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
-    const auth = await requireDeviceAuth(req);
-    await enforceUsageLimit(auth);
+    const auth = await requireUser(req);
     const body = await readJson(req);
 
     const userMessage = `Recording duration: ${Number(body.totalSecs || 0).toFixed(1)}s\n\nFull transcript (with timestamps):\n${body.transcriptText || '(no narration captured)'}\n\nPer-window notes (JSON, ordered):\n${body.observationsJson || '[]'}\n\nNow produce the refined prompt per the system prompt.`;

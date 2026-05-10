@@ -22,5 +22,16 @@
   <string>Peer captures your narration so it can transcribe what you're describing.</string>
   <key>NSScreenCaptureUsageDescription</key>
   <string>Peer records your screen so it can describe what you're showing to a Claude Code agent.</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>com.aaronzhang.peer.auth</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>peer</string>
+      </array>
+    </dict>
+  </array>
 </dict>
 </plist>

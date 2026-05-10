@@ -34,6 +34,11 @@ export type ThinkingEvent = { id: string; thinking: string };
 
 export type AccountStatus = {
   signedIn: boolean;
+  email: string | null;
+};
+
+export type AuthChangedPayload = AccountStatus & {
+  error?: string;
 };
 
 export type RecordingKeybind =
@@ -59,9 +64,8 @@ export const ipc = {
   openResultWindow: () => invoke<void>('open_result_window'),
   movePill: (x: number, y: number) => invoke<void>('move_pill', { x, y }),
   cursorPosition: () => invoke<[number, number]>('cursor_position'),
-  getAccountStatus: () => invoke<AccountStatus>('get_account_status'),
-  openAccountLogin: () => invoke<string>('open_account_login'),
-  setDeviceToken: (token: string) => invoke<void>('set_device_token', { args: { token } }),
+  getSession: () => invoke<AccountStatus>('get_session'),
+  startGoogleSignIn: () => invoke<string>('start_google_sign_in'),
   signOut: () => invoke<void>('sign_out'),
   getHotkeyStatus: () => invoke<HotkeyStatus>('get_hotkey_status'),
   setRecordingKeybind: (keybind: RecordingKeybind) =>
@@ -75,6 +79,8 @@ export const ipc = {
     listen<ThinkingEvent>('result:thinking', (e) => cb(e.payload)),
   onHotkeyStatus: (cb: (s: HotkeyStatus) => void): Promise<UnlistenFn> =>
     listen<HotkeyStatus>('hotkey:status', (e) => cb(e.payload)),
+  onAuthChanged: (cb: (s: AuthChangedPayload) => void): Promise<UnlistenFn> =>
+    listen<AuthChangedPayload>('auth:changed', (e) => cb(e.payload)),
 };
 
 export function formatDuration(ms: number): string {

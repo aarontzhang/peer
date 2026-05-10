@@ -18,6 +18,7 @@
     "sql:allow-execute",
     "sql:allow-load",
     "sql:allow-select",
-    "global-shortcut:default"
+    "global-shortcut:default",
+    "deep-link:default"
   ]
 }

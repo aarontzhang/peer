@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ipc, type AccountStatus, type HotkeyStatus, type RecordingKeybind } from '@/lib/ipc';
+import { ipc, type AccountStatus, type AuthChangedPayload, type HotkeyStatus, type RecordingKeybind } from '@/lib/ipc';
 
 type Props = {
   open: boolean;
@@ -10,8 +10,8 @@ const DEFAULT_KEYBIND: RecordingKeybind = { kind: 'fn' };
 
 export function Settings({ open, onClose }: Props) {
   const [account, setAccount] = useState<AccountStatus | null>(null);
-  const [deviceToken, setDeviceToken] = useState('');
-  const [accountMessage, setAccountMessage] = useState<string | null>(null);
+  const [pendingSignIn, setPendingSignIn] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
   const [hotkey, setHotkey] = useState<HotkeyStatus | null>(null);
   const [keybind, setKeybind] = useState<RecordingKeybind>(DEFAULT_KEYBIND);
   const [initialKeybind, setInitialKeybind] = useState<RecordingKeybind>(DEFAULT_KEYBIND);
@@ -21,18 +21,38 @@ export function Settings({ open, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
-      void ipc.getAccountStatus().then(setAccount);
+      void ipc.getSession().then(setAccount);
       void ipc.getHotkeyStatus().then((next) => {
         setHotkey(next);
         setKeybind(next.keybind);
         setInitialKeybind(next.keybind);
       });
-      setDeviceToken('');
-      setAccountMessage(null);
+      setPendingSignIn(false);
+      setSignInError(null);
       setCapturing(false);
       setCaptureError(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    ipc
+      .onAuthChanged(async (payload: AuthChangedPayload) => {
+        setAccount(await ipc.getSession());
+        setPendingSignIn(false);
+        if (payload.error) {
+          setSignInError(payload.error);
+        } else if (payload.signedIn) {
+          setSignInError(null);
+        }
+      })
+      .then((u) => {
+        unlisten = u;
+      });
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 
   useEffect(() => {
     if (!capturing) return;
@@ -78,10 +98,6 @@ export function Settings({ open, onClose }: Props) {
   const onSave = async () => {
     setSaving(true);
     try {
-      if (deviceToken.trim()) {
-        await ipc.setDeviceToken(deviceToken.trim());
-        setAccount(await ipc.getAccountStatus());
-      }
       if (!keybindEqual(keybind, initialKeybind)) {
         const next = await ipc.setRecordingKeybind(keybind);
         setHotkey(next);
@@ -95,18 +111,22 @@ export function Settings({ open, onClose }: Props) {
   };
 
   const onLogin = async () => {
-    const url = await ipc.openAccountLogin();
-    setAccountMessage(`Opened ${url}`);
+    setSignInError(null);
+    setPendingSignIn(true);
+    try {
+      await ipc.startGoogleSignIn();
+    } catch (err) {
+      setPendingSignIn(false);
+      setSignInError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const onSignOut = async () => {
     await ipc.signOut();
-    setAccount(await ipc.getAccountStatus());
-    setDeviceToken('');
-    setAccountMessage(null);
+    setAccount(await ipc.getSession());
   };
 
-  const changed = !!deviceToken.trim() || !keybindEqual(keybind, initialKeybind);
+  const changed = !keybindEqual(keybind, initialKeybind);
   const showHotkeyProblem =
     hotkey && keybindEqual(hotkey.keybind, keybind) && !hotkey.installed;
 
@@ -120,27 +140,29 @@ export function Settings({ open, onClose }: Props) {
             <h3 className="settings__sectionTitle">Account</h3>
             {account?.signedIn && <span className="settings__pill">Signed in</span>}
           </div>
-          <div className="settings__row">
-            <button className="btn btn--primary" type="button" onClick={onLogin}>
-              {account?.signedIn ? 'Open account' : 'Sign in'}
-            </button>
-            {account?.signedIn && (
+          {account?.signedIn ? (
+            <div className="settings__row">
+              <span className="settings__email">{account.email ?? 'Signed in'}</span>
               <button className="btn btn--ghost" type="button" onClick={onSignOut}>
                 Sign out
               </button>
-            )}
-          </div>
-          <p className="settings__hint">
-            No API key required. Sign in with your beta account to use Peer.
-          </p>
-          <input
-            className="settings__input"
-            type="password"
-            placeholder="Paste device token from browser login"
-            value={deviceToken}
-            onChange={(e) => setDeviceToken(e.target.value)}
-          />
-          {accountMessage && <p className="settings__hint">{accountMessage}</p>}
+            </div>
+          ) : (
+            <div className="settings__row">
+              <button
+                className="btn btn--primary"
+                type="button"
+                onClick={onLogin}
+                disabled={pendingSignIn}
+              >
+                Continue with Google
+              </button>
+            </div>
+          )}
+          {pendingSignIn && !account?.signedIn && (
+            <p className="settings__hint">Waiting for browser sign-in…</p>
+          )}
+          {signInError && <p className="settings__error">{signInError}</p>}
         </section>
 
         <section className="settings__section">
