@@ -167,19 +167,22 @@ pub fn account_status() -> AccountStatus {
 pub fn open_login(_app: &AppHandle) -> Result<String> {
     let mut buf = [0u8; 32];
     OsRng.fill_bytes(&mut buf);
-    let state = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(buf);
-    *PENDING_STATE.lock() = Some(state.clone());
+    let nonce = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(buf);
+    *PENDING_STATE.lock() = Some(nonce.clone());
 
     let supabase = supabase_url();
+    // Carry the CSRF nonce through `redirect_to` rather than the OAuth `state`
+    // param. Supabase wants to own `state` for its own implicit-flow validation;
+    // passing our own value triggers a bad_oauth_state on the callback leg.
     let callback = format!(
-        "{}/api/auth-callback",
-        backend_url().trim_end_matches('/')
+        "{}/api/auth-callback?nonce={}",
+        backend_url().trim_end_matches('/'),
+        percent_encode(&nonce),
     );
     let url = format!(
-        "{}/auth/v1/authorize?provider=google&redirect_to={}&flow_type=implicit&state={}",
+        "{}/auth/v1/authorize?provider=google&redirect_to={}&flow_type=implicit",
         supabase.trim_end_matches('/'),
         percent_encode(&callback),
-        percent_encode(&state),
     );
 
     tracing::info!(%url, "opening google sign-in");
@@ -215,16 +218,22 @@ pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
     let mut refresh_token: Option<String> = None;
     let mut expires_in: Option<i64> = None;
     let mut expires_at: Option<i64> = None;
-    let mut state_param: Option<String> = None;
+    let mut nonce_param: Option<String> = None;
     let mut error: Option<String> = None;
 
+    // Nonce arrives via the redirect_to query string; tokens via the fragment.
+    for (k, v) in parsed.query_pairs() {
+        if k.as_ref() == "nonce" {
+            nonce_param = Some(v.into_owned());
+        }
+    }
     for (k, v) in url::form_urlencoded::parse(fragment.as_bytes()) {
         match k.as_ref() {
             "access_token" => access_token = Some(v.into_owned()),
             "refresh_token" => refresh_token = Some(v.into_owned()),
             "expires_in" => expires_in = v.parse().ok(),
             "expires_at" => expires_at = v.parse().ok(),
-            "state" => state_param = Some(v.into_owned()),
+            "nonce" => nonce_param = Some(v.into_owned()),
             "error" | "error_description" => error = Some(v.into_owned()),
             _ => {}
         }
@@ -240,10 +249,18 @@ pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
     }
 
     let expected = PENDING_STATE.lock().take();
-    match (expected.as_deref(), state_param.as_deref()) {
+    match (expected.as_deref(), nonce_param.as_deref()) {
         (Some(expected), Some(got)) if expected == got => {}
         _ => {
-            tracing::warn!("deep link state mismatch; ignoring");
+            tracing::warn!("deep link nonce mismatch; ignoring");
+            let _ = app.emit(
+                "auth:changed",
+                json!({
+                    "signedIn": false,
+                    "email": null,
+                    "error": "Sign-in nonce mismatch — open Settings and try again.",
+                }),
+            );
             return Ok(());
         }
     }

@@ -26,7 +26,9 @@ export default function handler(req, res) {
   <script>
     (function () {
       var hash = window.location.hash || '';
-      var target = 'peer://auth' + hash;
+      var nonce = new URLSearchParams(window.location.search).get('nonce') || '';
+      var query = nonce ? '?nonce=' + encodeURIComponent(nonce) : '';
+      var target = 'peer://auth' + query + hash;
       var openBtn = document.getElementById('open');
       var status = document.getElementById('status');
       var errorBox = document.getElementById('error');
