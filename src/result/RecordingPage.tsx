@@ -5,31 +5,38 @@ import { firstPlainTextLine, toPlainText } from '@/lib/plainText';
 type Props = {
   recording: Recording;
   isPinned: boolean;
-  isSelected: boolean;
   liveBody: string | null;
-  onOpen: () => void;
+  liveThinking: string | null;
+  onBack: () => void;
   onTogglePin: () => void;
   onCopy: (text: string) => Promise<void>;
   onDelete: () => void;
+  onOpenThinking: () => void;
   onRetry: () => void;
   retryDisabled?: boolean;
 };
 
-export function MessageCard({
+export function RecordingPage({
   recording,
   isPinned,
-  isSelected,
   liveBody,
-  onOpen,
+  liveThinking,
+  onBack,
   onTogglePin,
   onCopy,
   onDelete,
+  onOpenThinking,
   onRetry,
   retryDisabled,
 }: Props) {
   const body = useMemo(
     () => toPlainText(liveBody ?? recording.body ?? ''),
     [liveBody, recording.body],
+  );
+  const rawThinking = liveThinking ?? recording.thinking ?? null;
+  const thinking = useMemo(
+    () => (rawThinking ? toPlainText(rawThinking) : null),
+    [rawThinking],
   );
 
   const title =
@@ -41,8 +48,16 @@ export function MessageCard({
       : recording.status === 'failed' ? 'Failed'
       : 'Untitled recording');
 
+  // Typewriter effect for the streaming body — same recipe as MessageCard.
+  const resetKey = `${recording.id}|${recording.status === 'canceled' ? 'C' : 'L'}`;
+  const [displayed, setDisplayed] = useState(body);
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    setDisplayed(body);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
 
   useEffect(() => {
     return () => {
@@ -50,8 +65,37 @@ export function MessageCard({
     };
   }, []);
 
-  const onCopyClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  useEffect(() => {
+    if (displayed === body) return;
+    if (!body.startsWith(displayed)) {
+      setDisplayed(body);
+      return;
+    }
+    let raf = 0;
+    const startTime = performance.now();
+    const startLen = displayed.length;
+    const totalLen = body.length;
+    const tick = () => {
+      const elapsed = performance.now() - startTime;
+      const backlog = totalLen - startLen;
+      const charsPerMs = Math.min(1.5, 0.1 + backlog / 140);
+      const advance = Math.max(1, Math.round(elapsed * charsPerMs));
+      const nextLen = Math.min(totalLen, startLen + advance);
+      setDisplayed(body.slice(0, nextLen));
+      if (nextLen < totalLen) {
+        raf = requestAnimationFrame(tick);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [body, displayed]);
+
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>('.recording-page__body');
+    root?.focus();
+  }, []);
+
+  const onCopyClick = async () => {
     if (!body) return;
     await onCopy(body);
     setCopied(true);
@@ -62,58 +106,37 @@ export function MessageCard({
     }, 1600);
   };
 
-  const onPinClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onTogglePin();
-  };
-
-  const onDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete();
-  };
-
-  const onRetryClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onRetry();
-  };
-
   const showCopy = !!body;
   const isCanceled = recording.status === 'canceled';
-
-  const onHeaderKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onOpen();
-    }
-  };
+  const isFailed = recording.status === 'failed';
 
   return (
-    <div
-      className="card"
-      data-selected={isSelected}
-      data-pinned={isPinned}
-      data-status={recording.status}
-    >
-      <div
-        role="button"
-        tabIndex={0}
-        className="card__header"
-        onClick={onOpen}
-        onKeyDown={onHeaderKey}
-      >
-        <span className="card__time" aria-hidden>
-          {formatRelative(recording.createdAt)}
-        </span>
-        <span className="card__title">{title}</span>
-        <span className="card__duration" aria-hidden>
-          {formatDuration(recording.durationMs)}
-        </span>
-        <span className="card__actions" data-no-drag>
+    <div className="recording-page" role="dialog" aria-label="Recording detail">
+      <header className="recording-page__bar" data-tauri-drag-region>
+        <button
+          type="button"
+          className="recording-page__back"
+          onClick={onBack}
+          aria-label="Back"
+          data-no-drag
+        >
+          <BackIcon />
+          <span>Back</span>
+        </button>
+        <div className="recording-page__heading" data-no-drag>
+          <span className="recording-page__title">{title}</span>
+          <div className="recording-page__meta">
+            <span>{formatRelative(recording.createdAt)}</span>
+            <span aria-hidden>·</span>
+            <span>{formatDuration(recording.durationMs)}</span>
+          </div>
+        </div>
+        <div className="recording-page__actions" data-no-drag>
           {isCanceled && (
             <button
               type="button"
               className="card-icon-btn"
-              onClick={onRetryClick}
+              onClick={onRetry}
               disabled={retryDisabled}
               aria-label="Analyze the video"
               title="Analyze the video"
@@ -135,7 +158,7 @@ export function MessageCard({
           <button
             type="button"
             className={`card-icon-btn card-icon-btn--pin${isPinned ? ' card-icon-btn--pinActive' : ''}`}
-            onClick={onPinClick}
+            onClick={onTogglePin}
             aria-label={isPinned ? 'Unsave' : 'Save'}
             aria-pressed={isPinned}
             title={isPinned ? 'Unsave' : 'Save'}
@@ -145,15 +168,67 @@ export function MessageCard({
           <button
             type="button"
             className="card-icon-btn card-icon-btn--danger"
-            onClick={onDeleteClick}
+            onClick={onDelete}
             aria-label="Delete recording"
             title="Delete"
           >
             <TrashIcon />
           </button>
-        </span>
+        </div>
+      </header>
+      <div className="recording-page__body" tabIndex={-1}>
+        <div className="recording-page__inner">
+          {isFailed ? (
+            <p className="recording-page__error">{recording.error ?? 'Unknown error.'}</p>
+          ) : isCanceled ? (
+            <p className="recording-page__muted">
+              You cancelled before analysis. The video is still here — use Retry above
+              to analyze it now, or Delete to discard it.
+            </p>
+          ) : (
+            <>
+              {thinking && (
+                <button
+                  type="button"
+                  className="thinking-toggle"
+                  onClick={onOpenThinking}
+                  aria-label="Open thinking"
+                >
+                  <ChevronIcon />
+                  <span>Show thinking</span>
+                </button>
+              )}
+              {body ? (
+                <div className="prompt-body">{displayed}</div>
+              ) : (
+                <p className="recording-page__muted">
+                  {recording.status === 'recording'
+                    ? 'Recording…'
+                    : recording.status === 'stopped'
+                    ? 'Captured. Press Enter on the pill to analyze.'
+                    : "Writing the refined prompt…"}
+                </p>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
+      <path
+        d="M10 3l-5 5 5 5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -228,6 +303,27 @@ function RetryIcon() {
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg
+      className="thinking__chev"
+      viewBox="0 0 16 16"
+      width="11"
+      height="11"
+      aria-hidden
+    >
+      <path
+        d="M5 4l5 4-5 4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

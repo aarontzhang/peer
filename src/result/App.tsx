@@ -5,6 +5,7 @@ import { useGlobalKey } from '@/lib/keys';
 import { toPlainText } from '@/lib/plainText';
 import { MessageCard } from './MessageCard';
 import { ThinkingPage } from './ThinkingPage';
+import { RecordingPage } from './RecordingPage';
 import { Settings } from './Settings';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -64,6 +65,7 @@ export function App() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [detailForId, setDetailForId] = useState<string | null>(null);
   const [thinkingForId, setThinkingForId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -181,17 +183,22 @@ export function App() {
     return recordings;
   }, [recordings, pinnedIds, tab]);
 
-  // Esc closes the thinking page if it's open.
+  // Esc closes the topmost overlay: thinking first, then the recording detail.
   useGlobalKey('Escape', (e) => {
     if (thinkingForId !== null) {
       e.preventDefault();
       setThinkingForId(null);
+      return;
+    }
+    if (detailForId !== null) {
+      e.preventDefault();
+      setDetailForId(null);
     }
   });
 
-  // ↑/↓ navigate the visible list (expand prev/next card).
+  // ↑/↓ navigate the visible list (highlight prev/next card).
   useGlobalKey(['ArrowDown', 'ArrowUp'], (e) => {
-    if (showSettings || thinkingForId !== null) return;
+    if (showSettings || thinkingForId !== null || detailForId !== null) return;
     if (visibleRecordings.length === 0) return;
     const idx = visibleRecordings.findIndex((r) => r.id === expandedId);
     const next = e.key === 'ArrowDown'
@@ -291,22 +298,20 @@ export function App() {
             const liveBody = liveRef.current && liveRef.current.id === rec.id
               ? liveRef.current.body
               : null;
-            const liveThinking = liveThinkingRef.current.get(rec.id) ?? null;
             return (
               <MessageCard
                 key={rec.id}
                 recording={rec}
                 isPinned={pinnedIds.has(rec.id)}
-                isExpanded={expandedId === rec.id}
+                isSelected={expandedId === rec.id}
                 liveBody={liveBody}
-                liveThinking={liveThinking}
-                onToggleExpand={() =>
-                  setExpandedId((cur) => (cur === rec.id ? null : rec.id))
-                }
+                onOpen={() => {
+                  setExpandedId(rec.id);
+                  setDetailForId(rec.id);
+                }}
                 onTogglePin={() => togglePin(rec.id)}
                 onCopy={copyBodyToClipboard}
                 onDelete={() => setPendingDeleteId(rec.id)}
-                onOpenThinking={() => setThinkingForId(rec.id)}
                 onRetry={async () => {
                   if (retrying) return;
                   setRetrying(true);
@@ -323,6 +328,38 @@ export function App() {
           })
         )}
       </main>
+      {detailForId !== null && (() => {
+        const rec = recordings.find((r) => r.id === detailForId) ?? null;
+        if (!rec) return null;
+        const liveBody = liveRef.current && liveRef.current.id === rec.id
+          ? liveRef.current.body
+          : null;
+        const liveThinking = liveThinkingRef.current.get(rec.id) ?? null;
+        return (
+          <RecordingPage
+            recording={rec}
+            isPinned={pinnedIds.has(rec.id)}
+            liveBody={liveBody}
+            liveThinking={liveThinking}
+            onBack={() => setDetailForId(null)}
+            onTogglePin={() => togglePin(rec.id)}
+            onCopy={copyBodyToClipboard}
+            onDelete={() => setPendingDeleteId(rec.id)}
+            onOpenThinking={() => setThinkingForId(rec.id)}
+            onRetry={async () => {
+              if (retrying) return;
+              setRetrying(true);
+              try {
+                await ipc.retryRecording(rec.id);
+                await refreshList();
+              } finally {
+                setRetrying(false);
+              }
+            }}
+            retryDisabled={retrying}
+          />
+        );
+      })()}
       {thinkingForId !== null && (() => {
         const rec = recordings.find((r) => r.id === thinkingForId) ?? null;
         if (!rec) return null;
@@ -355,6 +392,8 @@ export function App() {
           setDeleting(true);
           try {
             await ipc.deleteRecording(pendingDeleteId);
+            if (detailForId === pendingDeleteId) setDetailForId(null);
+            if (thinkingForId === pendingDeleteId) setThinkingForId(null);
             setPendingDeleteId(null);
             await refreshList();
           } finally {

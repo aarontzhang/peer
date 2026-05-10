@@ -37,8 +37,8 @@ html, body {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  height: 76px;
-  padding: 30px 22px 0 24px;
+  height: 96px;
+  padding: 34px 22px 22px 24px;
   user-select: none;
   flex: 0 0 auto;
 }
@@ -129,7 +129,7 @@ html, body {
   /* Generous top padding leaves a clean translucent gap between the tab pill
      and the first card so the chrome breathes; tabs aren't pressed against
      content. */
-  padding: 20px 14px 32px 14px;
+  padding: 36px 14px 40px 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -154,7 +154,7 @@ html, body {
 }
 .card + .card { margin-top: 1px; }
 .card:hover { background: oklch(1 0 0 / 0.035); }
-.card[data-expanded='true'] {
+.card[data-selected='true'] {
   background: oklch(1 0 0 / 0.055);
   box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.07);
 }
@@ -190,7 +190,7 @@ html, body {
   transition: color var(--dur-fast) var(--ease-spring);
 }
 .card:hover .card__title,
-.card[data-expanded='true'] .card__title { color: var(--color-fg); }
+.card[data-selected='true'] .card__title { color: var(--color-fg); }
 
 .card__duration {
   font-size: 12px;
@@ -266,10 +266,6 @@ html, body {
 .card[data-status='canceled']::before   { background: oklch(0.82 0.16 88); }
 @keyframes pip { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
 
-.card__body {
-  padding: 12px 18px 18px 110px;
-  color: var(--color-fg);
-}
 .card__muted { color: var(--color-fg-dim); margin: 0; }
 .card__error { color: oklch(0.86 0.18 22); margin: 0; }
 
@@ -1034,6 +1030,118 @@ html, body {
   text-align: center;
   color: var(--color-fg-dim);
   font-size: 13px;
+}
+
+/* ─── recording detail page ────────────────────────────────────────────── */
+/* Full-window overlay for an individual recording, opened from the feed.
+   Shares the same glass/typography recipe as the thinking page so the two
+   views feel like the same surface. */
+.recording-page {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(180deg, oklch(0.22 0.006 82 / 0.92), oklch(0.16 0.005 82 / 0.92)),
+    oklch(0.18 0.005 82 / 0.85);
+  backdrop-filter: blur(42px) saturate(170%);
+  -webkit-backdrop-filter: blur(42px) saturate(170%);
+}
+.recording-page__bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  height: 96px;
+  padding: 34px 22px 22px 22px;
+  flex: 0 0 auto;
+  user-select: none;
+  border-bottom: 1px solid oklch(1 0 0 / 0.05);
+}
+.recording-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: oklch(1 0 0 / 0.05);
+  border: 1px solid var(--color-line);
+  color: var(--color-fg-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 6px 12px 6px 10px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring),
+              border-color var(--dur-fast) var(--ease-spring),
+              color var(--dur-fast) var(--ease-spring);
+  -webkit-app-region: no-drag;
+}
+.recording-page__back:hover {
+  background: oklch(1 0 0 / 0.10);
+  border-color: var(--color-line-strong);
+  color: var(--color-fg);
+}
+.recording-page__heading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.recording-page__title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recording-page__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-fg-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.recording-page__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+.recording-page__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 28px 36px 56px 36px;
+  outline: none;
+}
+.recording-page__body::-webkit-scrollbar { width: 0; height: 0; }
+.recording-page__inner {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.recording-page__inner .prompt-body {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--color-fg);
+}
+.recording-page__muted {
+  margin: 0;
+  color: var(--color-fg-dim);
+  font-size: 13.5px;
+}
+.recording-page__error {
+  margin: 0;
+  color: oklch(0.86 0.18 22);
+  font-size: 13.5px;
 }
 
 .streaming-cursor {
