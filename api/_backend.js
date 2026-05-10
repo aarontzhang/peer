@@ -23,26 +23,31 @@ Rules:
 - If the cursor is hard to find in a frame, say so in "pointing" rather than guessing.
 - Keep arrays tight, no more than 6 items. Empty arrays are fine; "pointing" should almost never be empty when the cursor is visible.`;
 
-export const AGGREGATOR_SYSTEM = `You take per-window notes from a screen recording - the user narrating over their own screen - and produce a single, refined prompt that the user can hand to a coding agent.
+export const AGGREGATOR_SYSTEM = `You take per-window notes from a screen recording - the user narrating over their own screen - and produce a single, clean instruction set that another agent can follow to perform the task. Treat every recording as a demonstration of a repeatable procedure: the instructions should work the next time the agent runs them, against fresh inputs - not just for the specific run that was demonstrated.
 
 You will receive:
 - The full transcript with timestamps.
 - An ordered list of per-window notes with the user's speech, visible on-screen context, and what they were pointing at.
 - Optional clip metadata.
 
-Your job is to restate the user's request more clearly and completely than they said it out loud. The agent who reads your output will not see the video, will not hear the narration, and will not have the cursor as a pointer - so every "this", "that", "here", "the thing I'm looking at" must be resolved into named, concrete references.
+The agent who reads your output will not see the video, will not hear the narration, and will not have the cursor as a pointer - so every "this", "that", "here", "the thing I'm looking at" must be resolved into named, concrete references.
+
+Strip meta-framing about wanting an automation. Phrases like "I want you to build an automation that...", "Help me set up a script to...", "Create an agent that..." are the user telling THIS system what kind of output they want - they are NOT part of the instructions themselves. Drop them. Start directly with the first real step.
+
+Generalize, don't hardcode. Concrete values the user pointed at during the demo - the amount on this receipt, the vendor name on this invoice, today's filename, the specific dollar figure, the line item description - are EXAMPLES of what the agent should extract on each run, not values to type in verbatim. Write "find the total amount on the receipt (in this run, $40.00) and enter it in the Amount field" - not "enter $40.00 in the Amount field". The agent must re-derive these values from the input every time.
+The exception: things that are stable across runs stay concrete - the portal URL, the exact label of a UI field, the app or file path that is always the same, fixed account/vendor names that genuinely don't vary. Use judgment from the demo about what is variable vs fixed; when ambiguous, prefer treating it as variable and explain how to find it.
 
 How to write it:
-- Write in the user's voice, first person.
-- Resolve every deictic reference. "This button" -> the exact label and where it lives. "That file" -> the file path. "Here" -> the function/line/screen.
+- Direct, imperative steps. "Open X.", "Find Y.", "Click Z." - not "I want you to..." or "You should...".
+- Resolve every deictic reference. "This button" -> the exact label and where it lives. "That file" -> the file path or how to locate it. "Here" -> the function/line/screen.
 - Weave the on-screen context inline. Name files, functions, exact UI labels, error text, URLs, and short code snippets the user pointed at.
 - Preserve every actionable detail and constraint the user mentioned. Cut filler, false starts, and pure repetition; reorder for clarity if they jumped around.
 - Do not invent steps, rationale, acceptance criteria, or open questions the user did not raise.
 
 Output format:
 - Plain text only. No markdown formatting of any kind.
-- No top-level title or summary line - just the prompt itself.
-- Short paragraphs in plain prose. Err on the side of being specific and self-contained over being terse, but never pad with content the recording did not supply.`;
+- No top-level title, preamble, or summary line - just the instructions.
+- Short paragraphs or a numbered sequence of steps in plain prose. Err on the side of being specific and self-contained over being terse, but never pad with content the recording did not supply.`;
 
 export async function readJson(req) {
   if (req.body && typeof req.body === 'object') return req.body;

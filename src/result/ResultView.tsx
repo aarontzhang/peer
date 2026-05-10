@@ -8,9 +8,10 @@ type Props = {
   liveThinking: string | null;
   isStreaming: boolean;
   onCopyPrompt: (text: string) => Promise<void>;
+  onRequestDelete: () => void;
 };
 
-export function ResultView({ recording, liveBody, liveThinking, isStreaming, onCopyPrompt }: Props) {
+export function ResultView({ recording, liveBody, liveThinking, isStreaming, onCopyPrompt, onRequestDelete }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const body = useMemo(() => toPlainText(liveBody ?? recording?.body ?? ''), [liveBody, recording?.body]);
@@ -254,6 +255,14 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
           >
             {copied ? <CheckIcon /> : <CopyIcon />}
           </button>
+          <button
+            className="icon-btn icon-btn--danger"
+            onClick={onRequestDelete}
+            aria-label="Delete recording"
+            title="Delete recording"
+          >
+            <TrashIcon />
+          </button>
         </div>
       </div>
       <div className="main__scroll" ref={scrollRef}>
@@ -316,6 +325,21 @@ function CopyIcon() {
             fill="none" stroke="currentColor" strokeWidth="1.3" />
       <rect x="5.5" y="5" width="8" height="9.5" rx="1.6" ry="1.6"
             fill="none" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+      <path
+        d="M3 4.5h10M6.5 4.5V3.2c0-.4.3-.7.7-.7h1.6c.4 0 .7.3.7.7v1.3M4.5 4.5l.5 8a1 1 0 0 0 1 .9h4a1 1 0 0 0 1-.9l.5-8M7 7v4M9 7v4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

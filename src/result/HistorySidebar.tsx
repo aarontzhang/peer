@@ -1,28 +1,67 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ipc, type Recording, formatDuration, formatRelative } from '@/lib/ipc';
+import { type Recording, formatDuration, formatRelative } from '@/lib/ipc';
 import { firstPlainTextLine } from '@/lib/plainText';
 
 type Props = {
   items: Recording[];
   selectedId: string | null;
+  pinnedIds: Set<string>;
   onSelect: (id: string) => void;
-  onChanged: () => void;
+  onTogglePin: (id: string) => void;
   footer?: ReactNode;
 };
 
-export function HistorySidebar({ items, selectedId, onSelect, onChanged, footer }: Props) {
-  const [busy, setBusy] = useState(false);
-
-  const onDelete = async (rec: Recording, e: React.MouseEvent) => {
+export function HistorySidebar({ items, selectedId, pinnedIds, onSelect, onTogglePin, footer }: Props) {
+  const onPinClick = (rec: Recording, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (busy) return;
-    setBusy(true);
-    try {
-      await ipc.deleteRecording(rec.id);
-      onChanged();
-    } finally {
-      setBusy(false);
-    }
+    onTogglePin(rec.id);
+  };
+
+  const pinned = items.filter((r) => pinnedIds.has(r.id));
+  const unpinned = items.filter((r) => !pinnedIds.has(r.id));
+
+  const renderRow = (rec: Recording) => {
+    const isPinned = pinnedIds.has(rec.id);
+    const title = firstPlainTextLine(rec.summary ?? rec.body ?? '')
+      || (rec.status === 'processing' ? 'Analyzing…'
+          : rec.status === 'recording' ? 'Recording…'
+          : rec.status === 'stopped' ? 'Captured (awaiting send)'
+          : rec.status === 'canceled' ? 'Cancelled'
+          : 'Untitled recording');
+    return (
+      <div
+        key={rec.id}
+        className="row-wrap"
+        data-selected={rec.id === selectedId}
+        data-pinned={isPinned}
+      >
+        <button
+          role="option"
+          aria-selected={rec.id === selectedId}
+          data-status={rec.status}
+          className="row"
+          onClick={() => onSelect(rec.id)}
+        >
+          <span className="row__pip" aria-hidden />
+          <div className="row__body">
+            <div className="row__title">{title}</div>
+            <div className="row__meta">
+              {formatRelative(rec.createdAt)} · {formatDuration(rec.durationMs)}
+            </div>
+          </div>
+        </button>
+        <button
+          type="button"
+          className={`row__pin${isPinned ? ' row__pin--active' : ''}`}
+          onClick={(e) => onPinClick(rec, e)}
+          aria-label={isPinned ? `Unpin ${title}` : `Pin ${title}`}
+          aria-pressed={isPinned}
+          title={isPinned ? 'Unpin' : 'Pin'}
+        >
+          <PinIcon filled={isPinned} />
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -31,56 +70,28 @@ export function HistorySidebar({ items, selectedId, onSelect, onChanged, footer 
         <BrandMark />
         <span className="sidebar__brandName">Peer</span>
       </div>
-      <div className="sidebar__head">
-        <span className="sidebar__title">History</span>
-      </div>
       <div className="sidebar__list" role="listbox" aria-label="Recordings">
         {items.length === 0 && (
           <div style={{ padding: '12px 14px', color: 'var(--color-fg-dim)', fontSize: 12 }}>
             No recordings yet.
           </div>
         )}
-        {items.map((rec) => {
-          const title = firstPlainTextLine(rec.summary ?? rec.body ?? '')
-            || (rec.status === 'processing' ? 'Analyzing…'
-                : rec.status === 'recording' ? 'Recording…'
-                : rec.status === 'stopped' ? 'Captured (awaiting send)'
-                : rec.status === 'canceled' ? 'Cancelled'
-                : 'Untitled recording');
-          return (
+        {pinned.length > 0 && (
+          <>
+            <div className="sidebar__sectionLabel">Pinned</div>
+            {pinned.map(renderRow)}
+          </>
+        )}
+        {unpinned.length > 0 && (
+          <>
             <div
-              key={rec.id}
-              className="row-wrap"
-              data-selected={rec.id === selectedId}
+              className={`sidebar__sectionLabel${pinned.length > 0 ? ' sidebar__sectionLabel--gap' : ''}`}
             >
-              <button
-                role="option"
-                aria-selected={rec.id === selectedId}
-                data-status={rec.status}
-                className="row"
-                onClick={() => onSelect(rec.id)}
-              >
-                <span className="row__pip" aria-hidden />
-                <div className="row__body">
-                  <div className="row__title">{title}</div>
-                  <div className="row__meta">
-                    {formatRelative(rec.createdAt)} · {formatDuration(rec.durationMs)}
-                  </div>
-                </div>
-              </button>
-              <button
-                type="button"
-                className="row__delete"
-                onClick={(e) => onDelete(rec, e)}
-                disabled={busy}
-                aria-label={`Delete ${title}`}
-                title="Delete"
-              >
-                <TrashIcon />
-              </button>
+              History
             </div>
-          );
-        })}
+            {unpinned.map(renderRow)}
+          </>
+        )}
       </div>
       {footer}
     </aside>
@@ -186,14 +197,16 @@ function useRandomGaze(): [number, number] {
   return gaze;
 }
 
-function TrashIcon() {
+function PinIcon({ filled }: { filled: boolean }) {
+  // Tilted pushpin: head at top-left, shaft to bottom-right. Filled variant
+  // signals the row is pinned; outline variant is the resting/hover state.
   return (
     <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
       <path
-        d="M3 4.5h10M6.5 4.5V3.2c0-.4.3-.7.7-.7h1.6c.4 0 .7.3.7.7v1.3M4.5 4.5l.5 8a1 1 0 0 0 1 .9h4a1 1 0 0 0 1-.9l.5-8M7 7v4M9 7v4"
-        fill="none"
+        d="M10.4 1.9 14.1 5.6M11 2.5 7.8 4.3 4.9 4.6 3.4 6.1l6.5 6.5 1.5-1.5.3-2.9 1.8-3.2M5.2 10.8 1.9 14.1"
+        fill={filled ? 'currentColor' : 'none'}
         stroke="currentColor"
-        strokeWidth="1.2"
+        strokeWidth="1.3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

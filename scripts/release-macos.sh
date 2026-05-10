@@ -11,18 +11,19 @@ TEAM_ID="${APPLE_TEAM_ID:-}"
 NOTARY_PROFILE="${APPLE_NOTARYTOOL_PROFILE:-}"
 
 if [[ -z "${IDENTITY}" ]]; then
-  echo "APPLE_SIGNING_IDENTITY must be set to a Developer ID Application identity." >&2
-  exit 1
+  echo "APPLE_SIGNING_IDENTITY is not set; building an unsigned DMG (Gatekeeper will warn on first launch)." >&2
 fi
 
 pnpm sidecar
 pnpm tauri build --bundles app
 
-codesign --force --deep --options runtime \
-  --timestamp \
-  --sign "${IDENTITY}" \
-  --entitlements src-tauri/entitlements.plist \
-  "${APP_PATH}"
+if [[ -n "${IDENTITY}" ]]; then
+  codesign --force --deep --options runtime \
+    --timestamp \
+    --sign "${IDENTITY}" \
+    --entitlements src-tauri/entitlements.plist \
+    "${APP_PATH}"
+fi
 
 mkdir -p "${DMG_DIR}"
 rm -f "${DMG_PATH}"
@@ -32,9 +33,11 @@ hdiutil create -volname "Peer" \
   -format UDZO \
   "${DMG_PATH}"
 
-codesign --force --timestamp --sign "${IDENTITY}" "${DMG_PATH}"
+if [[ -n "${IDENTITY}" ]]; then
+  codesign --force --timestamp --sign "${IDENTITY}" "${DMG_PATH}"
+fi
 
-if [[ -n "${NOTARY_PROFILE}" ]]; then
+if [[ -n "${IDENTITY}" && -n "${NOTARY_PROFILE}" ]]; then
   notary_args=(--keychain-profile "${NOTARY_PROFILE}")
   if [[ -n "${TEAM_ID}" ]]; then
     notary_args+=(--team-id "${TEAM_ID}")
@@ -43,6 +46,8 @@ if [[ -n "${NOTARY_PROFILE}" ]]; then
     "${notary_args[@]}" \
     --wait
   xcrun stapler staple "${DMG_PATH}"
-else
+elif [[ -n "${IDENTITY}" ]]; then
   echo "APPLE_NOTARYTOOL_PROFILE is not set; skipping notarization." >&2
 fi
+
+echo "Built DMG at ${DMG_PATH}"

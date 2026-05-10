@@ -9,6 +9,7 @@ import { ResultView } from './ResultView';
 import { EmptyState } from './EmptyState';
 import { Settings } from './Settings';
 import { SidebarAccount } from './SidebarAccount';
+import { ConfirmDialog } from './ConfirmDialog';
 
 async function copyBodyToClipboard(text: string) {
   try {
@@ -23,6 +24,19 @@ async function copyBodyToClipboard(text: string) {
 }
 
 const SIDEBAR_WIDTH_KEY = 'peer:result-sidebar-width';
+const PINNED_IDS_KEY = 'peer:pinned-recording-ids';
+
+function getStoredPinnedIds(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(PINNED_IDS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? new Set(arr.filter((x) => typeof x === 'string')) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
 const SIDEBAR_DEFAULT_WIDTH = 218;
 const SIDEBAR_MIN_WIDTH = 176;
 const SIDEBAR_MAX_WIDTH = 420;
@@ -60,6 +74,40 @@ export function App() {
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [hotkey, setHotkey] = useState<HotkeyStatus | null>(null);
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(getStoredPinnedIds);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      PINNED_IDS_KEY,
+      JSON.stringify(Array.from(pinnedIds)),
+    );
+  }, [pinnedIds]);
+
+  const togglePin = useCallback((id: string) => {
+    setPinnedIds((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Prune pinned ids that no longer exist in the recordings list.
+  useEffect(() => {
+    setPinnedIds((cur) => {
+      if (cur.size === 0) return cur;
+      const known = new Set(recordings.map((r) => r.id));
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of cur) {
+        if (known.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : cur;
+    });
+  }, [recordings]);
 
   const getMaxSidebarWidth = useCallback(() => {
     const appWidth = appRef.current?.clientWidth ?? window.innerWidth;
@@ -199,15 +247,28 @@ export function App() {
     return () => { void unsub.then((fn) => fn()); };
   }, [refreshList, triggerRender]);
 
+  // Recordings, pinned-first, preserving creation-time order within each group.
+  // This is the order shown in the sidebar; keyboard nav follows the same.
+  const orderedRecordings = useMemo(() => {
+    if (pinnedIds.size === 0) return recordings;
+    const pinned: Recording[] = [];
+    const rest: Recording[] = [];
+    for (const r of recordings) {
+      if (pinnedIds.has(r.id)) pinned.push(r);
+      else rest.push(r);
+    }
+    return [...pinned, ...rest];
+  }, [recordings, pinnedIds]);
+
   // ↑/↓ navigate the sidebar.
   useGlobalKey(['ArrowDown', 'ArrowUp'], (e) => {
     if (showSettings) return;
-    if (recordings.length === 0) return;
-    const idx = recordings.findIndex((r) => r.id === selectedId);
+    if (orderedRecordings.length === 0) return;
+    const idx = orderedRecordings.findIndex((r) => r.id === selectedId);
     const next = e.key === 'ArrowDown'
-      ? Math.min(recordings.length - 1, (idx < 0 ? 0 : idx + 1))
+      ? Math.min(orderedRecordings.length - 1, (idx < 0 ? 0 : idx + 1))
       : Math.max(0, (idx <= 0 ? 0 : idx - 1));
-    setSelectedId(recordings[next].id);
+    setSelectedId(orderedRecordings[next].id);
     e.preventDefault();
   });
 
@@ -272,8 +333,9 @@ export function App() {
       <HistorySidebar
         items={recordings}
         selectedId={selectedId}
+        pinnedIds={pinnedIds}
         onSelect={setSelectedId}
-        onChanged={refreshList}
+        onTogglePin={togglePin}
         footer={<SidebarAccount onOpenSettings={() => setShowSettings(true)} />}
       />
       <div
@@ -298,6 +360,7 @@ export function App() {
           onCopyPrompt={(text) => {
             return copyBodyToClipboard(text);
           }}
+          onRequestDelete={() => selected && setPendingDeleteId(selected.id)}
         />
       ) : (
         <EmptyState />
@@ -305,6 +368,28 @@ export function App() {
       <Settings
         open={showSettings}
         onClose={() => setShowSettings(false)}
+      />
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="Delete recording?"
+        message="This recording and its transcript will be permanently removed. This can't be undone."
+        confirmLabel={deleting ? 'Deleting…' : 'Delete'}
+        confirmDestructive
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) setPendingDeleteId(null);
+        }}
+        onConfirm={async () => {
+          if (!pendingDeleteId || deleting) return;
+          setDeleting(true);
+          try {
+            await ipc.deleteRecording(pendingDeleteId);
+            setPendingDeleteId(null);
+            await refreshList();
+          } finally {
+            setDeleting(false);
+          }
+        }}
       />
     </div>
   );

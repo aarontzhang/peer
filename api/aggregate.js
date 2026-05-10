@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: process.env.PEER_AGGREGATOR_MODEL || 'claude-sonnet-4-6',
-        max_tokens: 2048,
+        max_tokens: 4096,
         stream: true,
         system: [{ type: 'text', text: AGGREGATOR_SYSTEM }],
         messages: [{ role: 'user', content: [{ type: 'text', text: userMessage }] }],

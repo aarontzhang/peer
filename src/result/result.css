@@ -120,6 +120,16 @@ html, body {
   color: var(--color-fg-dim);
 }
 
+.sidebar__sectionLabel {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  color: var(--color-fg-dim);
+  padding: 6px 10px 4px 10px;
+}
+.sidebar__sectionLabel--gap { margin-top: 6px; }
+
 .sidebar__list {
   flex: 1;
   overflow-y: auto;
@@ -319,7 +329,7 @@ html, body {
 
 .row__body { min-width: 0; }
 
-.row__delete {
+.row__pin {
   position: absolute;
   top: 50%;
   right: 6px;
@@ -340,16 +350,25 @@ html, body {
               background var(--dur-fast) var(--ease-spring),
               color var(--dur-fast) var(--ease-spring);
 }
-.row-wrap:hover .row__delete,
-.row-wrap:focus-within .row__delete {
+.row-wrap:hover .row__pin,
+.row-wrap:focus-within .row__pin,
+.row-wrap[data-pinned='true'] .row__pin {
   opacity: 1;
   pointer-events: auto;
 }
-.row__delete:hover:not(:disabled) {
-  background: oklch(0.66 0.22 22 / 0.20);
-  color: oklch(0.86 0.18 22);
+.row__pin:hover {
+  background: oklch(1 0 0 / 0.10);
+  color: var(--color-fg);
 }
-.row__delete:disabled { opacity: 0.3; cursor: default; }
+.row__pin--active {
+  color: var(--color-accent);
+  opacity: 1;
+  pointer-events: auto;
+}
+.row__pin--active:hover {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
 
 .row__pip {
   margin-top: 6px;
@@ -503,6 +522,40 @@ html, body {
   background: var(--color-fg);
   color: oklch(0.18 0.005 82);
   border-color: var(--color-fg);
+}
+
+/* Danger icon button — opaque red on hover, muted at rest. Used for the
+   delete action in the result-view top bar so it reads as destructive
+   only when intended. */
+.icon-btn--danger:hover:not(:disabled) {
+  background: oklch(0.66 0.22 22 / 0.18);
+  border-color: oklch(0.66 0.22 22 / 0.45);
+  color: oklch(0.86 0.18 22);
+}
+
+/* Filled red button used for the destructive choice in a ConfirmDialog. */
+.btn--danger {
+  background: oklch(0.62 0.22 22);
+  color: oklch(0.98 0 0);
+  border: 1px solid oklch(0.62 0.22 22);
+}
+.btn--danger:hover:not(:disabled) {
+  background: oklch(0.58 0.23 22);
+  border-color: oklch(0.58 0.23 22);
+}
+.btn--danger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.confirm__panel {
+  width: 380px;
+}
+.confirm__message {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-fg-muted);
 }
 
 .main__scroll {

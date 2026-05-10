@@ -8,7 +8,7 @@
 
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
 use base64::Engine;
@@ -25,6 +25,12 @@ use super::{ChunkKind, ResultChunk};
 
 const MAX_FRAMES_PER_WINDOW: usize = 6;
 const MAX_PARALLEL_WINDOWS: usize = 4;
+/// Per-window upper bound. Normal calls return in 4–10s; anything past two
+/// minutes is almost certainly a stuck upstream connection. Generous on
+/// purpose so a slow-but-real call on a longer recording still lands; without
+/// any cap one wedged window blocks the aggregator (and the "Analyzing…" UI
+/// state) until the upstream eventually unsticks — we've seen 3+ minutes.
+const WINDOW_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Result of the analyze stage:
 /// - `final_md` — the user-facing refined prompt (streamed to the UI)
@@ -63,7 +69,19 @@ pub async fn analyze_and_aggregate(
         let t_end = w.t_end;
         tasks.push(tokio::spawn(async move {
             let _permit = sem.acquire_owned().await.unwrap();
-            analyze_window(&backend, i, t_start, t_end, &frames, &slice).await
+            match tokio::time::timeout(
+                WINDOW_TIMEOUT,
+                analyze_window(&backend, i, t_start, t_end, &frames, &slice),
+            )
+            .await
+            {
+                Ok(res) => res,
+                Err(_) => Err(anyhow!(
+                    "vision window {} timed out after {}s",
+                    i + 1,
+                    WINDOW_TIMEOUT.as_secs()
+                )),
+            }
         }));
     }
 
