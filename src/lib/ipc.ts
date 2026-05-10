@@ -58,6 +58,7 @@ export const ipc = {
   stopRecording: () => invoke<void>('stop_recording'),
   cancelRecording: () => invoke<void>('cancel_recording'),
   sendRecording: () => invoke<void>('send_recording'),
+  retryRecording: (id: string) => invoke<void>('retry_recording', { id }),
   listRecordings: () => invoke<Recording[]>('list_recordings'),
   getRecording: (id: string) => invoke<Recording | null>('get_recording', { id }),
   deleteRecording: (id: string) => invoke<void>('delete_recording', { id }),

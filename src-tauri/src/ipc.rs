@@ -48,6 +48,17 @@ pub async fn send_recording(app: AppHandle, state: State<'_, Arc<AppState>>) -> 
 }
 
 #[tauri::command]
+pub async fn retry_recording(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), String> {
+    recording::retry(app, state.inner().clone(), id)
+        .await
+        .map_err(err_to_string)
+}
+
+#[tauri::command]
 pub async fn list_recordings(state: State<'_, Arc<AppState>>) -> Result<Vec<Recording>, String> {
     state.db().list_recordings(200).await.map_err(err_to_string)
 }

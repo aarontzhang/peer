@@ -9,9 +9,11 @@ type Props = {
   isStreaming: boolean;
   onCopyPrompt: (text: string) => Promise<void>;
   onRequestDelete: () => void;
+  onRetry: () => void;
+  retryDisabled?: boolean;
 };
 
-export function ResultView({ recording, liveBody, liveThinking, isStreaming, onCopyPrompt, onRequestDelete }: Props) {
+export function ResultView({ recording, liveBody, liveThinking, isStreaming, onCopyPrompt, onRequestDelete, onRetry, retryDisabled }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const body = useMemo(() => toPlainText(liveBody ?? recording?.body ?? ''), [liveBody, recording?.body]);
@@ -167,13 +169,33 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   if (recording.status === 'canceled') {
     return (
       <div className="main">
-        <div className="main__bar" data-tauri-drag-region />
+        <div className="main__bar" data-tauri-drag-region>
+          <div className="main__actions">
+            <button
+              className="icon-btn"
+              onClick={onRetry}
+              disabled={retryDisabled}
+              aria-label="Analyze the video"
+              title="Analyze the video"
+            >
+              <RetryIcon />
+            </button>
+            <button
+              className="icon-btn icon-btn--danger"
+              onClick={onRequestDelete}
+              aria-label="Delete recording"
+              title="Delete recording"
+            >
+              <TrashIcon />
+            </button>
+          </div>
+        </div>
         <div className="main__scroll">
           <div className="md">
             <h1 style={{ color: 'var(--color-fg-muted)' }}>Cancelled</h1>
             <p style={{ color: 'var(--color-fg-dim)' }}>
-              You discarded this capture from the pill. The video has been deleted, but the entry
-              stays here so you have a record of when it happened.
+              You cancelled the recording before it was analyzed. The video is still here —
+              you can analyze it now, or delete it for good.
             </p>
           </div>
         </div>
@@ -325,6 +347,28 @@ function CopyIcon() {
             fill="none" stroke="currentColor" strokeWidth="1.3" />
       <rect x="5.5" y="5" width="8" height="9.5" rx="1.6" ry="1.6"
             fill="none" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  );
+}
+
+function RetryIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+      <path
+        d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M13.5 2.5v3h-3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

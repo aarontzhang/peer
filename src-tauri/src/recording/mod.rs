@@ -413,6 +413,87 @@ pub async fn shutdown(state: Arc<AppState>) {
     }
 }
 
+/// Re-run the pipeline on a previously cancelled recording. The video was
+/// kept on disk specifically so the user can change their mind from the
+/// result window without having to record again.
+pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<()> {
+    {
+        let cur = state.current.lock();
+        if cur.is_some() {
+            return Err(anyhow!(
+                "another recording is in progress — stop or send it first"
+            ));
+        }
+    }
+
+    let rec = state
+        .db()
+        .get_recording(&id)
+        .await?
+        .ok_or_else(|| anyhow!("recording not found"))?;
+
+    if rec.status != RecordingStatus::Canceled {
+        return Err(anyhow!("only cancelled recordings can be retried"));
+    }
+
+    let video_path = PathBuf::from(&rec.video_path);
+    if !tokio::fs::try_exists(&video_path).await.unwrap_or(false) {
+        return Err(anyhow!(
+            "video file is missing — it may have been cleaned up"
+        ));
+    }
+
+    let duration_ms = rec.duration_ms;
+
+    emit(
+        &app,
+        &PillEvent::Processing {
+            id: id.clone(),
+            label: "Preparing video".into(),
+            progress: 0.05,
+        },
+    );
+
+    let _ = reveal_result_window(&app, true);
+
+    let app2 = app.clone();
+    let state2 = state.clone();
+    let id2 = id.clone();
+    tokio::spawn(async move {
+        match pipeline::run(
+            app2.clone(),
+            state2.clone(),
+            id2.clone(),
+            video_path,
+            duration_ms,
+        )
+        .await
+        {
+            Ok(()) => {
+                emit(&app2, &PillEvent::Done { id: id2.clone() });
+            }
+            Err(err) => {
+                tracing::error!(?err, recording_id=%id2, "retry pipeline failed");
+                let msg = format!("{err:#}");
+                if let Ok(Some(mut r)) = state2.db().get_recording(&id2).await {
+                    r.status = RecordingStatus::Failed;
+                    r.error = Some(msg.clone());
+                    let _ = state2.db().update_recording(&r).await;
+                }
+                emit(
+                    &app2,
+                    &PillEvent::Error {
+                        id: Some(id2),
+                        message: msg,
+                    },
+                );
+            }
+        }
+    });
+
+    Ok(())
+}
+
 pub async fn cancel(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     let phase = {
         let mut cur = state.current.lock();
@@ -424,9 +505,9 @@ pub async fn cancel(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     //   - Active: capture was still running; nothing the user could "send"
     //     existed yet, so drop the row entirely.
     //   - Review: capture finished and the user explicitly chose to discard.
-    //     We keep the row (status = canceled) so it persists in the history
-    //     sidebar, but delete the video file — there's no re-send flow, and
-    //     a kept video would just be dead disk weight.
+    //     Keep the row (status = canceled) AND the video file on disk so the
+    //     user can change their mind from the result window and re-analyze.
+    //     The video is only purged when the user explicitly deletes the row.
     match phase {
         RecordingPhase::Active(mut active) => {
             if let Some(h) = active.auto_stop_handle.take() {
@@ -437,7 +518,6 @@ pub async fn cancel(app: AppHandle, state: Arc<AppState>) -> Result<()> {
             let _ = state.db().delete_recording(&active.id).await;
         }
         RecordingPhase::Review(review) => {
-            let _ = tokio::fs::remove_file(&review.video_path).await;
             if let Ok(Some(mut rec)) = state.db().get_recording(&review.id).await {
                 rec.status = RecordingStatus::Canceled;
                 let _ = state.db().update_recording(&rec).await;

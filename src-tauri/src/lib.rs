@@ -111,6 +111,7 @@ pub fn run() {
             ipc::stop_recording,
             ipc::cancel_recording,
             ipc::send_recording,
+            ipc::retry_recording,
             ipc::list_recordings,
             ipc::get_recording,
             ipc::delete_recording,

@@ -77,6 +77,7 @@ export function App() {
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(getStoredPinnedIds);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -361,6 +362,17 @@ export function App() {
             return copyBodyToClipboard(text);
           }}
           onRequestDelete={() => selected && setPendingDeleteId(selected.id)}
+          onRetry={async () => {
+            if (!selected || retrying) return;
+            setRetrying(true);
+            try {
+              await ipc.retryRecording(selected.id);
+              await refreshList();
+            } finally {
+              setRetrying(false);
+            }
+          }}
+          retryDisabled={retrying}
         />
       ) : (
         <EmptyState />
