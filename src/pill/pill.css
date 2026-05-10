@@ -19,7 +19,9 @@ html, body, #root {
   padding: 6px 0 8px 0;
   gap: 6px;
   border-radius: 22px;
-  border: 1px solid oklch(1 0 0 / 0.32);
+  /* Match the macOS-native hairline drawn around the result window so the
+     pill and the dock window read as the same outline. */
+  border: 1px solid oklch(1 0 0 / 0.14);
   box-sizing: border-box;
 
   /* Same gray as the main app window background — keeps the pill, the
