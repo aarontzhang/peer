@@ -14,7 +14,7 @@ html, body {
   background: transparent;
   color: var(--color-fg);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.65;
 }
 .app::before {
@@ -37,8 +37,8 @@ html, body {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  height: 56px;
-  padding: 12px 16px 0 18px;
+  height: 76px;
+  padding: 30px 22px 0 24px;
   user-select: none;
   flex: 0 0 auto;
 }
@@ -46,17 +46,17 @@ html, body {
 .topbar__brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 11px;
   color: var(--color-fg);
 }
 .topbar__brandOrb {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   opacity: 0.95;
 }
 .topbar__brandName {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.014em;
   line-height: 1;
@@ -66,11 +66,11 @@ html, body {
 .topbar__tabs {
   justify-self: center;
   display: inline-flex;
-  gap: 2px;
+  gap: 3px;
   background: oklch(1 0 0 / 0.05);
   border: 1px solid var(--color-line);
   border-radius: 999px;
-  padding: 3px;
+  padding: 4px;
 }
 
 .tab {
@@ -78,9 +78,9 @@ html, body {
   background: transparent;
   border: 0;
   border-radius: 999px;
-  padding: 5px 14px;
+  padding: 7px 18px;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--color-fg-dim);
   cursor: pointer;
@@ -101,8 +101,8 @@ html, body {
   gap: 6px;
 }
 .topbar__gear {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   background: transparent;
@@ -158,11 +158,11 @@ html, body {
 
 .card__header {
   display: grid;
-  grid-template-columns: 78px minmax(0, 1fr) auto auto;
+  grid-template-columns: 82px minmax(0, 1fr) auto auto;
   gap: 14px;
   align-items: center;
   width: 100%;
-  padding: 11px 12px 11px 14px;
+  padding: 12px 12px 12px 14px;
   background: transparent;
   border: 0;
   border-radius: 10px;
@@ -173,13 +173,13 @@ html, body {
   -webkit-app-region: no-drag;
 }
 .card__time {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-fg-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .card__title {
-  font-size: 13.5px;
+  font-size: 14.5px;
   color: var(--color-fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -190,42 +190,23 @@ html, body {
 .card[data-expanded='true'] .card__title { color: var(--color-fg); }
 
 .card__duration {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-fg-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
+/* Actions are always visible so the right edge of every row aligns. The
+   min-width reserves room for the widest possible action set (retry + copy
+   + pin + trash on canceled cards) — narrower rows just leave that space
+   empty on the left side of the cluster, which keeps duration columns
+   from shifting between rows that have different action counts. */
 .card__actions {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 2px;
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease-spring);
-}
-.card:hover .card__actions,
-.card:focus-within .card__actions,
-.card[data-expanded='true'] .card__actions {
-  opacity: 1;
-}
-/* Always-visible pin badge on the row when this row is saved but neither
-   hovered nor expanded. Once the row reveals its action set we fall back
-   to the active pin button. */
-.card__pin-badge {
-  width: 26px;
-  height: 26px;
-  display: none;
-  place-items: center;
-  color: var(--color-fg-muted);
-}
-.card[data-pinned='true']:not(:hover):not([data-expanded='true']) .card__pin-badge {
-  display: grid;
-}
-.card[data-pinned='true']:not(:hover):not([data-expanded='true']) .card__actions {
-  opacity: 1;
-}
-.card[data-pinned='true']:not(:hover):not([data-expanded='true']) .card-icon-btn {
-  display: none;
+  min-width: 112px;
 }
 
 .card-icon-btn {
@@ -277,12 +258,13 @@ html, body {
 .card[data-status='processing']::before { background: var(--color-accent); animation: pip 1.2s var(--ease-spring) infinite; }
 .card[data-status='recording']::before  { background: var(--color-rec); animation: pip 1.2s var(--ease-spring) infinite; }
 .card[data-status='stopped']::before    { background: oklch(0.78 0.14 80); }
+.card[data-status='done']::before       { background: oklch(0.74 0.16 156); }
 .card[data-status='failed']::before     { background: oklch(0.66 0.20 22); }
-.card[data-status='canceled']::before   { background: var(--color-fg-dim); opacity: 0.55; }
+.card[data-status='canceled']::before   { background: oklch(0.82 0.16 88); }
 @keyframes pip { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
 
 .card__body {
-  padding: 4px 18px 18px 92px;
+  padding: 4px 18px 18px 110px;
   color: var(--color-fg);
 }
 .card__muted { color: var(--color-fg-dim); margin: 0; }

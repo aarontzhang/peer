@@ -162,11 +162,6 @@ export function MessageCard({
           {formatDuration(recording.durationMs)}
         </span>
         <span className="card__actions" data-no-drag>
-          {isPinned && (
-            <span className="card__pin-badge" aria-label="Saved" title="Saved">
-              <PinIcon filled />
-            </span>
-          )}
           {isCanceled && (
             <button
               type="button"
