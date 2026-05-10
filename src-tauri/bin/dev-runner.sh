@@ -44,7 +44,17 @@ if [[ "$(basename "${BIN}")" == "Peer" ]]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Peer-dev" "${PLIST}" 2>/dev/null || true
   /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLName com.aaronzhang.peer.dev.auth" "${PLIST}" 2>/dev/null || true
   /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLSchemes:0 peer-dev" "${PLIST}" 2>/dev/null || true
-  ln -sf "$(cd "$(dirname "${BIN}")" && pwd)/Peer" "${APP_DIR}/Contents/MacOS/Peer"
+  # Hardlink (not symlink) the binary into the bundle. With a symlink, exec'ing
+  # via the bundle path resolves to target/debug/Peer at the kernel layer and
+  # macOS treats the process as unbundled — so peer-dev:// events get routed to
+  # a *new* Peer-dev.app instance instead of forwarded to the running one. The
+  # new instance starts with PENDING_STATE empty (nonce check fails) and is
+  # usually killed by single_instance before its on_open_url even fires.
+  # APFS clonefile keeps this cheap; falls back to plain cp on other fs.
+  rm -f "${APP_DIR}/Contents/MacOS/Peer"
+  cp -c "${BIN}" "${APP_DIR}/Contents/MacOS/Peer" 2>/dev/null \
+    || ln -f "${BIN}" "${APP_DIR}/Contents/MacOS/Peer" 2>/dev/null \
+    || cp -p "${BIN}" "${APP_DIR}/Contents/MacOS/Peer"
   /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
     -f "${APP_DIR}" 2>/dev/null || true
 
@@ -56,5 +66,11 @@ if [[ "$(basename "${BIN}")" == "Peer" ]]; then
       -u "${LEGACY_APP}" 2>/dev/null || true
     rm -rf "${LEGACY_APP}"
   fi
+
+  # Exec the bundled copy, not the raw binary. macOS associates a process
+  # with an .app bundle by its executable path's parent .app dir — running
+  # the raw binary makes the process unbundled from LaunchServices' POV,
+  # so URL events for peer-dev:// can't be forwarded to it.
+  exec "${APP_DIR}/Contents/MacOS/Peer" "$@"
 fi
 exec "${BIN}" "$@"
