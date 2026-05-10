@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type Recording } from '@/lib/ipc';
 import { toPlainText } from '@/lib/plainText';
 
@@ -19,13 +19,78 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   // analyses finish, well before the prompt finishes streaming.
   const thinking = liveThinking ?? recording?.thinking ?? null;
 
+  // Typewriter buffer: the source `body` arrives in chunky deltas from the
+  // model. We drain those chunks character-by-character on rAF so the user
+  // sees a smooth ChatGPT-style stream instead of step jumps.
+  const recordingId = recording?.id ?? null;
+  const [displayed, setDisplayed] = useState(body);
+
+  // Snap to the current body whenever the user switches recordings — we
+  // never want to typewrite an already-finished history entry.
   useEffect(() => {
-    if (!isStreaming) return;
+    setDisplayed(body);
+    // intentionally only on recordingId change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordingId]);
+
+  useEffect(() => {
+    if (displayed === body) return;
+    // If the new body diverges from what we've already shown (e.g. a
+    // recording was re-run), snap rather than animate from the wrong prefix.
+    if (!body.startsWith(displayed)) {
+      setDisplayed(body);
+      return;
+    }
+    let raf = 0;
+    const startTime = performance.now();
+    const startLen = displayed.length;
+    const totalLen = body.length;
+    const tick = () => {
+      const elapsed = performance.now() - startTime;
+      const backlog = totalLen - startLen;
+      // Adaptive rate: ~100 chars/sec at small backlogs, accelerating as the
+      // queue grows so we never fall further behind on big chunks.
+      const charsPerMs = Math.min(1.5, 0.1 + backlog / 140);
+      const advance = Math.max(1, Math.round(elapsed * charsPerMs));
+      const nextLen = Math.min(totalLen, startLen + advance);
+      setDisplayed(body.slice(0, nextLen));
+      if (nextLen < totalLen) {
+        raf = requestAnimationFrame(tick);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [body, displayed]);
+
+  // Stick-to-bottom: only auto-scroll while the user is already pinned near
+  // the end. The moment they scroll up to read, we stop yanking them back.
+  // (The programmatic scroll below always lands at the bottom, so it
+  // naturally keeps the flag true without needing to be filtered out.)
+  const stickToBottomRef = useRef(true);
+
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    // Stick to bottom while streaming.
+    const onScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      stickToBottomRef.current = distanceFromBottom < 24;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Reset to "stuck" each time we switch into a streaming recording.
+  useEffect(() => {
+    if (isStreaming) stickToBottomRef.current = true;
+  }, [isStreaming, recordingId]);
+
+  useEffect(() => {
+    if (!isStreaming) return;
+    if (!stickToBottomRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [body, isStreaming]);
+  }, [displayed, isStreaming]);
 
   if (!recording) {
     return null;
@@ -101,6 +166,7 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
   // (or actively streaming it). Once the prompt is done it collapses again so
   // the refined output stays the focus.
   const thinkingOpen = isStreaming || !body;
+  const showCursor = isStreaming || displayed.length < body.length;
 
   return (
     <div className="main">
@@ -129,8 +195,8 @@ export function ResultView({ recording, liveBody, liveThinking, isStreaming, onC
         )}
         {body ? (
           <div className="prompt-body">
-            {body}
-            {isStreaming && <span className="streaming-cursor" />}
+            {displayed}
+            {showCursor && <span className="streaming-cursor" />}
           </div>
         ) : (
           <div className="md prompt-pending">
