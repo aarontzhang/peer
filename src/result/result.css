@@ -361,13 +361,13 @@ html, body {
   color: var(--color-fg);
 }
 .row__pin--active {
-  color: var(--color-accent);
+  color: var(--color-fg-dim);
   opacity: 1;
   pointer-events: auto;
 }
 .row__pin--active:hover {
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
+  background: oklch(1 0 0 / 0.10);
+  color: var(--color-fg);
 }
 
 .row__pip {
