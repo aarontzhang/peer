@@ -5,6 +5,7 @@ target/
 .!*
 *.log
 .claude/scheduled_tasks.lock
+.codex/
 src-tauri/gen/
 src-tauri/target/
 src-tauri/bin/HummingbirdCapture*

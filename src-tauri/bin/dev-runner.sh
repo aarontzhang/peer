@@ -25,8 +25,21 @@ BIN="$1"; shift
 if [[ "$(basename "${BIN}")" == "Peer" ]]; then
   if ! codesign --force --sign - \
        --identifier dev.aaronzhang.peer \
+       -r='designated => identifier "dev.aaronzhang.peer"' \
        "${BIN}" 2>&1; then
     echo "dev-runner: codesign failed; TCC grants will not persist across rebuilds" >&2
+  fi
+
+  # `tauri dev` executes the raw binary, but macOS URL schemes are registered
+  # through app bundles. Keep the debug bundle's plist in sync with our dev
+  # plist so `peer://...` links launched from the browser resolve to Peer.
+  APP_DIR="$(dirname "${BIN}")/Peer.app"
+  if [[ -d "${APP_DIR}" ]]; then
+    mkdir -p "${APP_DIR}/Contents/MacOS"
+    cp "Info.plist" "${APP_DIR}/Contents/Info.plist"
+    ln -sf "$(cd "$(dirname "${BIN}")" && pwd)/Peer" "${APP_DIR}/Contents/MacOS/Peer"
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+      -f "${APP_DIR}" 2>/dev/null || true
   fi
 fi
 exec "${BIN}" "$@"

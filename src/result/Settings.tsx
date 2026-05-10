@@ -224,9 +224,9 @@ export function Settings({ open, onClose }: Props) {
           <button
             className="btn btn--primary"
             onClick={onSave}
-            disabled={saving || !changed}
+            disabled={saving}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : changed ? 'Save' : 'Done'}
           </button>
         </div>
       </div>

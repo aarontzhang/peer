@@ -60,19 +60,22 @@ pub fn run() {
                 app.deep_link().on_open_url(move |event| {
                     for url in event.urls() {
                         let url_string = url.to_string();
+                        tracing::info!("deep link opened");
                         let app2 = dl_handle.clone();
                         if let Err(err) = saas::handle_deep_link(&app2, &url_string) {
-                            tracing::warn!(?err, url = %url_string, "deep link handler failed");
+                            tracing::warn!(?err, "deep link handler failed");
                         }
                     }
                 });
 
-                // Bundled apps register peer:// via Info.plist; `tauri dev`
-                // launches a raw binary that Launch Services doesn't see, so
-                // register at runtime in debug builds.
-                #[cfg(debug_assertions)]
-                {
-                    let _ = app.deep_link().register("peer");
+                if let Ok(Some(urls)) = app.deep_link().get_current() {
+                    for url in urls {
+                        let url_string = url.to_string();
+                        tracing::info!("deep link opened on launch");
+                        if let Err(err) = saas::handle_deep_link(&handle, &url_string) {
+                            tracing::warn!(?err, "deep link handler failed");
+                        }
+                    }
                 }
             }
 

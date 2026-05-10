@@ -41,7 +41,7 @@ chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "macros"] }
-keyring = "3"
+keyring = { version = "3", features = ["apple-native"] }
 base64 = "0.22"
 parking_lot = "0.12"
 dirs = "5"
