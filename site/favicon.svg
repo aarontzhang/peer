@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="235 235 554 554">
+  <!--
+    Peer favicon. Adapts to the browser tab background:
+      light theme  → dark stroke
+      dark theme   → light stroke
+    Uses currentColor + a media-query class so a single asset works
+    in both Chrome's light and dark tab styles.
+  -->
+  <style>
+    .stroke { stroke: #050506; }
+    @media (prefers-color-scheme: dark) {
+      .stroke { stroke: #f4f3ee; }
+    }
+  </style>
+  <defs>
+    <mask id="head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect x="0" y="0" width="1024" height="1024" fill="white"/>
+      <circle cx="407" cy="512" r="80" fill="black"/>
+      <circle cx="617" cy="512" r="80" fill="black"/>
+    </mask>
+  </defs>
+  <g class="stroke" fill="none" stroke-linecap="round">
+    <circle cx="512" cy="512" r="259" stroke-width="42" mask="url(#head-mask)"/>
+    <g stroke-width="36">
+      <circle cx="407" cy="512" r="70"/>
+      <circle cx="617" cy="512" r="70"/>
+      <line x1="477" y1="512" x2="547" y2="512"/>
+    </g>
+  </g>
+</svg>
