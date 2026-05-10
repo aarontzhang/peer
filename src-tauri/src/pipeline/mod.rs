@@ -3,7 +3,6 @@
 mod analyze;
 mod ffprobe;
 mod keyframes;
-mod prompts;
 mod transcribe;
 
 use std::path::PathBuf;
@@ -43,23 +42,9 @@ pub async fn run(
     duration_ms: u64,
 ) -> Result<()> {
     let total_started = Instant::now();
-    let saas = SaasClient::from_keychain(app.clone()).await;
-    let openai = if saas.is_none() {
-        Some(
-            crate::ipc::read_api_key(&app, "openai")
-                .context("OpenAI key missing — sign in or set local dev keys in Settings")?,
-        )
-    } else {
-        None
-    };
-    let anthropic = if saas.is_none() {
-        Some(
-            crate::ipc::read_api_key(&app, "anthropic")
-                .context("Anthropic key missing — sign in or set local dev keys in Settings")?,
-        )
-    } else {
-        None
-    };
+    let saas = SaasClient::from_keychain(app.clone())
+        .await
+        .context("Sign in to use Peer — recording requires a Peer account")?;
 
     // Mark processing.
     if let Some(mut rec) = state.db().get_recording(&id).await? {
@@ -114,8 +99,7 @@ pub async fn run(
     let app_tx = app.clone();
     let id_tx = id.clone();
     let video_tx = video_path.clone();
-    let openai_clone = openai.clone();
-    let saas_clone = saas.clone();
+    let saas_tx = saas.clone();
     let tx_handle = tokio::spawn(async move {
         let started = Instant::now();
         emit(
@@ -126,20 +110,7 @@ pub async fn run(
                 progress: 0.22,
             },
         );
-        let result = match saas_clone.as_ref() {
-            Some(client) => {
-                transcribe::transcribe_with_backend(&video_tx, client, total_secs).await
-            }
-            None => {
-                let key = openai_clone
-                    .as_deref()
-                    .context("OpenAI key missing — sign in or set local dev keys in Settings");
-                match key {
-                    Ok(key) => transcribe::transcribe(&video_tx, key, total_secs).await,
-                    Err(err) => Err(err),
-                }
-            }
-        };
+        let result = transcribe::transcribe(&video_tx, &saas_tx, total_secs).await;
         match &result {
             Ok(transcript) => tracing::info!(
                 elapsed_ms = started.elapsed().as_millis(),
@@ -200,33 +171,15 @@ pub async fn run(
     let analyze::AnalysisOutput {
         final_md,
         thinking_md,
-    } = match saas.as_ref() {
-        Some(client) => {
-            analyze::analyze_and_aggregate_with_backend(
-                app.clone(),
-                id.clone(),
-                client,
-                &frames,
-                &transcript,
-                total_secs,
-            )
-            .await?
-        }
-        None => {
-            let key = anthropic
-                .as_deref()
-                .context("Anthropic key missing — sign in or set local dev keys in Settings")?;
-            analyze::analyze_and_aggregate(
-                app.clone(),
-                id.clone(),
-                key,
-                &frames,
-                &transcript,
-                total_secs,
-            )
-            .await?
-        }
-    };
+    } = analyze::analyze_and_aggregate(
+        app.clone(),
+        id.clone(),
+        &saas,
+        &frames,
+        &transcript,
+        total_secs,
+    )
+    .await?;
 
     let final_text = normalize_prompt_text(&final_md);
     let summary = first_line(&final_text);

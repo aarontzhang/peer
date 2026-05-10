@@ -12,7 +12,6 @@ use std::time::Instant;
 use anyhow::{anyhow, Context, Result};
 use base64::Engine;
 use futures::stream::{FuturesUnordered, StreamExt};
-use reqwest::multipart::{Form, Part};
 use serde::Deserialize;
 use serde_json::json;
 use tokio::process::Command;
@@ -69,26 +68,9 @@ struct WhisperSegment {
     text: String,
 }
 
-pub async fn transcribe(video: &Path, openai_key: &str, total_secs: f64) -> Result<Transcript> {
-    transcribe_inner(video, TranscriptionProvider::OpenAi(openai_key), total_secs).await
-}
-
-pub async fn transcribe_with_backend(
+pub async fn transcribe(
     video: &Path,
     backend: &SaasClient,
-    total_secs: f64,
-) -> Result<Transcript> {
-    transcribe_inner(video, TranscriptionProvider::Backend(backend), total_secs).await
-}
-
-enum TranscriptionProvider<'a> {
-    OpenAi(&'a str),
-    Backend(&'a SaasClient),
-}
-
-async fn transcribe_inner(
-    video: &Path,
-    provider: TranscriptionProvider<'_>,
     total_secs: f64,
 ) -> Result<Transcript> {
     let audio_started = Instant::now();
@@ -117,29 +99,18 @@ async fn transcribe_inner(
         return Ok(Transcript::default());
     }
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
-        .build()?;
     let sem = Arc::new(Semaphore::new(MAX_PARALLEL));
 
     let transcription_started = Instant::now();
     let mut tasks = FuturesUnordered::new();
     for (i, range) in ranges.iter().enumerate() {
         let sem = sem.clone();
-        let client = client.clone();
         let src = audio_path.clone();
         let range = *range;
-        let provider = match provider {
-            TranscriptionProvider::OpenAi(key) => {
-                TranscriptionProviderTask::OpenAi(key.to_string())
-            }
-            TranscriptionProvider::Backend(backend) => {
-                TranscriptionProviderTask::Backend(backend.clone())
-            }
-        };
+        let backend = backend.clone();
         tasks.push(tokio::spawn(async move {
             let _permit = sem.acquire_owned().await.unwrap();
-            transcribe_range(&client, &provider, &src, range)
+            transcribe_range(&backend, &src, range)
                 .await
                 .map(|e| (i, e))
         }));
@@ -171,11 +142,11 @@ async fn transcribe_inner(
 
     // If every chunk failed, surface the error instead of returning an empty
     // transcript. An empty transcript looks indistinguishable from "user was
-    // silent" in the UI, which masked an invalid OpenAI key during debugging.
+    // silent" in the UI, which masked an invalid backend response during debugging.
     if total > 0 && failed == total {
         return Err(first_err
             .unwrap_or_else(|| anyhow!("transcription failed"))
-            .context("every whisper chunk failed — check OPENAI_API_KEY"));
+            .context("every whisper chunk failed via the Peer backend"));
     }
 
     let transcript = Transcript {
@@ -187,12 +158,6 @@ async fn transcribe_inner(
         "stage Whisper transcription complete"
     );
     Ok(transcript)
-}
-
-#[derive(Clone)]
-enum TranscriptionProviderTask {
-    OpenAi(String),
-    Backend(SaasClient),
 }
 
 async fn audio_max_volume_db(audio: &Path) -> Option<f64> {
@@ -245,8 +210,7 @@ async fn extract_audio(video: &Path) -> Result<PathBuf> {
 }
 
 async fn transcribe_range(
-    client: &reqwest::Client,
-    provider: &TranscriptionProviderTask,
+    backend: &SaasClient,
     audio: &Path,
     range: TimeRange,
 ) -> Result<Vec<CaptionEntry>> {
@@ -284,10 +248,7 @@ async fn transcribe_range(
     let bytes = tokio::fs::read(&chunk_path).await?;
     let _ = tokio::fs::remove_file(&chunk_path).await;
 
-    let parsed = match provider {
-        TranscriptionProviderTask::OpenAi(key) => transcribe_openai(client, key, bytes).await?,
-        TranscriptionProviderTask::Backend(backend) => transcribe_backend(backend, bytes).await?,
-    };
+    let parsed = transcribe_backend(backend, bytes).await?;
 
     let entries = if let Some(segs) = parsed.segments {
         segs.into_iter()
@@ -313,36 +274,6 @@ async fn transcribe_range(
         vec![]
     };
     Ok(entries)
-}
-
-async fn transcribe_openai(
-    client: &reqwest::Client,
-    key: &str,
-    bytes: Vec<u8>,
-) -> Result<WhisperResponse> {
-    let part = Part::bytes(bytes)
-        .file_name("audio.mp3")
-        .mime_str("audio/mpeg")?;
-    let form = Form::new()
-        .part("file", part)
-        .text("model", "whisper-1")
-        .text("response_format", "verbose_json")
-        .text("temperature", "0");
-
-    let res = client
-        .post("https://api.openai.com/v1/audio/transcriptions")
-        .bearer_auth(key)
-        .multipart(form)
-        .send()
-        .await?;
-
-    if !res.status().is_success() {
-        let status = res.status();
-        let body = res.text().await.unwrap_or_default();
-        return Err(anyhow!("whisper {} — {}", status, body));
-    }
-
-    Ok(res.json().await?)
 }
 
 async fn transcribe_backend(backend: &SaasClient, bytes: Vec<u8>) -> Result<WhisperResponse> {

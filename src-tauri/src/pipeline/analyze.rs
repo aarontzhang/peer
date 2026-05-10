@@ -20,13 +20,9 @@ use tokio::sync::Semaphore;
 use crate::saas::SaasClient;
 
 use super::keyframes::Keyframe;
-use super::prompts;
 use super::transcribe::Transcript;
 use super::{ChunkKind, ResultChunk};
 
-const ANTHROPIC_VERSION: &str = "2023-06-01";
-const WINDOW_MODEL: &str = "claude-sonnet-4-6";
-const AGGREGATOR_MODEL: &str = "claude-sonnet-4-6";
 const MAX_FRAMES_PER_WINDOW: usize = 6;
 const MAX_PARALLEL_WINDOWS: usize = 4;
 
@@ -43,51 +39,7 @@ pub struct AnalysisOutput {
 pub async fn analyze_and_aggregate(
     app: AppHandle,
     id: String,
-    anthropic_key: &str,
-    frames: &[Keyframe],
-    transcript: &Transcript,
-    total_secs: f64,
-) -> Result<AnalysisOutput> {
-    analyze_and_aggregate_inner(
-        app,
-        id,
-        AnalysisProvider::Anthropic(anthropic_key.to_string()),
-        frames,
-        transcript,
-        total_secs,
-    )
-    .await
-}
-
-pub async fn analyze_and_aggregate_with_backend(
-    app: AppHandle,
-    id: String,
     backend: &SaasClient,
-    frames: &[Keyframe],
-    transcript: &Transcript,
-    total_secs: f64,
-) -> Result<AnalysisOutput> {
-    analyze_and_aggregate_inner(
-        app,
-        id,
-        AnalysisProvider::Backend(backend.clone()),
-        frames,
-        transcript,
-        total_secs,
-    )
-    .await
-}
-
-#[derive(Clone)]
-enum AnalysisProvider {
-    Anthropic(String),
-    Backend(SaasClient),
-}
-
-async fn analyze_and_aggregate_inner(
-    app: AppHandle,
-    id: String,
-    provider: AnalysisProvider,
     frames: &[Keyframe],
     transcript: &Transcript,
     total_secs: f64,
@@ -98,18 +50,12 @@ async fn analyze_and_aggregate_inner(
 
     let windows = window_frames(frames, total_secs);
     let window_ranges: Vec<(f64, f64)> = windows.iter().map(|w| (w.t_start, w.t_end)).collect();
-    let client = Arc::new(
-        reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(180))
-            .build()?,
-    );
     let sem = Arc::new(Semaphore::new(MAX_PARALLEL_WINDOWS));
 
     let vision_started = Instant::now();
     let mut tasks = FuturesUnordered::new();
     for (i, w) in windows.iter().enumerate() {
-        let client = client.clone();
-        let provider = provider.clone();
+        let backend = backend.clone();
         let sem = sem.clone();
         let frames = w.frames.clone();
         let slice = transcript.slice(w.t_start, w.t_end);
@@ -117,7 +63,7 @@ async fn analyze_and_aggregate_inner(
         let t_end = w.t_end;
         tasks.push(tokio::spawn(async move {
             let _permit = sem.acquire_owned().await.unwrap();
-            analyze_window(&client, &provider, i, t_start, t_end, &frames, &slice).await
+            analyze_window(&backend, i, t_start, t_end, &frames, &slice).await
         }));
     }
 
@@ -171,31 +117,15 @@ async fn analyze_and_aggregate_inner(
         window_results.into_iter().map(|(_, v)| v).collect(),
     ))?;
 
-    let final_md = match provider {
-        AnalysisProvider::Anthropic(key) => {
-            aggregate_streaming(
-                app,
-                id,
-                &client,
-                &key,
-                &observations_json,
-                &transcript_summary(transcript),
-                total_secs,
-            )
-            .await?
-        }
-        AnalysisProvider::Backend(backend) => {
-            aggregate_streaming_backend(
-                app,
-                id,
-                &backend,
-                &observations_json,
-                &transcript_summary(transcript),
-                total_secs,
-            )
-            .await?
-        }
-    };
+    let final_md = aggregate_streaming(
+        app,
+        id,
+        backend,
+        &observations_json,
+        &transcript_summary(transcript),
+        total_secs,
+    )
+    .await?;
 
     Ok(AnalysisOutput {
         final_md,
@@ -365,8 +295,7 @@ fn window_frames(frames: &[Keyframe], total_secs: f64) -> Vec<Window> {
 }
 
 async fn analyze_window(
-    client: &reqwest::Client,
-    provider: &AnalysisProvider,
+    backend: &SaasClient,
     index: usize,
     t_start: f64,
     t_end: f64,
@@ -374,129 +303,31 @@ async fn analyze_window(
     transcript_slice: &str,
 ) -> Result<(usize, Value)> {
     let started = Instant::now();
-    if let AnalysisProvider::Backend(backend) = provider {
-        let mut encoded_frames = Vec::with_capacity(frames.len());
-        for frame in frames {
-            encoded_frames.push(json!({
-                "mediaType": "image/jpeg",
-                "data": read_image_b64(&frame.path).await?,
-            }));
-        }
-        let json_value: Value = backend
-            .post_json(
-                "/api/vision-window",
-                json!({
-                    "index": index,
-                    "tStart": t_start,
-                    "tEnd": t_end,
-                    "frames": encoded_frames,
-                    "transcriptSlice": transcript_slice,
-                }),
-            )
-            .await?;
-        tracing::info!(
-            window = index + 1,
-            elapsed_ms = started.elapsed().as_millis(),
-            "stage Peer backend vision window complete"
-        );
-        return Ok((index, json_value));
-    }
-
-    let AnalysisProvider::Anthropic(key) = provider else {
-        unreachable!();
-    };
-
-    let mut content: Vec<Value> = Vec::with_capacity(frames.len() + 1);
+    let mut encoded_frames = Vec::with_capacity(frames.len());
     for frame in frames {
-        let data = read_image_b64(&frame.path).await?;
-        content.push(json!({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": "image/jpeg",
-                "data": data,
-            }
+        encoded_frames.push(json!({
+            "mediaType": "image/jpeg",
+            "data": read_image_b64(&frame.path).await?,
         }));
     }
-    content.push(json!({
-        "type": "text",
-        "text": format!(
-            "Window {idx} — covers t≈{ts:.1}s..t≈{te:.1}s of the recording.\n\nNarration in this window:\n{tx}\n\nReturn the JSON object now.",
-            idx = index + 1,
-            ts = t_start,
-            te = t_end,
-            tx = if transcript_slice.is_empty() { "(no narration in this window)".into() } else { transcript_slice.to_string() },
-        ),
-    }));
-
-    let body = json!({
-        "model": WINDOW_MODEL,
-        "max_tokens": 1024,
-        "system": [
-            {
-                "type": "text",
-                "text": prompts::WINDOW_SYSTEM,
-                "cache_control": { "type": "ephemeral" }
-            }
-        ],
-        "messages": [{ "role": "user", "content": content }],
-    });
-
-    let res = client
-        .post("https://api.anthropic.com/v1/messages")
-        .header("x-api-key", key)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("content-type", "application/json")
-        .json(&body)
-        .send()
+    let json_value: Value = backend
+        .post_json(
+            "/api/vision-window",
+            json!({
+                "index": index,
+                "tStart": t_start,
+                "tEnd": t_end,
+                "frames": encoded_frames,
+                "transcriptSlice": transcript_slice,
+            }),
+        )
         .await?;
-    if !res.status().is_success() {
-        let s = res.status();
-        let t = res.text().await.unwrap_or_default();
-        return Err(anyhow!(
-            "Claude vision window {idx}: {s} — {t}",
-            idx = index + 1
-        ));
-    }
-    let payload: Value = res.json().await?;
-    let text = payload["content"]
-        .as_array()
-        .and_then(|a| a.iter().find_map(|v| v["text"].as_str()))
-        .unwrap_or_default()
-        .trim()
-        .to_string();
     tracing::info!(
         window = index + 1,
         elapsed_ms = started.elapsed().as_millis(),
-        "stage Claude vision window complete"
+        "stage Peer backend vision window complete"
     );
-
-    let json_value = extract_json(&text).unwrap_or_else(|| {
-        json!({
-            "userSpeech": text,
-            "visibleContext": [],
-            "pointing": "",
-            "actionIntent": "",
-            "fields": [],
-        })
-    });
     Ok((index, json_value))
-}
-
-fn extract_json(text: &str) -> Option<Value> {
-    let trimmed = text.trim();
-    if let Ok(v) = serde_json::from_str::<Value>(trimmed) {
-        return Some(v);
-    }
-    // Strip fenced ```json blocks
-    let start = trimmed.find('{')?;
-    let end = trimmed.rfind('}')?;
-    if end > start {
-        if let Ok(v) = serde_json::from_str::<Value>(&trimmed[start..=end]) {
-            return Some(v);
-        }
-    }
-    None
 }
 
 fn transcript_summary(t: &Transcript) -> String {
@@ -516,96 +347,6 @@ async fn read_image_b64(path: &Path) -> Result<String> {
 }
 
 async fn aggregate_streaming(
-    app: AppHandle,
-    id: String,
-    client: &reqwest::Client,
-    key: &str,
-    observations_json: &str,
-    transcript_text: &str,
-    total_secs: f64,
-) -> Result<String> {
-    let started = Instant::now();
-    let user_msg = format!(
-        "Recording duration: {:.1}s\n\nFull transcript (with timestamps):\n{}\n\nPer-window notes (JSON, ordered):\n{}\n\nNow produce the refined prompt per the system prompt.",
-        total_secs, transcript_text, observations_json,
-    );
-
-    let body = json!({
-        "model": AGGREGATOR_MODEL,
-        "max_tokens": 2048,
-        "stream": true,
-        "system": [{
-            "type": "text",
-            "text": prompts::AGGREGATOR_SYSTEM,
-            "cache_control": { "type": "ephemeral" }
-        }],
-        "messages": [{ "role": "user", "content": [{"type":"text","text": user_msg }] }],
-    });
-
-    let res = client
-        .post("https://api.anthropic.com/v1/messages")
-        .header("x-api-key", key)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("content-type", "application/json")
-        .header("accept", "text/event-stream")
-        .json(&body)
-        .send()
-        .await?;
-
-    if !res.status().is_success() {
-        let s = res.status();
-        let t = res.text().await.unwrap_or_default();
-        return Err(anyhow!("aggregator: {s} — {t}"));
-    }
-
-    let mut acc = String::new();
-    let mut stream = res.bytes_stream();
-    let mut buf = String::new();
-
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        buf.push_str(&String::from_utf8_lossy(&chunk));
-        // Process complete SSE events ending in \n\n
-        loop {
-            let Some(idx) = buf.find("\n\n") else { break };
-            let event_block = buf[..idx].to_string();
-            buf.drain(..=idx + 1); // drop block + trailing \n\n
-
-            for line in event_block.lines() {
-                let Some(data) = line.strip_prefix("data:") else {
-                    continue;
-                };
-                let data = data.trim();
-                if data.is_empty() || data == "[DONE]" {
-                    continue;
-                }
-                let Ok(v): Result<Value, _> = serde_json::from_str(data) else {
-                    continue;
-                };
-                let kind = v["type"].as_str().unwrap_or("");
-                if kind == "content_block_delta" {
-                    if let Some(text) = v["delta"]["text"].as_str() {
-                        acc.push_str(text);
-                        let chunk = ResultChunk {
-                            id: id.clone(),
-                            kind: ChunkKind::Delta,
-                            text: text.to_string(),
-                        };
-                        let _ = app.emit("result:chunk", &chunk);
-                    }
-                }
-            }
-        }
-    }
-    tracing::info!(
-        elapsed_ms = started.elapsed().as_millis(),
-        output_chars = acc.len(),
-        "stage Claude aggregation complete"
-    );
-    Ok(acc.trim().to_string())
-}
-
-async fn aggregate_streaming_backend(
     app: AppHandle,
     id: String,
     backend: &SaasClient,
