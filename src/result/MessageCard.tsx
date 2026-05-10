@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type Recording, formatRelative, formatDuration } from '@/lib/ipc';
+import { type Recording, formatRelative } from '@/lib/ipc';
 import { firstPlainTextLine, toPlainText } from '@/lib/plainText';
 
 type Props = {
@@ -105,9 +105,6 @@ export function MessageCard({
           {formatRelative(recording.createdAt)}
         </span>
         <span className="card__title">{title}</span>
-        <span className="card__duration" aria-hidden>
-          {formatDuration(recording.durationMs)}
-        </span>
         <span className="card__actions" data-no-drag>
           {isCanceled && (
             <button

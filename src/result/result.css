@@ -122,7 +122,7 @@ html, body {
   place-items: center;
   background: transparent;
   border: 0;
-  border-radius: 8px;
+  border-radius: 50%;
   color: var(--color-fg-dim);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-spring),
@@ -175,12 +175,15 @@ html, body {
 }
 
 .card__header {
+  /* time | title | actions — duration column dropped so the title gets the
+     freed width and can show a longer brief. Left padding leaves room for the
+     status dot with breathing room before the timestamp. */
   display: grid;
-  grid-template-columns: 82px minmax(0, 1fr) auto auto;
+  grid-template-columns: 82px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   width: 100%;
-  padding: 12px 12px 12px 14px;
+  padding: 12px 12px 12px 26px;
   background: transparent;
   border: 0;
   border-radius: 10px;
@@ -228,13 +231,13 @@ html, body {
 }
 
 .card-icon-btn {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   background: transparent;
   border: 0;
-  border-radius: 6px;
+  border-radius: 50%;
   color: var(--color-fg-dim);
   cursor: pointer;
   padding: 0;
@@ -268,7 +271,7 @@ html, body {
   content: "";
   position: absolute;
   top: 21px;
-  left: 4px;
+  left: 10px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -909,29 +912,32 @@ html, body {
 }
 .thinking-toggle {
   /* Sticks to the top of the recording-page scroll container so the user can
-     always toggle thinking, even after scrolling deep into a long body. The
-     translucent dark fill + backdrop blur keeps prompt text legible *behind*
-     the pill while it floats. */
+     always toggle thinking, even after scrolling deep into a long body. Uses
+     the same pill recipe as the back button + history/saved tabs so every
+     control across the app reads as the same kind of button. */
   position: sticky;
   top: 0;
   z-index: 2;
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 500;
   letter-spacing: 0.01em;
   color: var(--color-fg-muted);
-  background: oklch(0.20 0.006 82 / 0.82);
+  /* A translucent-white skin layered over a backdrop-filter blur gives the
+     same hue as the home page glass — bright enough to not read as a darker
+     chip, but still opaque enough to mask scrolling text underneath. */
+  background: oklch(1 0 0 / 0.05);
   border: 1px solid var(--color-line);
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 6px 14px 6px 11px;
+  border-radius: 999px;
   user-select: none;
-  backdrop-filter: blur(14px) saturate(150%);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
   transition: color var(--dur-fast) var(--ease-spring),
               background var(--dur-fast) var(--ease-spring),
               border-color var(--dur-fast) var(--ease-spring);
