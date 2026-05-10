@@ -1,39 +1,11 @@
 @import "tailwindcss";
 
 /*
-  Design tokens — hand-tuned to feel native on macOS.
-  These are NOT shadcn defaults. The dark neutrals use a warm graphite
-  cast so translucent surfaces feel closer to native macOS materials
-  than cold blue-grey panels; the red is calibrated to match the system
-  "recording" red used in Voice Memos and Screen Recording.
+  Desktop-app token entry. The single source of truth lives at
+  /styles/tokens.css (project root), shared with the marketing site.
+  This file pulls those values in and exposes them to Tailwind v4.
 */
-@theme {
-  --color-bg: oklch(0.17 0.006 82);
-  --color-bg-elevated: oklch(0.22 0.007 82);
-  --color-bg-translucent: oklch(0.24 0.008 82 / 0.64);
-  --color-line: oklch(1 0 0 / 0.07);
-  --color-line-strong: oklch(1 0 0 / 0.12);
-
-  --color-fg: oklch(0.96 0.004 82);
-  --color-fg-muted: oklch(0.75 0.006 82);
-  --color-fg-dim: oklch(0.56 0.007 82);
-
-  --color-accent: oklch(0.78 0.16 245);
-  --color-accent-soft: oklch(0.78 0.16 245 / 0.12);
-  --color-rec: oklch(0.66 0.22 22);
-  --color-rec-glow: oklch(0.66 0.22 22 / 0.55);
-
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
-
-  --shadow-pill: 0 8px 32px oklch(0 0 0 / 0.18),
-    0 1px 0 oklch(1 0 0 / 0.08) inset;
-
-  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
-  --dur-fast: 160ms;
-  --dur-base: 240ms;
-}
+@import url("../../styles/tokens.css");
 
 html, body {
   margin: 0;
