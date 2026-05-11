@@ -223,8 +223,7 @@ main { position: relative; z-index: 2; overflow: visible; }
   display: block;
   overflow: visible;
 }
-.face-glasses,
-.face-mask-holes {
+.face-glasses {
   transition: transform 90ms linear;
 }
 
