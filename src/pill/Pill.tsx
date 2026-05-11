@@ -321,7 +321,7 @@ function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number 
 
 const GAZE_MAX = 20;          // viewBox-unit cap on offset magnitude
 const GAZE_RANGE_PX = 240;    // distance at which gaze saturates
-const GAZE_LERP = 1;          // per-frame damping toward target
+const GAZE_LERP = 0.22;       // per-frame damping toward target — matches website feel
 const GAZE_EPSILON = 0.05;    // stop animating when target is reached
 
 function useCursorGaze(active: boolean): [number, number] {
@@ -329,19 +329,20 @@ function useCursorGaze(active: boolean): [number, number] {
   const target = useRef<[number, number]>([0, 0]);
   const current = useRef<[number, number]>([0, 0]);
 
-  // Poll the cursor position on rAF and update the gaze target. Window
-  // position/size are fetched async, so we cache and refresh them on a
-  // slower cadence — they only change when the user drags the pill.
+  // Poll the cursor position in its own loop, decoupled from rAF. Awaiting
+  // the IPC inside the frame loop made every frame wait on a Rust round-trip,
+  // so the target updated at IPC speed (jittery, well below 60Hz) and the
+  // glasses felt laggy no matter what lerp we chose. Here the poll fires as
+  // fast as the IPC will answer, and the rAF lerp consumes whatever target
+  // is freshest — same shape as the website's mousemove→lerp loop.
   useEffect(() => {
     if (!active) {
       target.current = [0, 0];
       return;
     }
     let cancelled = false;
-    let raf = 0;
     let winCenterLogical: [number, number] | null = null;
     let winRefreshDue = 0;
-    let nextPollDue = 0;
     let scale = 1;
 
     const refreshWindow = async () => {
@@ -357,45 +358,42 @@ function useCursorGaze(active: boolean): [number, number] {
         (pos.y + size.height / 2) / scale,
       ];
     };
-    void refreshWindow();
 
-    const tick = async (now: number) => {
-      if (cancelled) return;
-      if (now < nextPollDue) {
-        raf = requestAnimationFrame(tick);
-        return;
-      }
-      nextPollDue = now + 16; // ~60Hz cursor poll; lerp fills in the rest
-      if (now >= winRefreshDue) {
-        winRefreshDue = now + 250;
-        try { await refreshWindow(); } catch { /* ignore */ }
-      }
-      try {
-        const [cx, cy] = await ipc.cursorPosition();
-        if (cancelled || !winCenterLogical) {
-          raf = requestAnimationFrame(tick);
-          return;
+    const poll = async () => {
+      while (!cancelled) {
+        const now = performance.now();
+        if (now >= winRefreshDue) {
+          winRefreshDue = now + 250;
+          try { await refreshWindow(); } catch { /* ignore */ }
         }
-        const dxPx = cx - winCenterLogical[0];
-        const dyPx = cy - winCenterLogical[1];
-        const dist = Math.hypot(dxPx, dyPx);
-        if (dist < 1) {
-          target.current = [0, 0];
-        } else {
-          const norm = Math.min(dist / GAZE_RANGE_PX, 1);
-          const k = (GAZE_MAX * norm) / dist;
-          target.current = [dxPx * k, dyPx * k];
+        try {
+          const [cx, cy] = await ipc.cursorPosition();
+          if (cancelled) return;
+          if (winCenterLogical) {
+            const dxPx = cx - winCenterLogical[0];
+            const dyPx = cy - winCenterLogical[1];
+            const dist = Math.hypot(dxPx, dyPx);
+            if (dist < 1) {
+              target.current = [0, 0];
+            } else {
+              const norm = Math.min(dist / GAZE_RANGE_PX, 1);
+              const k = (GAZE_MAX * norm) / dist;
+              target.current = [dxPx * k, dyPx * k];
+            }
+          }
+        } catch {
+          // IPC may fail momentarily during teardown — keep the previous target.
         }
-      } catch {
-        // IPC may fail momentarily during teardown — keep the previous target.
+        // Yield so we don't hot-spin if the IPC is too quick to throttle us
+        // naturally. The macroTask gap keeps the renderer responsive while
+        // still pushing fresh targets at well over 60Hz.
+        await new Promise<void>((r) => setTimeout(r, 0));
       }
-      raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
+    void poll();
 
     return () => {
       cancelled = true;
-      cancelAnimationFrame(raf);
     };
   }, [active]);
 
