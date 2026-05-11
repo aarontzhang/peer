@@ -49,12 +49,31 @@
               xmlns="http://www.w3.org/2000/svg"
               role="img"
               aria-label="Peer logo">
-              <g fill="none" stroke="currentColor" stroke-linecap="round">
-                <circle cx="512" cy="512" r="259" stroke-width="44"/>
-                <g class="face-glasses" stroke-width="38">
-                  <circle cx="407" cy="512" r="70"/>
-                  <circle cx="617" cy="512" r="70"/>
-                  <line x1="477" y1="512" x2="547" y2="512"/>
+              <defs>
+                <!-- Punch lens-shape holes out of the head ring so the head
+                     never shows through the lens, even when the glasses
+                     translate past the silhouette. Hole radius covers the
+                     full lens stroke (lens r + lens stroke/2). -->
+                <mask id="hero-head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+                  <rect x="0" y="0" width="1024" height="1024" fill="white"/>
+                  <g class="face-mask-holes" fill="black">
+                    <circle cx="407" cy="512" r="90"/>
+                    <circle cx="617" cy="512" r="90"/>
+                  </g>
+                </mask>
+              </defs>
+              <g stroke-linecap="round">
+                <circle cx="512" cy="512" r="259" fill="none" stroke="currentColor" stroke-width="44" mask="url(#hero-head-mask)"/>
+                <g class="face-glasses">
+                  <!-- Solid lens interior so the dark page never bleeds
+                       through the rim, mirroring the desktop pill recipe. -->
+                  <circle class="face-lens-fill" cx="407" cy="512" r="51"/>
+                  <circle class="face-lens-fill" cx="617" cy="512" r="51"/>
+                  <g fill="none" stroke="currentColor" stroke-width="38">
+                    <circle cx="407" cy="512" r="70"/>
+                    <circle cx="617" cy="512" r="70"/>
+                    <line x1="477" y1="512" x2="547" y2="512"/>
+                  </g>
                 </g>
               </g>
             </svg>
@@ -327,11 +346,13 @@
     });
 
     /* Cursor-tracking glasses — the head ring stays put, the glasses unit
-       translates over it. Mirrors the desktop pill recipe. */
+       (and the matching mask cutouts) translate together so the rims never
+       overlap the silhouette. Mirrors the desktop pill recipe. */
     (() => {
       const svg     = document.querySelector('.face-svg');
       const glasses = document.querySelector('.face-glasses');
-      if (!svg || !glasses) return;
+      const holes   = document.querySelector('.face-mask-holes');
+      if (!svg || !glasses || !holes) return;
 
       // Travel range tuned to mirror the live pill: there, MAX_OFFSET is
       // ~20% of the viewBox so the glasses can pop visibly past the face
@@ -362,6 +383,7 @@
         current.y += (target.y - current.y) * 0.18;
         const t = `translate(${current.x.toFixed(2)} ${current.y.toFixed(2)})`;
         glasses.setAttribute('transform', t);
+        holes.setAttribute('transform', t);
         if (
           Math.abs(target.x - current.x) > 0.05 ||
           Math.abs(target.y - current.y) > 0.05

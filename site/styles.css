@@ -223,8 +223,13 @@ main { position: relative; z-index: 2; overflow: visible; }
   display: block;
   overflow: visible;
 }
-.face-glasses {
+.face-glasses,
+.face-mask-holes {
   transition: transform 90ms linear;
+}
+.face-lens-fill {
+  fill: var(--bg);
+  stroke: none;
 }
 
 .hero__lede {
