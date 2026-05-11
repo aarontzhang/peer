@@ -50,7 +50,7 @@
           <span class="hero__mark" aria-hidden="true">
             <svg
               class="face-svg"
-              viewBox="210 210 604 604"
+              viewBox="220 220 584 584"
               xmlns="http://www.w3.org/2000/svg"
               role="img"
               aria-label="Peer logo">
@@ -58,17 +58,17 @@
                 <mask id="hero-head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
                   <rect x="0" y="0" width="1024" height="1024" fill="white"/>
                   <g class="face-mask-holes" fill="black">
-                    <circle cx="407" cy="512" r="110"/>
-                    <circle cx="617" cy="512" r="110"/>
+                    <circle cx="407" cy="512" r="92"/>
+                    <circle cx="617" cy="512" r="92"/>
                   </g>
                 </mask>
               </defs>
               <g fill="none" stroke="currentColor" stroke-linecap="round">
-                <circle cx="512" cy="512" r="259" stroke-width="72" mask="url(#hero-head-mask)"/>
-                <g class="face-glasses" stroke-width="60">
-                  <circle cx="407" cy="512" r="68"/>
-                  <circle cx="617" cy="512" r="68"/>
-                  <line x1="475" y1="512" x2="549" y2="512"/>
+                <circle cx="512" cy="512" r="259" stroke-width="44" mask="url(#hero-head-mask)"/>
+                <g class="face-glasses" stroke-width="38">
+                  <circle cx="407" cy="512" r="70"/>
+                  <circle cx="617" cy="512" r="70"/>
+                  <line x1="477" y1="512" x2="547" y2="512"/>
                 </g>
               </g>
             </svg>
@@ -226,8 +226,8 @@
         <article class="walk-stage">
           <div class="walk-stage__visual walk-stage__visual--record" aria-hidden="true">
             <div class="pill-mock" data-state="recording">
-              <span class="pill-mock__core">
-                <svg viewBox="-50 -50 100 100" width="22" height="22">
+              <button class="pill-mock__core" type="button" tabindex="-1">
+                <svg class="pill-mock__logo" viewBox="-50 -50 100 100" width="26" height="26">
                   <g fill="none" stroke="currentColor" stroke-linecap="round">
                     <circle cx="0" cy="0" r="37" stroke-width="6.5"/>
                     <circle cx="-15" cy="0" r="10" stroke-width="5.5"/>
@@ -235,9 +235,11 @@
                     <line x1="-5" y1="0" x2="5" y2="0" stroke-width="5.5"/>
                   </g>
                 </svg>
-              </span>
-              <span class="pill-mock__dots">
-                <span></span><span></span><span></span>
+              </button>
+              <span class="pill-mock__handle">
+                <span class="pill-mock__dot"></span>
+                <span class="pill-mock__dot"></span>
+                <span class="pill-mock__dot"></span>
               </span>
             </div>
             <span class="walk-caption">
@@ -248,7 +250,7 @@
           <div class="walk-stage__copy">
             <span class="walk-stage__num">01 · Record</span>
             <h3>Press <kbd>fn</kbd> and just do it.</h3>
-            <p>The pill turns red. Talk while you work. Peer watches the screen, follows your cursor, and listens.</p>
+            <p>The pill's rim turns red. Talk while you work. Peer watches the screen, follows your cursor, and listens.</p>
           </div>
         </article>
 
@@ -256,8 +258,8 @@
         <article class="walk-stage">
           <div class="walk-stage__visual walk-stage__visual--analyze" aria-hidden="true">
             <div class="pill-mock" data-state="processing">
-              <span class="pill-mock__core">
-                <svg viewBox="-50 -50 100 100" width="22" height="22">
+              <button class="pill-mock__core" type="button" tabindex="-1">
+                <svg class="pill-mock__logo" viewBox="-50 -50 100 100" width="26" height="26">
                   <g fill="none" stroke="currentColor" stroke-linecap="round">
                     <circle cx="0" cy="0" r="37" stroke-width="6.5"/>
                     <circle cx="-15" cy="0" r="10" stroke-width="5.5"/>
@@ -265,21 +267,22 @@
                     <line x1="-5" y1="0" x2="5" y2="0" stroke-width="5.5"/>
                   </g>
                 </svg>
-              </span>
-              <span class="pill-mock__bars">
-                <span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span><span></span>
+              </button>
+              <span class="pill-mock__handle">
+                <span class="pill-mock__dot"></span>
+                <span class="pill-mock__dot"></span>
+                <span class="pill-mock__dot"></span>
               </span>
             </div>
             <span class="walk-caption">
               <span class="walk-caption__dot walk-caption__dot--analyze"></span>
-              Analyzing 0:43 of recording
+              Processing
             </span>
           </div>
           <div class="walk-stage__copy">
             <span class="walk-stage__num">02 · Analyze</span>
             <h3>Peer figures out what mattered.</h3>
-            <p>It separates the parts that stay the same from the parts that change next time — names, files, dates, inputs.</p>
+            <p>The rim turns blue and the glasses dim. It separates the parts that stay the same from the parts that change next time.</p>
           </div>
         </article>
 
@@ -288,16 +291,19 @@
           <div class="walk-stage__visual walk-stage__visual--output" aria-hidden="true">
             <div class="prompt-mock">
               <div class="prompt-mock__bar">
-                <span class="prompt-mock__title">Submit expense reimbursement</span>
-                <span class="prompt-mock__copied">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg>
-                  Copied
+                <span class="prompt-mock__back" aria-hidden="true">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"></polyline></svg>
+                  Back
+                </span>
+                <span class="prompt-mock__heading">
+                  <span class="prompt-mock__title">Submit expense reimbursement</span>
+                  <span class="prompt-mock__meta">just now · 0:43</span>
                 </span>
               </div>
-              <div class="prompt-mock__body">
+              <div class="prompt-mock__body md">
                 <p>Open Expensify and start a new expense report titled <em>{report_title}</em>.</p>
                 <ol>
-                  <li>From the receipt, pull the vendor and amount.</li>
+                  <li>From the receipt, pull vendor and amount.</li>
                   <li>Set <strong>Date</strong> to the date on the receipt.</li>
                   <li>Attach the file and submit to <em>{approver}</em>.</li>
                 </ol>
@@ -308,7 +314,7 @@
           <div class="walk-stage__copy">
             <span class="walk-stage__num">03 · Replay</span>
             <h3>Get a workflow you can run.</h3>
-            <p>Out comes a reusable recipe. Hand it to Claude, Cursor, or an agent — or run it yourself with one click.</p>
+            <p>Out comes a reusable recipe. Hand it to Claude, Cursor, or an agent — or run it yourself, again and again.</p>
           </div>
         </article>
 

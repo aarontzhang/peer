@@ -606,56 +606,64 @@ kbd {
   line-height: 1.55;
 }
 
-/* Pill mockup — mirrors the real pill window: vertical capsule with the
-   glasses logo at the top and a 3-dot drag handle / activity strip at the
-   bottom. The state tints the rim red (recording) or blue (processing). */
+/* Pill mockup — dimensions copied verbatim from src/pill/pill.css so the
+   site shows the real capsule. Width 40, padding 6/0/8/0, gap 6, core 30,
+   3-dot handle at the bottom. Rim tints red (recording) or blue
+   (processing); processing also pulses the glasses opacity, exactly like
+   the live pill's .logo[data-state='processing'] rule. */
 .pill-mock {
   position: relative;
-  width: 56px;
+  width: 40px;
   display: flex; flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 10px 0 12px;
-  border-radius: 28px;
+  padding: 6px 0 8px;
+  gap: 6px;
+  border-radius: 22px;
   border: 1px solid oklch(1 0 0 / 0.14);
   background: oklch(0.21 0.006 82 / 0.82);
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   box-shadow: 0 14px 36px oklch(0 0 0 / 0.45);
 }
-.pill-mock[data-state='recording'] {
-  border-color: oklch(0.66 0.22 22 / 0.75);
-}
-.pill-mock[data-state='processing'] {
-  border-color: oklch(0.78 0.16 245 / 0.55);
-}
+.pill-mock[data-state='recording']  { border-color: oklch(0.66 0.22 22 / 0.75); }
+.pill-mock[data-state='processing'] { border-color: oklch(0.78 0.16 245 / 0.45); }
+
 .pill-mock__core {
-  width: 36px; height: 36px;
-  border-radius: 50%;
+  width: 30px; height: 30px;
   display: grid; place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  cursor: default;
   color: oklch(1 0 0);
 }
-.pill-mock[data-state='processing'] .pill-mock__core {
-  animation: pill-mock-pulse 1.6s ease-in-out infinite;
+.pill-mock__logo { display: block; overflow: visible; }
+.pill-mock[data-state='processing'] .pill-mock__logo {
+  animation: pill-mock-logo-pulse 1.6s ease-in-out infinite;
 }
-@keyframes pill-mock-pulse {
+@keyframes pill-mock-logo-pulse {
   0%, 100% { opacity: 0.65; }
   50%      { opacity: 1; }
 }
 
-.pill-mock__dots {
-  display: flex; gap: 4px;
-  padding: 4px 8px 0;
+.pill-mock__handle {
+  display: flex; gap: 3px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px 2px 8px;
 }
-.pill-mock__dots span {
-  width: 4px; height: 4px;
+.pill-mock__dot {
+  width: 3px; height: 3px;
   border-radius: 50%;
   background: oklch(1 0 0);
   opacity: 0.85;
+}
+.pill-mock[data-state='recording'] .pill-mock__dot {
   animation: pill-dot-bounce 1.4s infinite;
 }
-.pill-mock__dots span:nth-child(2) { animation-delay: 0.18s; }
-.pill-mock__dots span:nth-child(3) { animation-delay: 0.36s; }
+.pill-mock[data-state='recording'] .pill-mock__dot:nth-child(2) { animation-delay: 0.18s; }
+.pill-mock[data-state='recording'] .pill-mock__dot:nth-child(3) { animation-delay: 0.36s; }
 @keyframes pill-dot-bounce {
   0%   { transform: translateY(0);    animation-timing-function: cubic-bezier(0.20, 0.65, 0.40, 1); }
   35%  { transform: translateY(-7px); animation-timing-function: cubic-bezier(0.65, 0, 0.85, 0.40); }
@@ -663,54 +671,39 @@ kbd {
   100% { transform: translateY(0); }
 }
 
-/* Audio-bars activity used in the analyzing state instead of the dots. */
-.pill-mock__bars {
-  display: flex; align-items: flex-end; gap: 2px;
-  height: 12px;
-  padding: 2px 7px 0;
-}
-.pill-mock__bars span {
-  width: 2px;
-  border-radius: 1px;
-  background: var(--blue);
-  opacity: 0.85;
-  animation: pill-mock-bar 1.1s ease-in-out infinite;
-}
-.pill-mock__bars span:nth-child(1) { height: 4px;  animation-delay: 0.00s; }
-.pill-mock__bars span:nth-child(2) { height: 8px;  animation-delay: 0.08s; }
-.pill-mock__bars span:nth-child(3) { height: 11px; animation-delay: 0.16s; }
-.pill-mock__bars span:nth-child(4) { height: 6px;  animation-delay: 0.24s; }
-.pill-mock__bars span:nth-child(5) { height: 10px; animation-delay: 0.32s; }
-.pill-mock__bars span:nth-child(6) { height: 5px;  animation-delay: 0.40s; }
-.pill-mock__bars span:nth-child(7) { height: 9px;  animation-delay: 0.48s; }
-.pill-mock__bars span:nth-child(8) { height: 11px; animation-delay: 0.56s; }
-.pill-mock__bars span:nth-child(9) { height: 7px;  animation-delay: 0.64s; }
-.pill-mock__bars span:nth-child(10){ height: 4px;  animation-delay: 0.72s; }
-@keyframes pill-mock-bar {
-  0%, 100% { transform: scaleY(0.5); opacity: 0.55; }
-  50%      { transform: scaleY(1);   opacity: 1; }
-}
-
-/* Output mock — a miniature of the recording-detail body. Shows a title
-   bar, a short markdown excerpt with a {slot} highlight, and a blinking
-   caret to suggest it's still streaming in. */
+/* Output mock — miniature of the real recording-page: a back-button +
+   title + meta bar on top, markdown body below. Same translucent recipe
+   as the live result window so it reads as a real screenshot. */
 .prompt-mock {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid var(--line);
   background: oklch(0.18 0.006 82 / 0.65);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(155%);
+  -webkit-backdrop-filter: blur(22px) saturate(155%);
   box-shadow: 0 10px 26px oklch(0 0 0 / 0.30);
   overflow: hidden;
   font-family: var(--font-display);
 }
 .prompt-mock__bar {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px;
-  padding: 9px 12px 9px 14px;
-  border-bottom: 1px solid var(--line);
-  background: oklch(1 0 0 / 0.03);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid oklch(1 0 0 / 0.05);
+}
+.prompt-mock__back {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 9px 4px 7px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--muted);
+  background: oklch(1 0 0 / 0.05);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+.prompt-mock__heading {
+  display: flex; flex-direction: column;
+  min-width: 0;
 }
 .prompt-mock__title {
   font-size: 12px;
@@ -721,24 +714,21 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.prompt-mock__copied {
-  display: inline-flex; align-items: center; gap: 4px;
+.prompt-mock__meta {
+  margin-top: 2px;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.04em;
-  color: oklch(0.86 0.10 156);
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: oklch(0.74 0.16 156 / 0.12);
-  border: 1px solid oklch(0.74 0.16 156 / 0.22);
+  color: var(--dim);
+  letter-spacing: 0.02em;
 }
+
 .prompt-mock__body {
-  padding: 12px 14px 14px;
+  padding: 12px 16px 14px;
   font-size: 11.5px;
-  line-height: 1.55;
-  color: var(--text-2);
+  line-height: 1.6;
+  color: var(--text);
 }
-.prompt-mock__body p { margin: 0 0 8px; }
+.prompt-mock__body p { margin: 0 0 8px; color: var(--text); }
 .prompt-mock__body em {
   color: var(--slot);
   font-style: normal;
@@ -756,7 +746,7 @@ kbd {
 .prompt-mock__cursor { margin: 0 !important; color: var(--muted); }
 .prompt-mock__caret {
   display: inline-block;
-  width: 5px; height: 0.9em;
+  width: 5px; height: 0.95em;
   background: var(--blue);
   border-radius: 1px;
   margin-left: 2px;
