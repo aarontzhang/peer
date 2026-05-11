@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-export const WINDOW_SYSTEM = `You take one window of a screen recording (a few keyframes plus the user's narration over that window) and return a compact JSON note. A downstream model will combine the per-window notes into a single, refined instruction prompt for a coding agent.
+export const WINDOW_SYSTEM = `You take one window of a screen recording (a few keyframes plus the user's narration over that window) and return a compact JSON note. A downstream model will combine the per-window notes into a single, refined instruction prompt for an automation agent.
 
 You will receive:
 - A small ordered set of JPEG keyframes from one segment of the recording.

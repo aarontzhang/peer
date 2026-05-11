@@ -6,14 +6,16 @@ import {
   sendJson,
 } from './_backend.js';
 
-const TITLE_SYSTEM = `You write a 3-5 word title that captures the essence of a coding task a user has described.
+const TITLE_SYSTEM = `You write a 3-5 word title that captures the essence of a task a user wants to automate.
 
 Style:
-- Imperative, present tense ("Find collaborator settings", "Fix login redirect", "Add dark-mode toggle").
+- Imperative, present tense ("Find collaborator settings", "File expense report", "Add dark-mode toggle").
 - 3 to 5 words. Never more than 6.
 - No quotes, no trailing punctuation, no markdown.
 - Plain ASCII apostrophes only.
-- Title case is fine but lowercase is also fine — match how a developer would write a commit subject.
+- Title case is fine but lowercase is also fine — match how someone would write a commit subject or a todo line.
+
+If the description does not actually contain a task to automate (empty, unclear, or just chatter), output exactly: No task to automate
 
 Output the title and nothing else — no preamble, no explanation, no bullets.`;
 
@@ -51,7 +53,7 @@ export default async function handler(req, res) {
             content: [
               {
                 type: 'text',
-                text: `Coding task description:\n\n${truncated}\n\nReturn the title now.`,
+                text: `Task description:\n\n${truncated}\n\nReturn the title now.`,
               },
             ],
           },
