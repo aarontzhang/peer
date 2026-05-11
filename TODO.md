@@ -13,7 +13,8 @@ GitHub repo: **https://github.com/aarontzhang/peer** (already public)
 These are done — listed so you know the current state.
 
 - [x] **Vercel project `peer` is live** at `www.peercv.com`. `/` returns 200, `/download/latest` returns a clean 302 to GitHub Releases.
-- [x] **All 7 required env vars** are set on Vercel production (OPENAI_API_KEY, ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET, PEER_BETA_INVITE_CODE, PEER_FREE_BETA_MONTHLY_LIMIT, PEER_BACKEND_URL). `PEER_MACOS_DOWNLOAD_URL` is not set — that's fine; `api/download-latest.js` has the correct default baked in.
+- [x] **All required env vars** are set on Vercel production (OPENAI_API_KEY, ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET, PEER_BACKEND_URL). `PEER_MACOS_DOWNLOAD_URL` is not set — that's fine; `api/download-latest.js` has the correct default baked in.
+- [x] **Sign-in is open beta, no invite code.** The auth flow is Google OAuth via Supabase implicit flow (`src-tauri/src/saas.rs:187`). There is no invite-code prompt in the desktop app and no code that reads `PEER_BETA_INVITE_CODE` — that Vercel env var is dormant. Same for `PEER_FREE_BETA_MONTHLY_LIMIT` (the `recording_usage` table only logs; no code enforces a cap). Both env vars can be deleted from Vercel; they're cosmetic. (See Task 2 below.)
 - [x] **Supabase auth callback** (`/api/auth-callback`) returns 200 and contains the `peer://auth` deep-link logic.
 - [x] **The single missing piece** is the GitHub release artifact — `https://github.com/aarontzhang/peer/releases/latest/download/Peer.dmg` returns 404 today because no release exists yet. Tasks 1–3 below fix that.
 
@@ -59,29 +60,28 @@ You want to see `HTTP/2 302 → HTTP/2 302 → HTTP/2 200` with `content-type: a
 
 ---
 
-## 2. Generate + share the beta invite code  ⏱ ~2 minutes
+## 2. Confirm Supabase signups are open + tidy unused Vercel env vars  ⏱ ~3 minutes
 
-The desktop app gates sign-in on `PEER_BETA_INVITE_CODE`. You already have a value set in Vercel.
+The desktop app's sign-in is just **Google OAuth via Supabase** — no invite code, no email allowlist in code. Whether new people can sign up depends entirely on one Supabase toggle.
 
-### Verify what's currently set
-```sh
-cd /Users/aaronzhang/Desktop/Peer
-vercel env pull .env.vercel.production --environment=production
-grep PEER_BETA_INVITE_CODE .env.vercel.production
-# then delete it so it doesn't get committed:
-rm .env.vercel.production
-```
+### Confirm signups are open in Supabase
+1. Open https://supabase.com/dashboard → select the Peer project (the one whose URL is in `SUPABASE_URL` on Vercel — `hmkpgxlfxwztficbuktj.supabase.co` per the hardcoded fallback in `src-tauri/src/saas.rs:20`).
+2. Go to **Authentication → Sign In / Providers**.
+3. Confirm **Google** is enabled and the OAuth client ID / secret are set. (They must be — your dev sign-in works.)
+4. Go to **Authentication → Sign In / Up → User Signups**.
+5. Make sure **"Allow new users to sign up"** is **ON**. If it's off, only existing users can sign in and new visitors will hit a wall.
+6. Make sure the **Site URL** (Authentication → URL Configuration) and **Redirect URLs** include `https://www.peercv.com/api/auth-callback`. If only the `peer-wheat.vercel.app` URL is whitelisted, sign-in from the custom domain will fail with a redirect-not-allowed error.
 
-### If you want to change it
+### Remove the two unused env vars from Vercel (optional cosmetic cleanup)
+Both `PEER_BETA_INVITE_CODE` and `PEER_FREE_BETA_MONTHLY_LIMIT` are not consumed by any deployed code. Safe to delete:
 1. Go to https://vercel.com/aaronzhangper-gmailcoms-projects/peer/settings/environment-variables
-2. Find `PEER_BETA_INVITE_CODE`, click **Edit**, set a new value (any short string — e.g. `peer-beta-2026`).
-3. After saving, you must **redeploy** for the new value to take effect: in the Vercel dashboard, **Deployments → … → Redeploy**. Or push any commit.
+2. Delete `PEER_BETA_INVITE_CODE` and `PEER_FREE_BETA_MONTHLY_LIMIT`.
+3. No redeploy needed (the absence won't change behavior; the deployed code doesn't read them).
 
 ### Share with the tester
 Send your tester:
 - The link: **https://www.peercv.com**
-- The invite code (whatever string above)
-- A short note: *"Click Download. After it downloads, open the DMG, drag Peer into Applications, then right-click Peer → Open (macOS will ask once because the beta isn't notarized — it's safe). When Peer launches, sign in and enter this invite code."*
+- A short note: *"Click Download. After it downloads, open the DMG, drag Peer into Applications, then right-click Peer → Open (macOS will ask once because the beta isn't notarized — it's safe). When Peer launches, click Sign in — it'll open a Google sign-in tab in your browser. Use any Google account."*
 
 ---
 
@@ -98,12 +98,13 @@ Don't send the link to an external tester until you've done one full clean-room 
    - **Screen & System Audio Recording**
    - **Microphone**
    - **Accessibility** (required for the Fn key-tap detection)
-6. When the pill window appears, click the sign-in button. A browser tab opens to your Supabase auth flow → enter your invite code → after sign-in you should be deep-linked back to `peer://auth`. Token gets stored in macOS Keychain.
+6. When the pill window appears, click the sign-in button. A browser tab opens to Google sign-in (Supabase OAuth implicit flow) → pick a Google account → after sign-in you should be deep-linked back to `peer://auth`. Token gets stored in macOS Keychain.
 7. Press **Fn** to start recording → narrate a 5-second screen task → press **Fn** again to stop.
 8. The result window should populate with markdown within ~12 seconds.
 
 ### If sign-in fails
-- The README mentions an `/api/desktop-login` endpoint that doesn't exist in the deployed code (only `/api/auth-callback` exists). Verify that the desktop app's sign-in button opens a Supabase URL (not `/api/desktop-login`). If it's hitting `/api/desktop-login`, that's a code bug in the Rust auth handler — flag it to Claude. (Today, sign-in from your dev build presumably works, so this is more about awareness than a known bug.)
+- Most likely cause: the redirect URL `https://www.peercv.com/api/auth-callback` isn't whitelisted in Supabase. Fix in Supabase → Authentication → URL Configuration (see Task 2 above).
+- Second most likely: Google OAuth client in Supabase doesn't have `https://www.peercv.com/api/auth-callback` (or the Supabase auth callback URL `https://<project>.supabase.co/auth/v1/callback`) in its Authorized redirect URIs. Fix in the Google Cloud Console for the OAuth client tied to Supabase.
 - If you see a Keychain prompt asking to allow Peer to access an item, click **Always Allow**.
 
 ### If a recording fails
