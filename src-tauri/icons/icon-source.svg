@@ -6,17 +6,17 @@
   <rect x="100" y="100" width="824" height="824" rx="186" ry="186" fill="#13161b"/>
 
   <!-- Same face/glasses geometry as the pill and sidebar brand mark,
-       scaled down proportionally with the squircle (7 * 824/1024 ≈ 5.633). -->
+       scaled down proportionally with the squircle (≈ 7.95 * 824/1024). -->
   <defs>
     <mask id="head-mask" maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
       <rect x="-50" y="-50" width="100" height="100" fill="#ffffff"/>
-      <circle cx="-15" cy="0" r="11.5" fill="#000000"/>
-      <circle cx="15" cy="0" r="11.5" fill="#000000"/>
+      <circle cx="-15" cy="0" r="13.5" fill="#000000"/>
+      <circle cx="15" cy="0" r="13.5" fill="#000000"/>
     </mask>
   </defs>
-  <g transform="translate(512 512) scale(5.633)" fill="none" stroke="#f5f7fb" stroke-linecap="round">
-    <circle cx="0" cy="0" r="37" stroke-width="3" mask="url(#head-mask)"/>
-    <g stroke-width="2.5">
+  <g transform="translate(512 512) scale(6.4)" fill="none" stroke="#f5f7fb" stroke-linecap="round">
+    <circle cx="0" cy="0" r="37" stroke-width="6.5" mask="url(#head-mask)"/>
+    <g stroke-width="5.5">
       <circle cx="-15" cy="0" r="8.75" fill="#13161b" stroke="none"/>
       <circle cx="15" cy="0" r="8.75" fill="#13161b" stroke="none"/>
       <circle cx="-15" cy="0" r="10"/>
