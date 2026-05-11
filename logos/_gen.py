@@ -19,14 +19,14 @@ BG = "#13161c"
 FG = "#ffffff"
 
 HEAD_R = 259
-HEAD_STROKE = 46
+HEAD_STROKE = 60
 
 LENS_R = 70
 LENS_FILL_R = 61
 LENS_DX = 105         # half-distance between the two lens centers
 BRIDGE_HALF = 35      # bridge runs from (-35, 0) to (+35, 0) before translation
-GLASSES_STROKE = 38
-MASK_R = 94
+GLASSES_STROKE = 52
+MASK_R = 100
 
 DIRECTIONS = {
     "straight":   (0,    0),
