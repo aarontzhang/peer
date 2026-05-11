@@ -50,25 +50,31 @@
               role="img"
               aria-label="Peer logo">
               <defs>
-                <!-- Punch lens-shape holes out of the head ring so the head
-                     never shows through the lens, even when the glasses
-                     translate past the silhouette. Hole radius covers the
-                     full lens stroke (lens r + lens stroke/2). -->
+                <!-- Cut lens-interior holes out of the face border so the
+                     head ring never reads through the lens. Hole radius =
+                     lens interior (r=51), leaving the lens stroke and the
+                     head stroke to overlap where the second mask handles
+                     them. -->
                 <mask id="hero-head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
                   <rect x="0" y="0" width="1024" height="1024" fill="white"/>
                   <g class="face-mask-holes" fill="black">
-                    <circle cx="407" cy="512" r="90"/>
-                    <circle cx="617" cy="512" r="90"/>
+                    <circle cx="407" cy="512" r="51"/>
+                    <circle cx="617" cy="512" r="51"/>
                   </g>
+                </mask>
+                <!-- Hide the lens strokes wherever they cross the head
+                     ring stroke region, so glasses sit flush against the
+                     face border instead of doubling its outline. The
+                     mask is fixed in viewBox space; the glasses translate
+                     through it. -->
+                <mask id="hero-glasses-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+                  <rect x="0" y="0" width="1024" height="1024" fill="white"/>
+                  <circle cx="512" cy="512" r="259" fill="none" stroke="black" stroke-width="44"/>
                 </mask>
               </defs>
               <g stroke-linecap="round">
                 <circle cx="512" cy="512" r="259" fill="none" stroke="currentColor" stroke-width="44" mask="url(#hero-head-mask)"/>
-                <g class="face-glasses">
-                  <!-- Solid lens interior so the dark page never bleeds
-                       through the rim, mirroring the desktop pill recipe. -->
-                  <circle class="face-lens-fill" cx="407" cy="512" r="51"/>
-                  <circle class="face-lens-fill" cx="617" cy="512" r="51"/>
+                <g class="face-glasses" mask="url(#hero-glasses-mask)">
                   <g fill="none" stroke="currentColor" stroke-width="38">
                     <circle cx="407" cy="512" r="70"/>
                     <circle cx="617" cy="512" r="70"/>

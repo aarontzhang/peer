@@ -227,10 +227,6 @@ main { position: relative; z-index: 2; overflow: visible; }
 .face-mask-holes {
   transition: transform 90ms linear;
 }
-.face-lens-fill {
-  fill: var(--bg);
-  stroke: none;
-}
 
 .hero__lede {
   max-width: 56ch;
