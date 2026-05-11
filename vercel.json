@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  },
   "builds": [
     { "src": "api/**/*.js", "use": "@vercel/node" },
     { "src": "site/**", "use": "@vercel/static" },
