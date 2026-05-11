@@ -275,8 +275,8 @@ function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number 
         <mask id={maskId} maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
           <rect x="-50" y="-50" width="100" height="100" fill="white" />
           <g style={{ transform: gazeTransform }} fill="black">
-            <circle cx="-15" cy="0" r="11.5" />
-            <circle cx="15"  cy="0" r="11.5" />
+            <circle cx="-15" cy="0" r="12.5" />
+            <circle cx="15"  cy="0" r="12.5" />
           </g>
         </mask>
       </defs>
@@ -287,13 +287,13 @@ function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number 
           cx="0"
           cy="0"
           r="37"
-          strokeWidth="3"
+          strokeWidth="5"
           mask={`url(#${maskId})`}
         />
         {/* glasses — translated so the character "looks" toward dx,dy */}
         <g
           className="logo__glasses"
-          strokeWidth="2.5"
+          strokeWidth="4"
           style={{ transform: gazeTransform }}
         >
           <circle className="logo__lens-fill" cx="-15" cy="0" r="8.75" />

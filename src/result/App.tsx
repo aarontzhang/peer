@@ -434,14 +434,14 @@ function BrandMark() {
         <mask id={maskId} maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
           <rect x="-50" y="-50" width="100" height="100" fill="white" />
           <g style={{ transform: gazeTransform }} fill="black">
-            <circle cx="-15" cy="0" r="11.5" />
-            <circle cx="15" cy="0" r="11.5" />
+            <circle cx="-15" cy="0" r="12.5" />
+            <circle cx="15" cy="0" r="12.5" />
           </g>
         </mask>
       </defs>
       <g fill="none" stroke="currentColor" strokeLinecap="round">
-        <circle cx="0" cy="0" r="37" strokeWidth="3" mask={`url(#${maskId})`} />
-        <g strokeWidth="2.5" style={{ transform: gazeTransform }}>
+        <circle cx="0" cy="0" r="37" strokeWidth="5" mask={`url(#${maskId})`} />
+        <g strokeWidth="4" style={{ transform: gazeTransform }}>
           <circle cx="-15" cy="0" r="10" />
           <circle cx="15"  cy="0" r="10" />
           <line x1="-5" y1="0" x2="5" y2="0" />
