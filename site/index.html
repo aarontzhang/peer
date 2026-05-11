@@ -14,7 +14,7 @@
 
   <meta http-equiv="Cache-Control" content="no-store">
   <link rel="stylesheet" href="/styles/tokens.css?v=2">
-  <link rel="stylesheet" href="/site/styles.css?v=12">
+  <link rel="stylesheet" href="/site/styles.css?v=13">
 </head>
 <body>
   <!-- Atmospheric light. Two soft colored blobs + a bottom warm glow simulate
@@ -41,11 +41,6 @@
     <!-- HERO ============================================================ -->
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero__inner">
-        <div class="hero__meta reveal" style="--d:0ms">
-          <span class="meta-dot" aria-hidden="true"></span>
-          <span>v0.2 · macOS · Apple Silicon</span>
-        </div>
-
         <h1 id="hero-title" class="hero__title reveal" style="--d:120ms">
           <span class="hero__mark" aria-hidden="true">
             <svg
@@ -93,7 +88,7 @@
         </div>
 
         <p class="hero__shortcut reveal" style="--d:480ms">
-          Press <kbd>fn</kbd> anywhere. Show what you do. Get an automation.
+          Press <kbd>Option</kbd> anywhere. Show what you do. Get an automation.
         </p>
       </div>
 
@@ -209,9 +204,8 @@
     <!-- HOW IT WORKS ==================================================== -->
     <section class="section" id="how" aria-labelledby="how-title">
       <div class="section__head">
-        <span class="section__num">01</span>
         <h2 id="how-title" class="section__title">
-          Press <kbd class="title-kbd">fn</kbd>. Show Peer once.<br>
+          Press <kbd class="title-kbd">Option</kbd>. Show Peer once.<br>
           Run it forever.
         </h2>
         <p class="section__lede">
@@ -248,9 +242,8 @@
             </span>
           </div>
           <div class="walk-stage__copy">
-            <span class="walk-stage__num">01 · Record</span>
-            <h3>Press <kbd>fn</kbd> and just do it.</h3>
-            <p>The pill's rim turns red. Talk while you work. Peer watches the screen, follows your cursor, and listens.</p>
+            <h3>Press <kbd>Option</kbd> and just do a task.</h3>
+            <p>It'll start recording your screen and audio. Talk through what you're doing — Peer is watching and listening.</p>
           </div>
         </article>
 
@@ -280,9 +273,8 @@
             </span>
           </div>
           <div class="walk-stage__copy">
-            <span class="walk-stage__num">02 · Analyze</span>
-            <h3>Peer figures out what mattered.</h3>
-            <p>The rim turns blue and the glasses dim. It separates the parts that stay the same from the parts that change next time.</p>
+            <h3>Peer figures out what matters.</h3>
+            <p>It looks through your recording and works out the important parts of the workflow — the ones worth repeating.</p>
           </div>
         </article>
 
@@ -312,87 +304,25 @@
             </div>
           </div>
           <div class="walk-stage__copy">
-            <span class="walk-stage__num">03 · Replay</span>
             <h3>Get a workflow you can run.</h3>
-            <p>Out comes a reusable recipe. Hand it to Claude, Cursor, or an agent — or run it yourself, again and again.</p>
+            <p>Out comes a repeatable action. Hand it to Claude, Cursor, or an agent — or run it yourself, again and again.</p>
           </div>
         </article>
 
       </div>
     </section>
 
-    <!-- USE CASES ======================================================= -->
-    <section class="section" id="use-cases" aria-labelledby="cases-title">
-      <div class="section__head">
-        <span class="section__num">02</span>
-        <h2 id="cases-title" class="section__title cases__title">
-          Show it. Peer does it.
-        </h2>
-        <p class="section__lede">
-          A short list of what people actually use it for — anything
-          you'd do with a mouse, a keyboard, and a voice fits.
-        </p>
-      </div>
-
-      <ul class="cases-list">
-        <li class="cases-row">
-          <span class="cases-row__arrow" aria-hidden="true">→</span>
-          <span class="cases-row__lead">File a JIRA ticket</span>
-          <span class="cases-row__detail">from this Slack thread.</span>
-          <span class="cases-row__tag">support</span>
-        </li>
-        <li class="cases-row">
-          <span class="cases-row__arrow" aria-hidden="true">→</span>
-          <span class="cases-row__lead">Pull every invoice off Stripe</span>
-          <span class="cases-row__detail">into the spreadsheet.</span>
-          <span class="cases-row__tag">finance</span>
-        </li>
-        <li class="cases-row">
-          <span class="cases-row__arrow" aria-hidden="true">→</span>
-          <span class="cases-row__lead">Reply to the latest five customer emails</span>
-          <span class="cases-row__detail">in my inbox.</span>
-          <span class="cases-row__tag">inbox</span>
-        </li>
-        <li class="cases-row">
-          <span class="cases-row__arrow" aria-hidden="true">→</span>
-          <span class="cases-row__lead">Look up two hundred companies</span>
-          <span class="cases-row__detail">and grab their last funding round.</span>
-          <span class="cases-row__tag">research</span>
-        </li>
-        <li class="cases-row">
-          <span class="cases-row__arrow" aria-hidden="true">→</span>
-          <span class="cases-row__lead">Brief a coding agent</span>
-          <span class="cases-row__detail">— point at the bug, narrate the fix.</span>
-          <span class="cases-row__tag">agents</span>
-        </li>
-        <li class="cases-row">
-          <span class="cases-row__arrow" aria-hidden="true">→</span>
-          <span class="cases-row__lead">Submit each receipt</span>
-          <span class="cases-row__detail">to whoever approves it.</span>
-          <span class="cases-row__tag">ops</span>
-        </li>
-        <li class="cases-row">
-          <span class="cases-row__arrow" aria-hidden="true">→</span>
-          <span class="cases-row__lead">Hand off the thing only you know how to do</span>
-          <span class="cases-row__detail">— onboarding has a file format now.</span>
-          <span class="cases-row__tag">handoff</span>
-        </li>
-      </ul>
-    </section>
-
     <!-- FINAL CTA ======================================================= -->
     <section class="section section--cta" aria-labelledby="cta-title">
       <h2 id="cta-title" class="cta__title">
-        Stop describing<br>
-        your work.<br>
-        Start <span class="cta__hl">recording it.</span>
+        The easiest way<br>
+        to <span class="cta__hl">adopt AI.</span>
       </h2>
       <div class="cta__actions">
         <a class="button button--primary button--lg" href="/download/latest">
           <span class="btn-arrow" aria-hidden="true">↓</span>
           Download for macOS
         </a>
-        <span class="cta__meta">Free during beta · Apple Silicon</span>
       </div>
     </section>
 
