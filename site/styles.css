@@ -565,10 +565,9 @@ kbd {
 
 .walk-caption {
   display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 .walk-caption__time { color: var(--text); }
 .walk-caption__dot {
@@ -726,10 +725,9 @@ kbd {
 }
 .prompt-mock__meta {
   margin-top: 2px;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--dim);
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .prompt-mock__body {
