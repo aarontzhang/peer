@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 use tauri::{AppHandle, Manager};
 
 use crate::db::Db;
-use crate::hotkey::{self, HotkeyAvailability, HotkeyStatus, RecordingKeybind};
+use crate::hotkey::{self, HotkeyAvailability, HotkeyStatus, PermissionMode, RecordingKeybind};
 use crate::recording::RecordingController;
 
 /// Process-wide state managed by Tauri. Cheap to clone (`Arc` internals).
@@ -21,6 +21,8 @@ pub struct AppState {
     pub current: Arc<Mutex<Option<crate::recording::RecordingPhase>>>,
     /// User-selected recording keybind, persisted in app data.
     pub recording_keybind: Arc<Mutex<RecordingKeybind>>,
+    /// Permission mode that shapes the generated agent prompt.
+    pub permission_mode: Arc<Mutex<PermissionMode>>,
     /// Backend availability for each hotkey mechanism.
     pub hotkey_availability: Arc<Mutex<HotkeyAvailability>>,
     /// Live status of the selected recording hotkey. Updated from the hotkey
@@ -47,6 +49,7 @@ impl AppState {
         std::fs::create_dir_all(&frames_dir)?;
         std::fs::create_dir_all(&data_dir)?;
         let recording_keybind = hotkey::load_recording_keybind(&data_dir);
+        let permission_mode = hotkey::load_permission_mode(&data_dir);
 
         Ok(Self {
             db: Db::new(data_dir.join("peer.db")),
@@ -57,6 +60,7 @@ impl AppState {
             bin_dir,
             current: Arc::new(Mutex::new(None)),
             recording_keybind: Arc::new(Mutex::new(recording_keybind.clone())),
+            permission_mode: Arc::new(Mutex::new(permission_mode)),
             hotkey_availability: Arc::new(Mutex::new(HotkeyAvailability::default())),
             hotkey_status: Arc::new(Mutex::new(HotkeyStatus::unknown(recording_keybind))),
         })

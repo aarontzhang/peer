@@ -49,6 +49,10 @@ Output format:
 - No top-level title, preamble, or summary line - just the instructions.
 - Short paragraphs or a numbered sequence of steps in plain prose. Err on the side of being specific and self-contained over being terse, but never pad with content the recording did not supply.`;
 
+export const MODE_ASK_SUFFIX = `Permission mode: ASK. The instructions you write must direct the downstream agent to pause and ask the user for confirmation before any destructive, irreversible, or otherwise critical action - sending messages, deleting or overwriting data, submitting forms, making payments, changing permissions, anything the user can't easily undo. Also have the agent check in at major milestones before moving on to the next phase. Weave these check-ins inline at the exact step where they belong (e.g. "Before clicking Submit, confirm with the user that the values are correct."). Do not add a generic preamble about asking permission - put each check-in where it actually applies.`;
+
+export const MODE_BYPASS_SUFFIX = `Permission mode: BYPASS. The instructions you write must direct the downstream agent to complete the entire task end-to-end without stopping to ask the user for confirmation. Do not include "confirm with the user", "ask before proceeding", "check with the user", or any equivalent pause. The agent should make reasonable decisions on its own and only surface results once the task is fully done.`;
+
 export async function readJson(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   if (typeof req.body === 'string') return JSON.parse(req.body);

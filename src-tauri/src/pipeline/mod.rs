@@ -169,6 +169,7 @@ pub async fn run(
     };
     let _ = app.emit("result:chunk", &begin);
 
+    let mode = state.permission_mode.lock().as_str();
     let analyze::AnalysisOutput {
         final_md,
         thinking_md,
@@ -179,6 +180,7 @@ pub async fn run(
         &frames,
         &transcript,
         total_secs,
+        mode,
     )
     .await?;
 

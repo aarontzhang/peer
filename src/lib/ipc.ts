@@ -53,6 +53,8 @@ export type HotkeyStatus = {
   reason: string | null;
 };
 
+export type PermissionMode = 'ask' | 'bypass';
+
 export const ipc = {
   startRecording: () => invoke<string>('start_recording'),
   stopRecording: () => invoke<void>('stop_recording'),
@@ -71,6 +73,9 @@ export const ipc = {
   getHotkeyStatus: () => invoke<HotkeyStatus>('get_hotkey_status'),
   setRecordingKeybind: (keybind: RecordingKeybind) =>
     invoke<HotkeyStatus>('set_recording_keybind', { keybind }),
+  getPermissionMode: () => invoke<PermissionMode>('get_permission_mode'),
+  setPermissionMode: (mode: PermissionMode) =>
+    invoke<PermissionMode>('set_permission_mode', { mode }),
 
   onPillEvent: (cb: (e: PillEvent) => void): Promise<UnlistenFn> =>
     listen<PillEvent>('pill:state', (e) => cb(e.payload)),

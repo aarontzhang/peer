@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
 
 use crate::db::Recording;
-use crate::hotkey::{self, HotkeyStatus, RecordingKeybind};
+use crate::hotkey::{self, HotkeyStatus, PermissionMode, RecordingKeybind};
 use crate::recording;
 use crate::reveal_result_window;
 use crate::saas::{self, AccountStatus};
@@ -134,6 +134,19 @@ pub fn set_recording_keybind(
     keybind: RecordingKeybind,
 ) -> Result<HotkeyStatus, String> {
     hotkey::set_recording_keybind(app, state.inner().clone(), keybind).map_err(err_to_string)
+}
+
+#[tauri::command]
+pub fn get_permission_mode(state: State<'_, Arc<AppState>>) -> Result<PermissionMode, String> {
+    Ok(*state.permission_mode.lock())
+}
+
+#[tauri::command]
+pub fn set_permission_mode(
+    state: State<'_, Arc<AppState>>,
+    mode: PermissionMode,
+) -> Result<PermissionMode, String> {
+    hotkey::set_permission_mode(state.inner().clone(), mode).map_err(err_to_string)
 }
 
 #[tauri::command]

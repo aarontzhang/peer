@@ -1,8 +1,8 @@
 //! Global hotkeys for toggling recording.
 //!
 //! The selected recording keybind is persisted locally and feeds one shared
-//! toggle channel. Modifier-only taps use a CGEventTap; Cmd+Shift+R uses
-//! `tauri-plugin-global-shortcut`.
+//! toggle channel. Modifier-only taps (Right Option, Fn) use a CGEventTap;
+//! arbitrary chords go through `tauri-plugin-global-shortcut`.
 
 #[cfg(target_os = "macos")]
 mod fn_tap;
@@ -98,7 +98,7 @@ pub enum RecordingKeybind {
 
 impl Default for RecordingKeybind {
     fn default() -> Self {
-        Self::Fn
+        Self::RightOption
     }
 }
 
@@ -116,31 +116,82 @@ impl RecordingKeybind {
     }
 }
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+/// Permission mode for the generated agent prompt. `Ask` makes the prompt
+/// tell the downstream agent to confirm with the user at critical steps;
+/// `Bypass` tells it to run end-to-end without check-ins.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PermissionMode {
+    Ask,
+    Bypass,
+}
+
+impl Default for PermissionMode {
+    fn default() -> Self {
+        Self::Ask
+    }
+}
+
+impl PermissionMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Ask => "ask",
+            Self::Bypass => "bypass",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SettingsFile {
     #[serde(default)]
     recording_keybind: RecordingKeybind,
+    #[serde(default)]
+    mode: PermissionMode,
+}
+
+fn load_settings(data_dir: &Path) -> SettingsFile {
+    let path = data_dir.join("settings.json");
+    let Ok(bytes) = std::fs::read(path) else {
+        return SettingsFile::default();
+    };
+    serde_json::from_slice::<SettingsFile>(&bytes).unwrap_or_default()
+}
+
+fn save_settings(data_dir: &Path, settings: &SettingsFile) -> Result<()> {
+    std::fs::create_dir_all(data_dir)?;
+    let path = data_dir.join("settings.json");
+    let bytes = serde_json::to_vec_pretty(settings).context("serialize settings")?;
+    std::fs::write(path, bytes).context("write settings")
 }
 
 pub fn load_recording_keybind(data_dir: &Path) -> RecordingKeybind {
-    let path = data_dir.join("settings.json");
-    let Ok(bytes) = std::fs::read(path) else {
-        return RecordingKeybind::default();
-    };
-    serde_json::from_slice::<SettingsFile>(&bytes)
-        .map(|s| s.recording_keybind)
-        .unwrap_or_default()
+    load_settings(data_dir).recording_keybind
+}
+
+pub fn load_permission_mode(data_dir: &Path) -> PermissionMode {
+    load_settings(data_dir).mode
 }
 
 fn save_recording_keybind(data_dir: &Path, keybind: &RecordingKeybind) -> Result<()> {
-    std::fs::create_dir_all(data_dir)?;
-    let path = data_dir.join("settings.json");
-    let bytes = serde_json::to_vec_pretty(&SettingsFile {
-        recording_keybind: keybind.clone(),
-    })
-    .context("serialize hotkey settings")?;
-    std::fs::write(path, bytes).context("write hotkey settings")
+    let mut current = load_settings(data_dir);
+    current.recording_keybind = keybind.clone();
+    save_settings(data_dir, &current)
+}
+
+fn save_permission_mode(data_dir: &Path, mode: PermissionMode) -> Result<()> {
+    let mut current = load_settings(data_dir);
+    current.mode = mode;
+    save_settings(data_dir, &current)
+}
+
+pub fn set_permission_mode(state: Arc<AppState>, mode: PermissionMode) -> Result<PermissionMode> {
+    save_permission_mode(&state.data_dir, mode)?;
+    {
+        let mut selected = state.permission_mode.lock();
+        *selected = mode;
+    }
+    Ok(mode)
 }
 
 #[derive(Debug, Clone, Default)]

@@ -1,5 +1,7 @@
 import {
   AGGREGATOR_SYSTEM,
+  MODE_ASK_SUFFIX,
+  MODE_BYPASS_SUFFIX,
   handleError,
   readJson,
   recordUsage,
@@ -19,6 +21,7 @@ export default async function handler(req, res) {
     const body = await readJson(req);
 
     const userMessage = `Recording duration: ${Number(body.totalSecs || 0).toFixed(1)}s\n\nFull transcript (with timestamps):\n${body.transcriptText || '(no narration captured)'}\n\nPer-window notes (JSON, ordered):\n${body.observationsJson || '[]'}\n\nNow produce the refined prompt per the system prompt.`;
+    const modeSuffix = body.mode === 'bypass' ? MODE_BYPASS_SUFFIX : MODE_ASK_SUFFIX;
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -31,7 +34,7 @@ export default async function handler(req, res) {
         model: process.env.PEER_AGGREGATOR_MODEL || 'claude-sonnet-4-6',
         max_tokens: 4096,
         stream: true,
-        system: [{ type: 'text', text: AGGREGATOR_SYSTEM }],
+        system: [{ type: 'text', text: `${AGGREGATOR_SYSTEM}\n\n${modeSuffix}` }],
         messages: [{ role: 'user', content: [{ type: 'text', text: userMessage }] }],
       }),
     });

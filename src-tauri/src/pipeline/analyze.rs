@@ -49,6 +49,7 @@ pub async fn analyze_and_aggregate(
     frames: &[Keyframe],
     transcript: &Transcript,
     total_secs: f64,
+    mode: &str,
 ) -> Result<AnalysisOutput> {
     if frames.is_empty() && transcript.entries.is_empty() {
         return Err(anyhow!("nothing to analyze — no frames or transcript"));
@@ -142,6 +143,7 @@ pub async fn analyze_and_aggregate(
         &observations_json,
         &transcript_summary(transcript),
         total_secs,
+        mode,
     )
     .await?;
 
@@ -371,6 +373,7 @@ async fn aggregate_streaming(
     observations_json: &str,
     transcript_text: &str,
     total_secs: f64,
+    mode: &str,
 ) -> Result<String> {
     let started = Instant::now();
     let res = backend
@@ -379,6 +382,7 @@ async fn aggregate_streaming(
             "observationsJson": observations_json,
             "transcriptText": transcript_text,
             "totalSecs": total_secs,
+            "mode": mode,
         }))
         .send()
         .await?;

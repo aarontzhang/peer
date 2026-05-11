@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ipc, type AccountStatus, type AuthChangedPayload, type HotkeyStatus, type RecordingKeybind } from '@/lib/ipc';
+import {
+  ipc,
+  type AccountStatus,
+  type AuthChangedPayload,
+  type HotkeyStatus,
+  type PermissionMode,
+  type RecordingKeybind,
+} from '@/lib/ipc';
 
 type Props = {
   open: boolean;
   onClose: () => void;
 };
 
-const DEFAULT_KEYBIND: RecordingKeybind = { kind: 'fn' };
+const DEFAULT_KEYBIND: RecordingKeybind = { kind: 'rightOption' };
 
 export function Settings({ open, onClose }: Props) {
   const [account, setAccount] = useState<AccountStatus | null>(null);
@@ -18,6 +25,8 @@ export function Settings({ open, onClose }: Props) {
   const [capturing, setCapturing] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState<PermissionMode>('ask');
+  const [initialMode, setInitialMode] = useState<PermissionMode>('ask');
 
   useEffect(() => {
     if (open) {
@@ -26,6 +35,10 @@ export function Settings({ open, onClose }: Props) {
         setHotkey(next);
         setKeybind(next.keybind);
         setInitialKeybind(next.keybind);
+      });
+      void ipc.getPermissionMode().then((next) => {
+        setMode(next);
+        setInitialMode(next);
       });
       setPendingSignIn(false);
       setSignInError(null);
@@ -69,6 +82,12 @@ export function Settings({ open, onClose }: Props) {
         setCaptureError('That key combination is not supported. Try another.');
         return;
       }
+      if (next.kind === 'chord' && next.mods.length === 0) {
+        setCaptureError(
+          'A chord needs at least one modifier (⌘, ⌃, ⌥, or ⇧). A bare key would steal it from every app.',
+        );
+        return;
+      }
       setKeybind(next);
       setCaptureError(null);
       setCapturing(false);
@@ -104,6 +123,11 @@ export function Settings({ open, onClose }: Props) {
         setInitialKeybind(next.keybind);
         setKeybind(next.keybind);
       }
+      if (mode !== initialMode) {
+        const next = await ipc.setPermissionMode(mode);
+        setMode(next);
+        setInitialMode(next);
+      }
       onClose();
     } finally {
       setSaving(false);
@@ -126,7 +150,7 @@ export function Settings({ open, onClose }: Props) {
     setAccount(await ipc.getSession());
   };
 
-  const changed = !keybindEqual(keybind, initialKeybind);
+  const changed = !keybindEqual(keybind, initialKeybind) || mode !== initialMode;
   const showHotkeyProblem =
     hotkey && keybindEqual(hotkey.keybind, keybind) && !hotkey.installed;
 
@@ -217,6 +241,37 @@ export function Settings({ open, onClose }: Props) {
           {showHotkeyProblem && hotkey?.reason && (
             <p className="settings__error">{hotkey.reason}</p>
           )}
+        </section>
+
+        <section className="settings__section">
+          <div className="settings__sectionHead">
+            <h3 className="settings__sectionTitle">Mode</h3>
+          </div>
+          <div className="settings__segmented" role="radiogroup" aria-label="Permission mode">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={mode === 'ask'}
+              className={`settings__segmented__item${mode === 'ask' ? ' settings__segmented__item--active' : ''}`}
+              onClick={() => setMode('ask')}
+            >
+              Ask permission
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={mode === 'bypass'}
+              className={`settings__segmented__item${mode === 'bypass' ? ' settings__segmented__item--active' : ''}`}
+              onClick={() => setMode('bypass')}
+            >
+              Allow everything
+            </button>
+          </div>
+          <p className="settings__hint">
+            {mode === 'ask'
+              ? 'The generated prompt tells the agent to check in with you before destructive or critical steps.'
+              : 'The generated prompt tells the agent to run end-to-end without asking.'}
+          </p>
         </section>
 
         <div className="settings__actions">

@@ -121,6 +121,8 @@ pub fn run() {
             ipc::sign_out,
             ipc::get_hotkey_status,
             ipc::set_recording_keybind,
+            ipc::get_permission_mode,
+            ipc::set_permission_mode,
             ipc::move_pill,
             ipc::cursor_position,
         ])
