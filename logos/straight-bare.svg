@@ -5,14 +5,14 @@
     <defs>
       <mask id="head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
         <rect x="0" y="0" width="1024" height="1024" fill="white"/>
-        <circle cx="407" cy="512" r="100" fill="black"/>
-        <circle cx="617" cy="512" r="100" fill="black"/>
+        <circle cx="407" cy="512" r="92" fill="black"/>
+        <circle cx="617" cy="512" r="92" fill="black"/>
       </mask>
     </defs>
     <!-- head -->
-    <circle cx="512" cy="512" r="259" stroke-width="60" mask="url(#head-mask)"/>
+    <circle cx="512" cy="512" r="259" stroke-width="44" mask="url(#head-mask)"/>
     <!-- glasses (translated as a group) -->
-    <g stroke-width="52">
+    <g stroke-width="38">
       <circle cx="407" cy="512" r="61" fill="#13161c" stroke="none"/>
       <circle cx="617" cy="512" r="61" fill="#13161c" stroke="none"/>
       <circle cx="407" cy="512" r="70"/>
