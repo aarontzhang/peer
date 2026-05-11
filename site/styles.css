@@ -500,6 +500,12 @@ kbd {
   color: var(--text);
 }
 
+@media (min-width: 820px) {
+  #how-title {
+    white-space: nowrap;
+  }
+}
+
 .section__lede {
   max-width: 600px;
   margin: 0;
