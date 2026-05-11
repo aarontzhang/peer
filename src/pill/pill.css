@@ -78,11 +78,6 @@ html, body, #root {
   transition: stroke var(--dur-base) var(--ease-spring);
 }
 
-.logo .logo__lens-fill {
-  fill: oklch(0.21 0.006 82 / 0.82);
-  stroke: none;
-}
-
 /* The glasses translate to point the gaze. Smooth the move so swapping
    directions (e.g. when starting/stopping recording) doesn't snap. */
 .logo__glasses {
