@@ -3,27 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Peer turns a single screen recording into a reusable automation. Tap once, narrate, ship.">
+  <meta name="description" content="Do it once. Peer remembers how, and does it again — on anything you give it.">
   <title>Peer — Show don't tell.</title>
 
   <link rel="icon" href="/site/favicon.svg" type="image/svg+xml">
 
-  <!-- Manrope (display + body) and JetBrains Mono (timestamps, code, slots) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <meta http-equiv="Cache-Control" content="no-store">
-  <link rel="stylesheet" href="/styles/tokens.css?v=1">
-  <link rel="stylesheet" href="/site/styles.css?v=8">
+  <link rel="stylesheet" href="/styles/tokens.css?v=2">
+  <link rel="stylesheet" href="/site/styles.css?v=12">
 </head>
 <body>
+  <!-- Atmospheric light. Two soft colored blobs + a bottom warm glow simulate
+       the translucent backdrop of the desktop app on a flat web canvas. -->
+  <div class="aurora" aria-hidden="true">
+    <span class="aurora__blob aurora__blob--a"></span>
+    <span class="aurora__blob aurora__blob--b"></span>
+    <span class="aurora__blob aurora__blob--c"></span>
+  </div>
   <div class="grain" aria-hidden="true"></div>
-  <div class="grid-bg" aria-hidden="true"></div>
 
   <header class="topbar">
     <a class="brand" href="/" aria-label="Peer home">
-      <img src="/logos/straight.svg" alt="" width="28" height="28">
+      <img src="/logos/straight.svg" alt="" width="26" height="26">
       <span>Peer</span>
     </a>
     <a class="nav-download" href="/download/latest">
@@ -35,105 +40,131 @@
   <main>
     <!-- HERO ============================================================ -->
     <section class="hero" aria-labelledby="hero-title">
-      <div class="hero__grid">
+      <div class="hero__inner">
+        <div class="hero__meta reveal" style="--d:0ms">
+          <span class="meta-dot" aria-hidden="true"></span>
+          <span>v0.2 · macOS · Apple Silicon</span>
+        </div>
 
-        <!-- Left: cursor-tracking face -->
-        <div class="hero__face" aria-hidden="true">
-          <svg
-            class="face-svg"
-            viewBox="235 235 554 554"
-            xmlns="http://www.w3.org/2000/svg"
-            role="img"
-            aria-label="Peer logo">
-            <defs>
-              <!-- The mask cutouts translate WITH the glasses so the head ring
-                   stays clean and the glasses never overlap it visually. -->
-              <mask id="hero-head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
-                <rect x="0" y="0" width="1024" height="1024" fill="white"/>
-                <g class="face-mask-holes" fill="black">
-                  <circle cx="407" cy="512" r="78"/>
-                  <circle cx="617" cy="512" r="78"/>
+        <h1 id="hero-title" class="hero__title reveal" style="--d:120ms">
+          <span class="hero__mark" aria-hidden="true">
+            <svg
+              class="face-svg"
+              viewBox="235 235 554 554"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-label="Peer logo">
+              <defs>
+                <mask id="hero-head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+                  <rect x="0" y="0" width="1024" height="1024" fill="white"/>
+                  <g class="face-mask-holes" fill="black">
+                    <circle cx="407" cy="512" r="78"/>
+                    <circle cx="617" cy="512" r="78"/>
+                  </g>
+                </mask>
+              </defs>
+              <g fill="none" stroke="currentColor" stroke-linecap="round">
+                <circle cx="512" cy="512" r="259" stroke-width="14" mask="url(#hero-head-mask)"/>
+                <g class="face-glasses" stroke-width="12">
+                  <circle cx="407" cy="512" r="70"/>
+                  <circle cx="617" cy="512" r="70"/>
+                  <line x1="477" y1="512" x2="547" y2="512"/>
                 </g>
-              </mask>
-            </defs>
-
-            <g fill="none" stroke="currentColor" stroke-linecap="round">
-              <!-- head ring (stays put) -->
-              <circle cx="512" cy="512" r="259" stroke-width="14" mask="url(#hero-head-mask)"/>
-
-              <!-- glasses unit — translated by JS to follow the cursor -->
-              <g class="face-glasses" stroke-width="12">
-                <circle cx="407" cy="512" r="70"/>
-                <circle cx="617" cy="512" r="70"/>
-                <line x1="477" y1="512" x2="547" y2="512"/>
               </g>
-            </g>
-          </svg>
+            </svg>
+          </span>
+          <span class="hero__title-text">Show don't <span class="hero__title-accent">tell.</span></span>
+        </h1>
+
+        <p class="hero__lede reveal" style="--d:240ms">
+          Do something on your computer once. Peer watches, learns how,
+          and does it again — with new inputs, on its own.
+        </p>
+
+        <div class="hero__actions reveal" style="--d:360ms">
+          <a class="button button--primary button--lg" href="/download/latest">
+            <span class="btn-arrow" aria-hidden="true">↓</span>
+            Download for macOS
+          </a>
+          <a class="button button--ghost button--lg" href="#how">
+            See how it works
+            <span class="btn-arrow btn-arrow--right" aria-hidden="true">→</span>
+          </a>
         </div>
 
-        <!-- Right: title + CTA -->
-        <div class="hero__content">
-          <div class="hero__meta reveal" style="--d:0ms">
-            <span class="meta-dot" aria-hidden="true"></span>
-            <span>v0.2 · macOS · Apple Silicon</span>
-          </div>
-
-          <h1 id="hero-title" class="hero__title reveal" style="--d:120ms">
-            Show don't <span class="hero__title-accent">tell.</span>
-          </h1>
-
-          <p class="hero__lede reveal" style="--d:240ms">
-            Record yourself doing a task once. Peer turns it into an automation
-            you can run again, on anything.
-          </p>
-
-          <div class="hero__actions reveal" style="--d:360ms">
-            <a class="button button--primary button--lg" href="/download/latest">
-              <span class="btn-arrow" aria-hidden="true">↓</span>
-              Download for macOS
-            </a>
-            <a class="button button--ghost button--lg" href="#how">
-              See how it works
-              <span class="btn-arrow btn-arrow--right" aria-hidden="true">→</span>
-            </a>
-          </div>
-
-          <p class="hero__install-note reveal" style="--d:420ms">
-            First time? After opening the DMG, right-click <strong>Peer.app</strong> → <strong>Open</strong>. macOS will ask once; click <strong>Open</strong> again.
-          </p>
-
-          <div class="hero__shortcut reveal" style="--d:480ms">
-            Press <kbd>fn</kbd> anywhere. Show what you do. Get an automation.
-          </div>
-        </div>
+        <p class="hero__shortcut reveal" style="--d:480ms">
+          Press <kbd>fn</kbd> anywhere. Show what you do. Get an automation.
+        </p>
       </div>
 
-      <!-- Demo video — autoplay placeholder, drop file at /site/demo.mp4 -->
-      <div class="hero-video reveal" style="--d:600ms" aria-label="Peer demo">
-        <div class="hero-video__frame">
-          <div class="hero-video__chrome" aria-hidden="true">
-            <span></span><span></span><span></span>
-            <div class="chrome-url">peer · live demo</div>
+      <!-- App-window mockup — mirrors the real Peer result view so the site
+           reads as a window into the app, not a separate brand layer. -->
+      <div class="app-window reveal" style="--d:600ms" aria-label="Peer running on macOS">
+        <div class="app-window__chrome" aria-hidden="true">
+          <span class="tl tl--r"></span>
+          <span class="tl tl--y"></span>
+          <span class="tl tl--g"></span>
+        </div>
+        <div class="app-window__bar">
+          <div class="app-window__brand">
+            <img src="/logos/straight.svg" alt="" width="26" height="26">
+            <span>Peer</span>
           </div>
-          <div class="hero-video__stage">
-            <video
-              class="hero-video__media"
-              autoplay
-              muted
-              loop
-              playsinline
-              preload="metadata"
-              poster="/site/demo-poster.svg">
-              <!-- Drop the file at site/demo.mp4 (and optionally site/demo.webm) -->
-              <source src="/site/demo.webm" type="video/webm">
-              <source src="/site/demo.mp4" type="video/mp4">
-            </video>
-            <div class="hero-video__placeholder" aria-hidden="true">
-              <span class="hero-video__pulse"></span>
-              <span class="hero-video__placeholder-label">demo coming soon</span>
-            </div>
+          <div class="app-window__tabs">
+            <button class="aw-tab aw-tab--active" type="button" tabindex="-1">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <polyline points="12 7 12 12 15.5 14"></polyline>
+              </svg>
+              History
+            </button>
+            <button class="aw-tab" type="button" tabindex="-1">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 4h12v17l-6-4-6 4z"></path>
+              </svg>
+              Saved
+            </button>
+          </div>
+          <div class="app-window__gear" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path>
+            </svg>
           </div>
         </div>
+
+        <ul class="aw-feed">
+          <li class="aw-card aw-card--recording">
+            <span class="aw-card__time">just now</span>
+            <span class="aw-card__title">Recording — file a JIRA ticket from this Slack thread…</span>
+            <span class="aw-card__pip" data-state="recording"></span>
+          </li>
+          <li class="aw-card">
+            <span class="aw-card__time">2m ago</span>
+            <span class="aw-card__title">Reply to the latest five customer emails in my inbox</span>
+            <span class="aw-card__pip" data-state="done"></span>
+          </li>
+          <li class="aw-card">
+            <span class="aw-card__time">17m ago</span>
+            <span class="aw-card__title">Pull each invoice off Stripe and log it in the spreadsheet</span>
+            <span class="aw-card__pip" data-state="done"></span>
+          </li>
+          <li class="aw-card">
+            <span class="aw-card__time">1h ago</span>
+            <span class="aw-card__title">Look up every company on this list and grab their funding</span>
+            <span class="aw-card__pip" data-state="done"></span>
+          </li>
+          <li class="aw-card">
+            <span class="aw-card__time">yesterday</span>
+            <span class="aw-card__title">Fix the typo on this page across the whole repo</span>
+            <span class="aw-card__pip" data-state="done"></span>
+          </li>
+          <li class="aw-card aw-card--dim">
+            <span class="aw-card__time">2d ago</span>
+            <span class="aw-card__title">Empty recording — nothing to replay</span>
+            <span class="aw-card__pip" data-state="cancel"></span>
+          </li>
+        </ul>
       </div>
     </section>
 
@@ -142,38 +173,37 @@
       <div class="section__head">
         <span class="section__num">01</span>
         <h2 id="how-title" class="section__title">
-          One tap. One demonstration.<br>
-          Replayable forever.
+          One demo. Run forever.
         </h2>
         <p class="section__lede">
-          Most automation tools ask you to wire up a flowchart. Peer asks you to do
-          the task — once — and watches over your shoulder.
+          Most automation tools want you to wire up a flowchart. Peer just
+          watches you do the thing — once — and figures out the rest.
         </p>
       </div>
 
-      <div class="how-grid">
-        <article class="how-step">
-          <header>
-            <span class="how-step__num">01</span>
+      <div class="steps">
+        <article class="step">
+          <div class="step__head">
+            <span class="step__num">01</span>
             <h3>Record</h3>
-          </header>
-          <p>Tap <kbd>fn</kbd> and walk through the task. Peer captures the window, follows your cursor, and listens.</p>
+          </div>
+          <p>Hit <kbd>fn</kbd>. Walk through the task while you talk. Peer captures the screen, the cursor, and what you say.</p>
         </article>
 
-        <article class="how-step">
-          <header>
-            <span class="how-step__num">02</span>
-            <h3>Generalize</h3>
-          </header>
-          <p>Peer separates the stable parts of the workflow from the values you'll change next time.</p>
+        <article class="step">
+          <div class="step__head">
+            <span class="step__num">02</span>
+            <h3>Learn</h3>
+          </div>
+          <p>It separates the parts that stay the same from the parts that change next time — the names, dates, files, inputs.</p>
         </article>
 
-        <article class="how-step">
-          <header>
-            <span class="how-step__num">03</span>
+        <article class="step">
+          <div class="step__head">
+            <span class="step__num">03</span>
             <h3>Replay</h3>
-          </header>
-          <p>Hand the recipe to an agent, or wire it to a trigger. The same workflow runs on new inputs.</p>
+          </div>
+          <p>Run it again with new inputs. Or hand it to an agent. The work happens without you having to do it.</p>
         </article>
       </div>
     </section>
@@ -183,10 +213,10 @@
       <div class="section__head">
         <span class="section__num">02</span>
         <h2 id="cases-title" class="section__title">
-          If you can show it,<br>Peer can replay it.
+          If you can show it, Peer can do it.
         </h2>
         <p class="section__lede">
-          Anything you do with a mouse, a keyboard, and a voice — repeated.
+          Anything you'd otherwise do with a mouse, a keyboard, and a voice.
         </p>
       </div>
 
@@ -198,8 +228,8 @@
               <polyline points="16 6 22 12 16 18"></polyline>
             </svg>
           </span>
-          <h3>Coding agent prompts</h3>
-          <p>Show the file, point at the bug, narrate the fix. Get a paste-ready prompt for Cursor or Claude Code.</p>
+          <h3>Brief a coding agent</h3>
+          <p>Point at the bug, narrate the fix, hand Cursor or Claude Code a prompt that actually has context.</p>
         </article>
         <article class="case">
           <span class="case__icon" aria-hidden="true">
@@ -208,8 +238,8 @@
               <line x1="20" y1="20" x2="16" y2="16"></line>
             </svg>
           </span>
-          <h3>Research at scale</h3>
-          <p>Demo how you look up one company. Peer does it on the next two hundred — same fields, same notes.</p>
+          <h3>Research at volume</h3>
+          <p>Look up one company the way you'd like to. Peer does the next two hundred — same fields, same notes.</p>
         </article>
         <article class="case">
           <span class="case__icon" aria-hidden="true">
@@ -219,8 +249,8 @@
               <line x1="9" y1="14" x2="15" y2="14"></line>
             </svg>
           </span>
-          <h3>Recurring data entry</h3>
-          <p>Walk through one form once. Peer fills it on every input that follows — invoices, tickets, applications.</p>
+          <h3>The same form, again</h3>
+          <p>Fill out one invoice, ticket, or application. Peer fills the rest from a list of inputs.</p>
         </article>
         <article class="case">
           <span class="case__icon" aria-hidden="true">
@@ -231,8 +261,8 @@
               <path d="M9 13h4"></path>
             </svg>
           </span>
-          <h3>Tribal knowledge, captured</h3>
-          <p>The thing only you know how to do — recorded, replayable, hand-offable. Onboarding finally has a file format.</p>
+          <h3>The thing only you know how to do</h3>
+          <p>Record it once. Now it's a file someone else can run. Onboarding has a format.</p>
         </article>
       </div>
     </section>
@@ -265,9 +295,7 @@
   </main>
 
   <script>
-    /* ---------------------------------------------------------------
-       Reveal-on-scroll
-       --------------------------------------------------------------- */
+    /* Reveal-on-scroll */
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) {
         if (e.isIntersecting) {
@@ -277,26 +305,20 @@
       }
     }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
 
-    document.querySelectorAll('.reveal, .section, .case, .how-step').forEach(el => {
+    document.querySelectorAll('.reveal, .section, .case, .step').forEach(el => {
       el.classList.add('reveal');
       io.observe(el);
     });
 
-    /* ---------------------------------------------------------------
-       Cursor-tracking glasses
-       Translates the entire .face-glasses group (and the matching
-       .face-mask-holes inside the head mask) toward the cursor, so
-       the head ring's transparent cutouts move in lockstep with the
-       glasses. Mirrors the technique used by the desktop pill.
-       --------------------------------------------------------------- */
+    /* Cursor-tracking glasses — the head ring stays put, the glasses unit
+       (and the matching mask cutouts) translate together so the rims never
+       overlap the silhouette. Mirrors the desktop pill recipe. */
     (() => {
       const svg     = document.querySelector('.face-svg');
       const glasses = document.querySelector('.face-glasses');
       const holes   = document.querySelector('.face-mask-holes');
       if (!svg || !glasses || !holes) return;
 
-      // Travel range in SVG units (viewBox 554). Restrained motion: the
-      // glasses shift but never escape the head silhouette.
       const MAX_OFFSET  = 52;
       const SATURATE_PX = 520;
 
@@ -336,8 +358,6 @@
 
       window.addEventListener('mousemove', onMove, { passive: true });
 
-      // Idle wandering: after 2.2s of no input, drift the glasses to a
-      // soft random offset so the face never looks frozen.
       let idleSince = Date.now();
       window.addEventListener('mousemove', () => { idleSince = Date.now(); });
       setInterval(() => {
