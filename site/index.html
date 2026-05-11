@@ -14,7 +14,7 @@
 
   <meta http-equiv="Cache-Control" content="no-store">
   <link rel="stylesheet" href="/styles/tokens.css?v=2">
-  <link rel="stylesheet" href="/site/styles.css?v=13">
+  <link rel="stylesheet" href="/site/styles.css?v=14">
 </head>
 <body>
   <!-- Atmospheric light. Two soft colored blobs + a bottom warm glow simulate
@@ -72,8 +72,7 @@
         </h1>
 
         <p class="hero__lede reveal" style="--d:240ms">
-          Do something on your computer once. Peer watches, learns how,
-          and does it again — with new inputs, on its own.
+          Press one key to show your AI how to do a task. Peer captures it and runs it again whenever you need.
         </p>
 
         <div class="hero__actions reveal" style="--d:360ms">
@@ -81,15 +80,7 @@
             <span class="btn-arrow" aria-hidden="true">↓</span>
             Download for macOS
           </a>
-          <a class="button button--ghost button--lg" href="#how">
-            See how it works
-            <span class="btn-arrow btn-arrow--right" aria-hidden="true">→</span>
-          </a>
         </div>
-
-        <p class="hero__shortcut reveal" style="--d:480ms">
-          Press <kbd>Option</kbd> anywhere. Show what you do. Get an automation.
-        </p>
       </div>
 
       <!-- App-window mockup — mirrors the real Peer result view so the site
@@ -288,19 +279,11 @@
                   Back
                 </span>
                 <span class="prompt-mock__heading">
-                  <span class="prompt-mock__title">Submit expense reimbursement</span>
-                  <span class="prompt-mock__meta">just now · 0:43</span>
+                  <span class="prompt-mock__title">Pull each invoice off Stripe</span>
+                  <span class="prompt-mock__meta">just now · 0:48</span>
                 </span>
               </div>
-              <div class="prompt-mock__body md">
-                <p>Open Expensify and start a new expense report titled <em>{report_title}</em>.</p>
-                <ol>
-                  <li>From the receipt, pull vendor and amount.</li>
-                  <li>Set <strong>Date</strong> to the date on the receipt.</li>
-                  <li>Attach the file and submit to <em>{approver}</em>.</li>
-                </ol>
-                <p class="prompt-mock__cursor">Repeat for every receipt in the folder<span class="prompt-mock__caret"></span></p>
-              </div>
+              <div class="prompt-mock__body">For every paid invoice in the Stripe dashboard from this month, open the invoice, copy the customer name, amount, and date, and paste them into the next empty row of the "Revenue" sheet — customer in column A, amount in column B, date in column C. Skip any invoice already logged. Keep going until you reach an invoice older than the first of the month.<span class="prompt-mock__caret"></span></div>
             </div>
           </div>
           <div class="walk-stage__copy">

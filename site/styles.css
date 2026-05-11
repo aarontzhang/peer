@@ -730,25 +730,11 @@ kbd {
 .prompt-mock__body {
   padding: 12px 16px 14px;
   font-size: 11.5px;
-  line-height: 1.6;
+  line-height: 1.55;
   color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
-.prompt-mock__body p { margin: 0 0 8px; color: var(--text); }
-.prompt-mock__body em {
-  color: var(--slot);
-  font-style: normal;
-  font-family: var(--font-mono);
-  font-size: 0.92em;
-}
-.prompt-mock__body strong { color: var(--text); font-weight: 600; }
-.prompt-mock__body ol {
-  margin: 0 0 8px;
-  padding-left: 18px;
-  color: var(--muted);
-}
-.prompt-mock__body ol li { margin-bottom: 3px; }
-.prompt-mock__body ol li::marker { color: var(--dim); }
-.prompt-mock__cursor { margin: 0 !important; color: var(--muted); }
 .prompt-mock__caret {
   display: inline-block;
   width: 5px; height: 0.95em;
