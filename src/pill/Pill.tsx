@@ -70,7 +70,9 @@ export function Pill() {
     : 0;
 
   const onPillPointerDown = useDragOnHold(rootRef);
-  const gaze = useCursorGaze(state === 'recording');
+  const glassesRef = useRef<SVGGElement>(null);
+  const maskRef = useRef<SVGGElement>(null);
+  useCursorGaze(state === 'recording', glassesRef, maskRef);
 
   return (
     <div className="pill" data-state={state} ref={rootRef} onPointerDown={onPillPointerDown}>
@@ -107,7 +109,7 @@ export function Pill() {
           aria-label={state === 'recording' ? 'Stop recording' : 'Start recording'}
           title={state === 'recording' ? formatDuration(elapsed) : 'Record'}
         >
-          <GlassesLogo state={state} dx={gaze[0]} dy={gaze[1]} />
+          <GlassesLogo state={state} glassesRef={glassesRef} maskRef={maskRef} />
         </button>
       )}
       <div className="pill__handle" aria-hidden>
@@ -255,9 +257,18 @@ function useDragOnHold(rootRef: RefObject<HTMLDivElement | null>) {
 // macOS app icon (src-tauri/icons/icon.svg), so pill and dock read as
 // the same face.
 
-function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number }) {
+function GlassesLogo({
+  state,
+  glassesRef,
+  maskRef,
+}: {
+  state: string;
+  glassesRef: RefObject<SVGGElement | null>;
+  maskRef: RefObject<SVGGElement | null>;
+}) {
   const maskId = 'pill-head-mask';
-  const gazeTransform = `translate(${dx}px, ${dy}px)`;
+  // Glasses transform is driven by useCursorGaze via setAttribute on these
+  // <g> refs — keeping it off React state matches the website's smoothness.
   return (
     <svg
       className="logo"
@@ -274,7 +285,7 @@ function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number 
             erased under the lens stroke too. */}
         <mask id={maskId} maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
           <rect x="-50" y="-50" width="100" height="100" fill="white" />
-          <g style={{ transform: gazeTransform }} fill="black">
+          <g ref={maskRef} fill="black">
             <circle cx="-15" cy="0" r="13.5" />
             <circle cx="15"  cy="0" r="13.5" />
           </g>
@@ -290,11 +301,11 @@ function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number 
           strokeWidth="6.5"
           mask={`url(#${maskId})`}
         />
-        {/* glasses — translated so the character "looks" toward dx,dy */}
+        {/* glasses — translated so the character "looks" toward the cursor */}
         <g
+          ref={glassesRef}
           className="logo__glasses"
           strokeWidth="5.5"
-          style={{ transform: gazeTransform }}
         >
           <circle className="logo__lens-fill" cx="-15" cy="0" r="8.75" />
           <circle className="logo__lens-fill" cx="15" cy="0" r="8.75" />
@@ -321,20 +332,23 @@ function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number 
 
 const GAZE_MAX = 20;          // viewBox-unit cap on offset magnitude
 const GAZE_RANGE_PX = 240;    // distance at which gaze saturates
-const GAZE_LERP = 0.22;       // per-frame damping toward target — matches website feel
-const GAZE_EPSILON = 0.05;    // stop animating when target is reached
+const GAZE_LERP = 0.18;       // per-frame damping — matches site/index.html
 
-function useCursorGaze(active: boolean): [number, number] {
-  const [gaze, setGaze] = useState<[number, number]>([0, 0]);
+// Drives the gaze offset by writing the SVG transform attribute directly on
+// the provided refs. Mirrors the website's recipe (site/index.html) — no
+// React state in the hot loop, so we don't re-render the pill 60×/sec.
+function useCursorGaze(
+  active: boolean,
+  glassesRef: RefObject<SVGGElement | null>,
+  maskRef: RefObject<SVGGElement | null>,
+) {
+  // Refs survive across renders; we mutate them from both loops below.
   const target = useRef<[number, number]>([0, 0]);
   const current = useRef<[number, number]>([0, 0]);
 
-  // Poll the cursor position in its own loop, decoupled from rAF. Awaiting
-  // the IPC inside the frame loop made every frame wait on a Rust round-trip,
-  // so the target updated at IPC speed (jittery, well below 60Hz) and the
-  // glasses felt laggy no matter what lerp we chose. Here the poll fires as
-  // fast as the IPC will answer, and the rAF lerp consumes whatever target
-  // is freshest — same shape as the website's mousemove→lerp loop.
+  // Poll the cursor in its own async loop — decoupled from rAF so the IPC
+  // round-trip never gates a frame. The frame loop just reads whatever
+  // target the poller has written most recently.
   useEffect(() => {
     if (!active) {
       target.current = [0, 0];
@@ -343,7 +357,6 @@ function useCursorGaze(active: boolean): [number, number] {
     let cancelled = false;
     let winCenterLogical: [number, number] | null = null;
     let winRefreshDue = 0;
-    let scale = 1;
 
     const refreshWindow = async () => {
       const win = getCurrentWindow();
@@ -352,7 +365,7 @@ function useCursorGaze(active: boolean): [number, number] {
         win.outerSize(),
         currentMonitor(),
       ]);
-      scale = monitor?.scaleFactor || 1;
+      const scale = monitor?.scaleFactor || 1;
       winCenterLogical = [
         (pos.x + size.width / 2) / scale,
         (pos.y + size.height / 2) / scale,
@@ -384,21 +397,16 @@ function useCursorGaze(active: boolean): [number, number] {
         } catch {
           // IPC may fail momentarily during teardown — keep the previous target.
         }
-        // Yield so we don't hot-spin if the IPC is too quick to throttle us
-        // naturally. The macroTask gap keeps the renderer responsive while
-        // still pushing fresh targets at well over 60Hz.
         await new Promise<void>((r) => setTimeout(r, 0));
       }
     };
     void poll();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [active]);
 
-  // Damped lerp toward the target. Runs whenever the target diverges from
-  // the rendered gaze, then idles once the spring settles.
+  // rAF lerp. Writes the SVG transform attribute directly — no setState, no
+  // re-render. Idles when the spring settles.
   useEffect(() => {
     let raf = 0;
     let stopped = false;
@@ -408,15 +416,20 @@ function useCursorGaze(active: boolean): [number, number] {
       const nx = cx + (tx - cx) * GAZE_LERP;
       const ny = cy + (ty - cy) * GAZE_LERP;
       current.current = [nx, ny];
-      setGaze([
-        Math.abs(nx) < GAZE_EPSILON && tx === 0 ? 0 : nx,
-        Math.abs(ny) < GAZE_EPSILON && ty === 0 ? 0 : ny,
-      ]);
-      if (!stopped) raf = requestAnimationFrame(step);
+      const t = `translate(${nx.toFixed(2)} ${ny.toFixed(2)})`;
+      glassesRef.current?.setAttribute('transform', t);
+      maskRef.current?.setAttribute('transform', t);
+      if (
+        Math.abs(tx - nx) > 0.05 ||
+        Math.abs(ty - ny) > 0.05
+      ) {
+        if (!stopped) raf = requestAnimationFrame(step);
+      } else {
+        // Spring has settled; park a low-cost rAF that wakes when target shifts.
+        if (!stopped) raf = requestAnimationFrame(step);
+      }
     };
     raf = requestAnimationFrame(step);
     return () => { stopped = true; cancelAnimationFrame(raf); };
-  }, []);
-
-  return gaze;
+  }, [glassesRef, maskRef]);
 }
