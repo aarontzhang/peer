@@ -51,8 +51,8 @@ html, body {
 }
 .topbar__brandOrb {
   flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   opacity: 0.95;
 }
 .topbar__brandName {
