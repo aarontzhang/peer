@@ -211,8 +211,8 @@
       <div class="section__head">
         <span class="section__num">01</span>
         <h2 id="how-title" class="section__title">
-          Press <kbd class="title-kbd">fn</kbd>. Show Peer what to do.<br>
-          Run it again, on anything.
+          Press <kbd class="title-kbd">fn</kbd>. Show Peer once.<br>
+          Run it forever.
         </h2>
         <p class="section__lede">
           One recording becomes a reusable workflow. No flowcharts, no
@@ -325,59 +325,59 @@
     <section class="section" id="use-cases" aria-labelledby="cases-title">
       <div class="section__head">
         <span class="section__num">02</span>
-        <h2 id="cases-title" class="section__title">
-          If you can show it, Peer can do it.
+        <h2 id="cases-title" class="section__title cases__title">
+          Show it. Peer does it.
         </h2>
         <p class="section__lede">
-          Anything you'd otherwise do with a mouse, a keyboard, and a voice.
+          A short list of what people actually use it for — anything
+          you'd do with a mouse, a keyboard, and a voice fits.
         </p>
       </div>
 
-      <div class="cases">
-        <article class="case">
-          <span class="case__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="8 6 2 12 8 18"></polyline>
-              <polyline points="16 6 22 12 16 18"></polyline>
-            </svg>
-          </span>
-          <h3>Brief a coding agent</h3>
-          <p>Point at the bug, narrate the fix, hand Cursor or Claude Code a prompt that actually has context.</p>
-        </article>
-        <article class="case">
-          <span class="case__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="6.5"></circle>
-              <line x1="20" y1="20" x2="16" y2="16"></line>
-            </svg>
-          </span>
-          <h3>Research at volume</h3>
-          <p>Look up one company the way you'd like to. Peer does the next two hundred — same fields, same notes.</p>
-        </article>
-        <article class="case">
-          <span class="case__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3.5" y="4.5" width="17" height="15" rx="2"></rect>
-              <line x1="3.5" y1="10" x2="20.5" y2="10"></line>
-              <line x1="9" y1="14" x2="15" y2="14"></line>
-            </svg>
-          </span>
-          <h3>The same form, again</h3>
-          <p>Fill out one invoice, ticket, or application. Peer fills the rest from a list of inputs.</p>
-        </article>
-        <article class="case">
-          <span class="case__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 17V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10"></path>
-              <path d="M4 17a3 3 0 0 0 3 3h10"></path>
-              <path d="M9 9h6"></path>
-              <path d="M9 13h4"></path>
-            </svg>
-          </span>
-          <h3>The thing only you know how to do</h3>
-          <p>Record it once. Now it's a file someone else can run. Onboarding has a format.</p>
-        </article>
-      </div>
+      <ul class="cases-list">
+        <li class="cases-row">
+          <span class="cases-row__arrow" aria-hidden="true">→</span>
+          <span class="cases-row__lead">File a JIRA ticket</span>
+          <span class="cases-row__detail">from this Slack thread.</span>
+          <span class="cases-row__tag">support</span>
+        </li>
+        <li class="cases-row">
+          <span class="cases-row__arrow" aria-hidden="true">→</span>
+          <span class="cases-row__lead">Pull every invoice off Stripe</span>
+          <span class="cases-row__detail">into the spreadsheet.</span>
+          <span class="cases-row__tag">finance</span>
+        </li>
+        <li class="cases-row">
+          <span class="cases-row__arrow" aria-hidden="true">→</span>
+          <span class="cases-row__lead">Reply to the latest five customer emails</span>
+          <span class="cases-row__detail">in my inbox.</span>
+          <span class="cases-row__tag">inbox</span>
+        </li>
+        <li class="cases-row">
+          <span class="cases-row__arrow" aria-hidden="true">→</span>
+          <span class="cases-row__lead">Look up two hundred companies</span>
+          <span class="cases-row__detail">and grab their last funding round.</span>
+          <span class="cases-row__tag">research</span>
+        </li>
+        <li class="cases-row">
+          <span class="cases-row__arrow" aria-hidden="true">→</span>
+          <span class="cases-row__lead">Brief a coding agent</span>
+          <span class="cases-row__detail">— point at the bug, narrate the fix.</span>
+          <span class="cases-row__tag">agents</span>
+        </li>
+        <li class="cases-row">
+          <span class="cases-row__arrow" aria-hidden="true">→</span>
+          <span class="cases-row__lead">Submit each receipt</span>
+          <span class="cases-row__detail">to whoever approves it.</span>
+          <span class="cases-row__tag">ops</span>
+        </li>
+        <li class="cases-row">
+          <span class="cases-row__arrow" aria-hidden="true">→</span>
+          <span class="cases-row__lead">Hand off the thing only you know how to do</span>
+          <span class="cases-row__detail">— onboarding has a file format now.</span>
+          <span class="cases-row__tag">handoff</span>
+        </li>
+      </ul>
     </section>
 
     <!-- FINAL CTA ======================================================= -->
@@ -418,7 +418,7 @@
       }
     }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
 
-    document.querySelectorAll('.reveal, .section, .case, .walk-stage').forEach(el => {
+    document.querySelectorAll('.reveal, .section, .cases-row, .walk-stage').forEach(el => {
       el.classList.add('reveal');
       io.observe(el);
     });
@@ -432,8 +432,11 @@
       const holes   = document.querySelector('.face-mask-holes');
       if (!svg || !glasses || !holes) return;
 
-      const MAX_OFFSET  = 52;
-      const SATURATE_PX = 520;
+      // Travel range tuned to mirror the live pill: there, MAX_OFFSET is
+      // ~20% of the viewBox so the glasses can pop visibly past the face
+      // ring at extreme gaze. Our viewBox is 584 units, so 130 ≈ 22%.
+      const MAX_OFFSET  = 130;
+      const SATURATE_PX = 380;
 
       let target  = { x: 0, y: 0 };
       let current = { x: 0, y: 0 };

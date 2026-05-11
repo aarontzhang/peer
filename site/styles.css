@@ -464,7 +464,7 @@ kbd {
 .section {
   width: min(100%, calc(var(--max) + var(--page-pad) * 2));
   margin: 0 auto;
-  padding: clamp(80px, 12vw, 140px) var(--page-pad);
+  padding: clamp(56px, 7vw, 96px) var(--page-pad);
   position: relative;
 }
 
@@ -482,7 +482,7 @@ kbd {
 
 .section__head {
   max-width: 760px;
-  margin-bottom: 56px;
+  margin-bottom: 40px;
 }
 
 .section__title {
@@ -772,59 +772,77 @@ kbd {
   border-radius: 8px;
 }
 
-/* ─── Use cases ───────────────────────────────────────────────────── */
-.cases {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+/* ─── Use cases ─────────────────────────────────────────────────────
+   No cards. A clean vertical list of concrete tasks, separated by
+   hairlines, with a small accent arrow on the left and a category
+   tag on the right. Reads as a real menu of what Peer does. */
+.cases__title { white-space: nowrap; }
+
+.cases-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
 }
-.case {
-  padding: 28px 26px 28px;
+.cases-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 14px;
+  padding: 22px 6px;
+  border-bottom: 1px solid var(--line);
+  transition: background var(--dur-base) var(--ease-out),
+              padding var(--dur-base) var(--ease-out);
+}
+.cases-row:hover {
   background:
-    linear-gradient(180deg, oklch(0.27 0.008 82 / 0.50), oklch(0.20 0.006 82 / 0.42));
-  border: 1px solid var(--line-strong);
-  border-radius: 16px;
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.05) inset,
-    0 24px 48px oklch(0 0 0 / 0.28);
-  min-height: 200px;
-  display: flex; flex-direction: column; align-items: flex-start;
-  transition: border-color var(--dur-base) var(--ease-out),
+    linear-gradient(90deg,
+      oklch(1 0 0 / 0.04) 0%,
+      transparent 70%);
+  padding-left: 14px;
+}
+.cases-row:hover .cases-row__arrow {
+  color: var(--blue);
+  transform: translateX(2px);
+}
+
+.cases-row__arrow {
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--dim);
+  font-weight: 500;
+  transition: color var(--dur-base) var(--ease-out),
               transform var(--dur-base) var(--ease-out);
 }
-.case:hover {
-  border-color: var(--line-bright);
-  transform: translateY(-2px);
-}
-.case__icon {
-  display: inline-flex;
-  align-items: center; justify-content: center;
-  width: 40px; height: 40px;
-  margin-bottom: 18px;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background:
-    linear-gradient(180deg, oklch(0.78 0.16 245 / 0.18), oklch(0.78 0.16 245 / 0.04));
-  color: var(--blue);
-  flex-shrink: 0;
-}
-.case__icon svg { width: 20px; height: 20px; display: block; }
-.case h3 {
-  margin: 0 0 10px;
+.cases-row__lead {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: clamp(18px, 1.9vw, 22px);
+  line-height: 1.25;
   font-weight: 600;
   letter-spacing: -0.015em;
   color: var(--text);
 }
-.case p {
-  margin: 0;
+.cases-row__detail {
+  font-family: var(--font-display);
+  font-size: clamp(16px, 1.5vw, 19px);
+  line-height: 1.3;
+  font-weight: 400;
+  letter-spacing: -0.005em;
   color: var(--muted);
-  font-size: 14.5px;
-  line-height: 1.55;
-  max-width: 42ch;
+  min-width: 0;
+}
+.cases-row__tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  white-space: nowrap;
+  align-self: center;
 }
 
 /* ─── Final CTA ───────────────────────────────────────────────────── */
@@ -887,10 +905,24 @@ kbd {
 }
 
 @media (max-width: 760px) {
-  .cases { grid-template-columns: 1fr; }
   .app-window__bar { grid-template-columns: 1fr auto; }
   .app-window__tabs { display: none; }
   .aw-card { grid-template-columns: 64px minmax(0, 1fr) auto; padding-left: 20px; }
+  .cases__title { white-space: normal; }
+  .cases-row {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 18px 6px;
+  }
+  .cases-row__detail {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    font-size: 15px;
+  }
+  .cases-row__tag {
+    grid-column: 3;
+    grid-row: 1;
+  }
 }
 
 @media (max-width: 640px) {
@@ -899,4 +931,5 @@ kbd {
   .hero__title { white-space: normal; flex-direction: column; gap: 8px; }
   .button { width: 100%; justify-content: center; }
   .hero__actions { width: 100%; }
+  .cases-row__tag { display: none; }
 }
