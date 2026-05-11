@@ -321,7 +321,7 @@ function GlassesLogo({ state, dx, dy }: { state: string; dx: number; dy: number 
 
 const GAZE_MAX = 20;          // viewBox-unit cap on offset magnitude
 const GAZE_RANGE_PX = 240;    // distance at which gaze saturates
-const GAZE_LERP = 0.34;       // per-frame damping toward target
+const GAZE_LERP = 0.6;        // per-frame damping toward target
 const GAZE_EPSILON = 0.05;    // stop animating when target is reached
 
 function useCursorGaze(active: boolean): [number, number] {
