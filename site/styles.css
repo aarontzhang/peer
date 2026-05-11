@@ -271,16 +271,11 @@ main { position: relative; z-index: 2; overflow: visible; }
   background: var(--blue);
   color: var(--ink);
   border-color: var(--blue);
-  box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.4) inset,
-    0 10px 32px oklch(0.62 0.16 245 / 0.35);
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.4) inset;
 }
 .button--primary:hover {
   background: var(--blue-2);
   border-color: var(--blue-2);
-  box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.4) inset,
-    0 14px 40px oklch(0.62 0.16 245 / 0.45);
 }
 .button--ghost {
   background: oklch(1 0 0 / 0.04);
@@ -393,50 +388,76 @@ kbd {
 .aw-card {
   position: relative;
   display: grid;
-  grid-template-columns: 80px minmax(0, 1fr) auto;
+  /* Match the real app: time column | title (1fr) | actions cluster. The
+     status pip is absolutely placed inside the row's left padding. */
+  grid-template-columns: 82px minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  padding: 12px 14px 12px 26px;
-  border-radius: 14px;
+  padding: 12px 12px 12px 26px;
+  border-radius: 16px;
   transition: background var(--dur-fast) var(--ease-out);
 }
+.aw-card::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 8px; height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: transparent;
+}
+.aw-card[data-state='done']::before     { background: oklch(0.74 0.16 156); }
+.aw-card[data-state='canceled']::before { background: oklch(0.82 0.16 88); }
+.aw-card[data-state='recording']::before {
+  background: var(--red);
+  animation: aw-pip-pulse 1.2s ease-in-out infinite;
+}
+@keyframes aw-pip-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
 .aw-card:hover { background: oklch(1 0 0 / 0.035); }
+
 .aw-card__time {
-  font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dim);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .aw-card__title {
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-out);
 }
 .aw-card:hover .aw-card__title { color: var(--text); }
+.aw-card[data-state='canceled'] .aw-card__title { color: var(--dim); }
 
-.aw-card__pip {
-  width: 8px; height: 8px;
+/* Action cluster — pinned to the right edge, fixed min-width so every row's
+   right gutter lines up regardless of how many icons are populated. Mirrors
+   .card__actions in the real result view. */
+.aw-card__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 116px;
+}
+.aw-iconbtn {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
   border-radius: 50%;
-  margin-right: 6px;
-  background: oklch(0.74 0.16 156);
+  color: var(--dim);
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
 }
-.aw-card__pip[data-state='recording'] {
-  background: var(--red);
-  box-shadow: 0 0 0 0 oklch(0.66 0.22 22 / 0.5);
-  animation: aw-pulse 1.4s ease-out infinite;
-}
-.aw-card__pip[data-state='done']   { background: oklch(0.74 0.16 156); }
-.aw-card__pip[data-state='cancel'] { background: oklch(0.82 0.16 88); }
-
-.aw-card--dim { opacity: 0.6; }
-.aw-card--recording .aw-card__title { color: var(--text); }
-
-@keyframes aw-pulse {
-  0%   { box-shadow: 0 0 0 0   oklch(0.66 0.22 22 / 0.5); }
-  70%  { box-shadow: 0 0 0 9px oklch(0.66 0.22 22 / 0); }
-  100% { box-shadow: 0 0 0 0   oklch(0.66 0.22 22 / 0); }
+.aw-iconbtn:hover {
+  background: oklch(1 0 0 / 0.10);
+  color: var(--text);
 }
 
 /* ─── Section shell ───────────────────────────────────────────────── */
@@ -482,52 +503,283 @@ kbd {
   line-height: 1.55;
 }
 
-/* ─── Steps ───────────────────────────────────────────────────────── */
-.steps {
+/* ─── Walkthrough ─────────────────────────────────────────────────────
+   Three visual stages — pill recording, pill analyzing, prompt result.
+   Each is a glass card with a visual hero on top and a label + caption
+   below, so the section *shows* the loop rather than describes it. */
+.walk {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
-.step {
+.walk-stage {
   position: relative;
-  padding: 28px 26px 30px;
+  padding: 0 0 26px;
   background:
     linear-gradient(180deg, oklch(0.27 0.008 82 / 0.55), oklch(0.20 0.006 82 / 0.45));
   border: 1px solid var(--line-strong);
-  border-radius: 16px;
+  border-radius: 18px;
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   box-shadow:
     0 1px 0 oklch(1 0 0 / 0.06) inset,
     0 24px 48px oklch(0 0 0 / 0.30);
-  min-height: 200px;
   display: flex; flex-direction: column;
+  overflow: hidden;
   transition: border-color var(--dur-base) var(--ease-out),
-              background var(--dur-base) var(--ease-out);
+              transform var(--dur-base) var(--ease-out);
 }
-.step:hover { border-color: var(--line-bright); }
-.step__head {
-  display: flex; align-items: baseline; gap: 14px;
-  margin-bottom: 14px;
+.walk-stage:hover {
+  border-color: var(--line-bright);
+  transform: translateY(-2px);
 }
-.step__num {
+
+.walk-stage__visual {
+  position: relative;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 22px;
+  padding: 28px 22px 22px;
+  /* Soft inner glow per stage so each one has its own mood, sitting under
+     the shared glass tint of the card. */
+  background:
+    radial-gradient(ellipse 80% 90% at 50% 35%, var(--stage-glow, oklch(0.50 0.10 240 / 0.18)), transparent 65%);
+  border-bottom: 1px solid var(--line);
+}
+.walk-stage__visual--record  { --stage-glow: oklch(0.66 0.22 22 / 0.22); }
+.walk-stage__visual--analyze { --stage-glow: oklch(0.62 0.16 245 / 0.20); }
+.walk-stage__visual--output  { --stage-glow: oklch(0.66 0.13 78 / 0.14); padding-top: 24px; }
+
+.walk-caption {
+  display: inline-flex; align-items: center; gap: 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--blue);
-  letter-spacing: 0.04em;
+  font-size: 11.5px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
 }
-.step h3 {
+.walk-caption__time { color: var(--text); }
+.walk-caption__dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+.walk-caption__dot--rec {
+  background: var(--red);
+  animation: aw-pip-pulse 1.2s ease-in-out infinite;
+}
+.walk-caption__dot--analyze {
+  background: var(--blue);
+  animation: aw-pip-pulse 1.6s ease-in-out infinite;
+}
+
+.walk-stage__copy {
+  padding: 22px 24px 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.walk-stage__num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--blue);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.walk-stage h3 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+  color: var(--text);
 }
-.step p {
+.walk-stage h3 kbd {
+  margin: 0 2px 0 0;
+  font-size: 11.5px;
+  vertical-align: 2px;
+}
+.walk-stage p {
   margin: 0;
   color: var(--muted);
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.55;
+}
+
+/* Pill mockup — mirrors the real pill window: vertical capsule with the
+   glasses logo at the top and a 3-dot drag handle / activity strip at the
+   bottom. The state tints the rim red (recording) or blue (processing). */
+.pill-mock {
+  position: relative;
+  width: 56px;
+  display: flex; flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 12px;
+  border-radius: 28px;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(0.21 0.006 82 / 0.82);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: 0 14px 36px oklch(0 0 0 / 0.45);
+}
+.pill-mock[data-state='recording'] {
+  border-color: oklch(0.66 0.22 22 / 0.75);
+}
+.pill-mock[data-state='processing'] {
+  border-color: oklch(0.78 0.16 245 / 0.55);
+}
+.pill-mock__core {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  color: oklch(1 0 0);
+}
+.pill-mock[data-state='processing'] .pill-mock__core {
+  animation: pill-mock-pulse 1.6s ease-in-out infinite;
+}
+@keyframes pill-mock-pulse {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 1; }
+}
+
+.pill-mock__dots {
+  display: flex; gap: 4px;
+  padding: 4px 8px 0;
+}
+.pill-mock__dots span {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: oklch(1 0 0);
+  opacity: 0.85;
+  animation: pill-dot-bounce 1.4s infinite;
+}
+.pill-mock__dots span:nth-child(2) { animation-delay: 0.18s; }
+.pill-mock__dots span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes pill-dot-bounce {
+  0%   { transform: translateY(0);    animation-timing-function: cubic-bezier(0.20, 0.65, 0.40, 1); }
+  35%  { transform: translateY(-7px); animation-timing-function: cubic-bezier(0.65, 0, 0.85, 0.40); }
+  70%  { transform: translateY(0); }
+  100% { transform: translateY(0); }
+}
+
+/* Audio-bars activity used in the analyzing state instead of the dots. */
+.pill-mock__bars {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 12px;
+  padding: 2px 7px 0;
+}
+.pill-mock__bars span {
+  width: 2px;
+  border-radius: 1px;
+  background: var(--blue);
+  opacity: 0.85;
+  animation: pill-mock-bar 1.1s ease-in-out infinite;
+}
+.pill-mock__bars span:nth-child(1) { height: 4px;  animation-delay: 0.00s; }
+.pill-mock__bars span:nth-child(2) { height: 8px;  animation-delay: 0.08s; }
+.pill-mock__bars span:nth-child(3) { height: 11px; animation-delay: 0.16s; }
+.pill-mock__bars span:nth-child(4) { height: 6px;  animation-delay: 0.24s; }
+.pill-mock__bars span:nth-child(5) { height: 10px; animation-delay: 0.32s; }
+.pill-mock__bars span:nth-child(6) { height: 5px;  animation-delay: 0.40s; }
+.pill-mock__bars span:nth-child(7) { height: 9px;  animation-delay: 0.48s; }
+.pill-mock__bars span:nth-child(8) { height: 11px; animation-delay: 0.56s; }
+.pill-mock__bars span:nth-child(9) { height: 7px;  animation-delay: 0.64s; }
+.pill-mock__bars span:nth-child(10){ height: 4px;  animation-delay: 0.72s; }
+@keyframes pill-mock-bar {
+  0%, 100% { transform: scaleY(0.5); opacity: 0.55; }
+  50%      { transform: scaleY(1);   opacity: 1; }
+}
+
+/* Output mock — a miniature of the recording-detail body. Shows a title
+   bar, a short markdown excerpt with a {slot} highlight, and a blinking
+   caret to suggest it's still streaming in. */
+.prompt-mock {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: oklch(0.18 0.006 82 / 0.65);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: 0 10px 26px oklch(0 0 0 / 0.30);
+  overflow: hidden;
+  font-family: var(--font-display);
+}
+.prompt-mock__bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px 9px 14px;
+  border-bottom: 1px solid var(--line);
+  background: oklch(1 0 0 / 0.03);
+}
+.prompt-mock__title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prompt-mock__copied {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: oklch(0.86 0.10 156);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: oklch(0.74 0.16 156 / 0.12);
+  border: 1px solid oklch(0.74 0.16 156 / 0.22);
+}
+.prompt-mock__body {
+  padding: 12px 14px 14px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+.prompt-mock__body p { margin: 0 0 8px; }
+.prompt-mock__body em {
+  color: var(--slot);
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+.prompt-mock__body strong { color: var(--text); font-weight: 600; }
+.prompt-mock__body ol {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  color: var(--muted);
+}
+.prompt-mock__body ol li { margin-bottom: 3px; }
+.prompt-mock__body ol li::marker { color: var(--dim); }
+.prompt-mock__cursor { margin: 0 !important; color: var(--muted); }
+.prompt-mock__caret {
+  display: inline-block;
+  width: 5px; height: 0.9em;
+  background: var(--blue);
+  border-radius: 1px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  animation: blink 1s steps(2, jump-none) infinite;
+}
+@keyframes blink { 50% { opacity: 0 } }
+
+/* Section title can host a kbd inline (e.g. "Press fn…"). */
+.title-kbd {
+  display: inline-block;
+  vertical-align: 6px;
+  margin: 0 4px 0 2px;
+  padding: 4px 10px 5px;
+  font-size: 0.45em;
+  font-weight: 600;
+  letter-spacing: 0;
+  font-family: var(--font-mono);
+  color: var(--text);
+  background: oklch(1 0 0 / 0.06);
+  border: 1px solid var(--line-bright);
+  border-bottom-width: 2px;
+  border-radius: 8px;
 }
 
 /* ─── Use cases ───────────────────────────────────────────────────── */
@@ -638,7 +890,8 @@ kbd {
 
 /* ─── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 980px) {
-  .steps { grid-template-columns: 1fr; }
+  .walk { grid-template-columns: 1fr; }
+  .walk-stage__visual { height: 220px; }
   .hero__title { font-size: clamp(40px, 9vw, 68px); gap: 14px; }
   .hero__mark  { width: clamp(48px, 11vw, 72px); height: clamp(48px, 11vw, 72px); }
 }

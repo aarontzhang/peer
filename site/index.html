@@ -50,7 +50,7 @@
           <span class="hero__mark" aria-hidden="true">
             <svg
               class="face-svg"
-              viewBox="235 235 554 554"
+              viewBox="210 210 604 604"
               xmlns="http://www.w3.org/2000/svg"
               role="img"
               aria-label="Peer logo">
@@ -58,17 +58,17 @@
                 <mask id="hero-head-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
                   <rect x="0" y="0" width="1024" height="1024" fill="white"/>
                   <g class="face-mask-holes" fill="black">
-                    <circle cx="407" cy="512" r="78"/>
-                    <circle cx="617" cy="512" r="78"/>
+                    <circle cx="407" cy="512" r="110"/>
+                    <circle cx="617" cy="512" r="110"/>
                   </g>
                 </mask>
               </defs>
               <g fill="none" stroke="currentColor" stroke-linecap="round">
-                <circle cx="512" cy="512" r="259" stroke-width="14" mask="url(#hero-head-mask)"/>
-                <g class="face-glasses" stroke-width="12">
-                  <circle cx="407" cy="512" r="70"/>
-                  <circle cx="617" cy="512" r="70"/>
-                  <line x1="477" y1="512" x2="547" y2="512"/>
+                <circle cx="512" cy="512" r="259" stroke-width="72" mask="url(#hero-head-mask)"/>
+                <g class="face-glasses" stroke-width="60">
+                  <circle cx="407" cy="512" r="68"/>
+                  <circle cx="617" cy="512" r="68"/>
+                  <line x1="475" y1="512" x2="549" y2="512"/>
                 </g>
               </g>
             </svg>
@@ -134,35 +134,73 @@
         </div>
 
         <ul class="aw-feed">
-          <li class="aw-card aw-card--recording">
+          <li class="aw-card" data-state="recording">
             <span class="aw-card__time">just now</span>
-            <span class="aw-card__title">Recording — file a JIRA ticket from this Slack thread…</span>
-            <span class="aw-card__pip" data-state="recording"></span>
+            <span class="aw-card__title">File a JIRA ticket from this Slack thread</span>
+            <span class="aw-card__actions" aria-hidden="true">
+              <span class="aw-iconbtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
+              </span>
+              <span class="aw-iconbtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg>
+              </span>
+              <span class="aw-iconbtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg>
+              </span>
+              <span class="aw-iconbtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+              </span>
+            </span>
           </li>
-          <li class="aw-card">
+          <li class="aw-card" data-state="done">
             <span class="aw-card__time">2m ago</span>
             <span class="aw-card__title">Reply to the latest five customer emails in my inbox</span>
-            <span class="aw-card__pip" data-state="done"></span>
+            <span class="aw-card__actions" aria-hidden="true">
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
+            </span>
           </li>
-          <li class="aw-card">
+          <li class="aw-card" data-state="done">
             <span class="aw-card__time">17m ago</span>
             <span class="aw-card__title">Pull each invoice off Stripe and log it in the spreadsheet</span>
-            <span class="aw-card__pip" data-state="done"></span>
+            <span class="aw-card__actions" aria-hidden="true">
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
+            </span>
           </li>
-          <li class="aw-card">
+          <li class="aw-card" data-state="done">
             <span class="aw-card__time">1h ago</span>
-            <span class="aw-card__title">Look up every company on this list and grab their funding</span>
-            <span class="aw-card__pip" data-state="done"></span>
+            <span class="aw-card__title">Look up every company on this list and grab their last funding round</span>
+            <span class="aw-card__actions" aria-hidden="true">
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
+            </span>
           </li>
-          <li class="aw-card">
+          <li class="aw-card" data-state="done">
             <span class="aw-card__time">yesterday</span>
             <span class="aw-card__title">Fix the typo on this page across the whole repo</span>
-            <span class="aw-card__pip" data-state="done"></span>
+            <span class="aw-card__actions" aria-hidden="true">
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
+            </span>
           </li>
-          <li class="aw-card aw-card--dim">
+          <li class="aw-card" data-state="canceled">
             <span class="aw-card__time">2d ago</span>
-            <span class="aw-card__title">Empty recording — nothing to replay</span>
-            <span class="aw-card__pip" data-state="cancel"></span>
+            <span class="aw-card__title">Cancelled</span>
+            <span class="aw-card__actions" aria-hidden="true">
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
+              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
+            </span>
           </li>
         </ul>
       </div>
@@ -173,38 +211,107 @@
       <div class="section__head">
         <span class="section__num">01</span>
         <h2 id="how-title" class="section__title">
-          One demo. Run forever.
+          Press <kbd class="title-kbd">fn</kbd>. Show Peer what to do.<br>
+          Run it again, on anything.
         </h2>
         <p class="section__lede">
-          Most automation tools want you to wire up a flowchart. Peer just
-          watches you do the thing — once — and figures out the rest.
+          One recording becomes a reusable workflow. No flowcharts, no
+          scripting — just the thing you'd have done anyway.
         </p>
       </div>
 
-      <div class="steps">
-        <article class="step">
-          <div class="step__head">
-            <span class="step__num">01</span>
-            <h3>Record</h3>
+      <div class="walk">
+
+        <!-- 01 · Record ------------------------------------------------- -->
+        <article class="walk-stage">
+          <div class="walk-stage__visual walk-stage__visual--record" aria-hidden="true">
+            <div class="pill-mock" data-state="recording">
+              <span class="pill-mock__core">
+                <svg viewBox="-50 -50 100 100" width="22" height="22">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round">
+                    <circle cx="0" cy="0" r="37" stroke-width="6.5"/>
+                    <circle cx="-15" cy="0" r="10" stroke-width="5.5"/>
+                    <circle cx="15"  cy="0" r="10" stroke-width="5.5"/>
+                    <line x1="-5" y1="0" x2="5" y2="0" stroke-width="5.5"/>
+                  </g>
+                </svg>
+              </span>
+              <span class="pill-mock__dots">
+                <span></span><span></span><span></span>
+              </span>
+            </div>
+            <span class="walk-caption">
+              <span class="walk-caption__dot walk-caption__dot--rec"></span>
+              Recording · <span class="walk-caption__time">00:23</span>
+            </span>
           </div>
-          <p>Hit <kbd>fn</kbd>. Walk through the task while you talk. Peer captures the screen, the cursor, and what you say.</p>
+          <div class="walk-stage__copy">
+            <span class="walk-stage__num">01 · Record</span>
+            <h3>Press <kbd>fn</kbd> and just do it.</h3>
+            <p>The pill turns red. Talk while you work. Peer watches the screen, follows your cursor, and listens.</p>
+          </div>
         </article>
 
-        <article class="step">
-          <div class="step__head">
-            <span class="step__num">02</span>
-            <h3>Learn</h3>
+        <!-- 02 · Analyze ------------------------------------------------ -->
+        <article class="walk-stage">
+          <div class="walk-stage__visual walk-stage__visual--analyze" aria-hidden="true">
+            <div class="pill-mock" data-state="processing">
+              <span class="pill-mock__core">
+                <svg viewBox="-50 -50 100 100" width="22" height="22">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round">
+                    <circle cx="0" cy="0" r="37" stroke-width="6.5"/>
+                    <circle cx="-15" cy="0" r="10" stroke-width="5.5"/>
+                    <circle cx="15"  cy="0" r="10" stroke-width="5.5"/>
+                    <line x1="-5" y1="0" x2="5" y2="0" stroke-width="5.5"/>
+                  </g>
+                </svg>
+              </span>
+              <span class="pill-mock__bars">
+                <span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span>
+              </span>
+            </div>
+            <span class="walk-caption">
+              <span class="walk-caption__dot walk-caption__dot--analyze"></span>
+              Analyzing 0:43 of recording
+            </span>
           </div>
-          <p>It separates the parts that stay the same from the parts that change next time — the names, dates, files, inputs.</p>
+          <div class="walk-stage__copy">
+            <span class="walk-stage__num">02 · Analyze</span>
+            <h3>Peer figures out what mattered.</h3>
+            <p>It separates the parts that stay the same from the parts that change next time — names, files, dates, inputs.</p>
+          </div>
         </article>
 
-        <article class="step">
-          <div class="step__head">
-            <span class="step__num">03</span>
-            <h3>Replay</h3>
+        <!-- 03 · Output ------------------------------------------------- -->
+        <article class="walk-stage">
+          <div class="walk-stage__visual walk-stage__visual--output" aria-hidden="true">
+            <div class="prompt-mock">
+              <div class="prompt-mock__bar">
+                <span class="prompt-mock__title">Submit expense reimbursement</span>
+                <span class="prompt-mock__copied">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg>
+                  Copied
+                </span>
+              </div>
+              <div class="prompt-mock__body">
+                <p>Open Expensify and start a new expense report titled <em>{report_title}</em>.</p>
+                <ol>
+                  <li>From the receipt, pull the vendor and amount.</li>
+                  <li>Set <strong>Date</strong> to the date on the receipt.</li>
+                  <li>Attach the file and submit to <em>{approver}</em>.</li>
+                </ol>
+                <p class="prompt-mock__cursor">Repeat for every receipt in the folder<span class="prompt-mock__caret"></span></p>
+              </div>
+            </div>
           </div>
-          <p>Run it again with new inputs. Or hand it to an agent. The work happens without you having to do it.</p>
+          <div class="walk-stage__copy">
+            <span class="walk-stage__num">03 · Replay</span>
+            <h3>Get a workflow you can run.</h3>
+            <p>Out comes a reusable recipe. Hand it to Claude, Cursor, or an agent — or run it yourself with one click.</p>
+          </div>
         </article>
+
       </div>
     </section>
 
@@ -305,7 +412,7 @@
       }
     }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
 
-    document.querySelectorAll('.reveal, .section, .case, .step').forEach(el => {
+    document.querySelectorAll('.reveal, .section, .case, .walk-stage').forEach(el => {
       el.classList.add('reveal');
       io.observe(el);
     });
