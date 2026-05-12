@@ -168,8 +168,7 @@ html, body {
   transition: background var(--dur-fast) var(--ease-spring);
 }
 .card + .card { margin-top: 1px; }
-.card:hover,
-.card[data-selected='true'] {
+.card:hover {
   background: oklch(1 0 0 / 0.035);
   box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.07);
 }
@@ -205,8 +204,7 @@ html, body {
   white-space: nowrap;
   transition: color var(--dur-fast) var(--ease-spring);
 }
-.card:hover .card__title,
-.card[data-selected='true'] .card__title { color: var(--color-fg); }
+.card:hover .card__title { color: var(--color-fg); }
 
 /* Only the three-dots toggle is always visible. The expandable cluster
    to its left unfurls horizontally on click — keeps row height stable and

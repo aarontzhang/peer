@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
-import { toPlainText } from '@/lib/plainText';
 import { MessageCard } from './MessageCard';
 import { RecordingPage } from './RecordingPage';
 import { Settings } from './Settings';
@@ -43,7 +42,6 @@ function getStoredTab(): Tab {
 
 export function App() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>(getStoredTab);
 
   // Live streaming buffer per-recording; cleared when stream ends.
@@ -111,7 +109,6 @@ export function App() {
   const refreshList = useCallback(async () => {
     const list = await ipc.listRecordings();
     setRecordings(list);
-    setExpandedId((cur) => (cur && list.some((r) => r.id === cur) ? cur : null));
   }, []);
 
   useEffect(() => {
@@ -263,58 +260,6 @@ export function App() {
     }
   });
 
-  // ↑/↓ navigate the visible list (highlight prev/next card).
-  useGlobalKey(['ArrowDown', 'ArrowUp'], (e) => {
-    if (showSettings || detailForId !== null) return;
-    if (visibleRecordings.length === 0) return;
-    const idx = visibleRecordings.findIndex((r) => r.id === expandedId);
-    const next = e.key === 'ArrowDown'
-      ? Math.min(visibleRecordings.length - 1, (idx < 0 ? 0 : idx + 1))
-      : Math.max(0, (idx <= 0 ? 0 : idx - 1));
-    setExpandedId(visibleRecordings[next].id);
-    e.preventDefault();
-  });
-
-  // Stopped recordings are waiting on the pill review choice. Let keyboard
-  // confirmation mirror those two pill buttons. For any other expanded
-  // recording, Enter opens its detail overlay (same as clicking the card).
-  useGlobalKey(['Enter', 'Delete', 'Backspace'], (e) => {
-    if (showSettings || detailForId !== null || isEditableTarget(e.target)) return;
-    const expanded = recordings.find((r) => r.id === expandedId) ?? null;
-    if (!expanded) return;
-
-    if (expanded.status === 'stopped') {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        void ipc.sendRecording();
-        return;
-      }
-      e.preventDefault();
-      void ipc.cancelRecording();
-      return;
-    }
-
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      setDetailForId(expanded.id);
-    }
-  });
-
-  // ⌘C copies the visible prompt body when no text selection is active.
-  useGlobalKey('c', (e) => {
-    if (!(e.metaKey || e.ctrlKey)) return;
-    const sel = window.getSelection?.();
-    if (sel && sel.toString().length > 0) return;
-    const expanded = recordings.find((r) => r.id === expandedId) ?? null;
-    const liveBody = liveRef.current && liveRef.current.id === expandedId
-      ? liveRef.current.body : null;
-    const visible = liveBody ?? expanded?.body;
-    if (visible) {
-      e.preventDefault();
-      void copyBodyToClipboard(toPlainText(visible));
-    }
-  });
-
   const showHotkeyWarning = hotkey !== null && !hotkey.installed;
 
   const detailOpen = detailForId !== null;
@@ -385,7 +330,6 @@ export function App() {
                   key={rec.id}
                   recording={rec}
                   isPinned={pinnedIds.has(rec.id)}
-                  isSelected={expandedId === rec.id}
                   liveBody={liveBody}
                   onOpen={() => setDetailForId(rec.id)}
                   onTogglePin={() => togglePin(rec.id)}
@@ -493,12 +437,6 @@ function FeedEmpty({ tab }: { tab: Tab }) {
       </div>
     </div>
   );
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName.toLowerCase();
-  return target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select';
 }
 
 /** Face + round glasses — same brand mark used elsewhere in the app. */

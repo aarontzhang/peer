@@ -5,7 +5,6 @@ import { firstPlainTextLine, toPlainText } from '@/lib/plainText';
 type Props = {
   recording: Recording;
   isPinned: boolean;
-  isSelected: boolean;
   liveBody: string | null;
   onOpen: () => void;
   onTogglePin: () => void;
@@ -18,7 +17,6 @@ type Props = {
 export function MessageCard({
   recording,
   isPinned,
-  isSelected,
   liveBody,
   onOpen,
   onTogglePin,
@@ -103,7 +101,6 @@ export function MessageCard({
   return (
     <div
       className="card"
-      data-selected={isSelected}
       data-pinned={isPinned}
       data-status={recording.status}
     >
