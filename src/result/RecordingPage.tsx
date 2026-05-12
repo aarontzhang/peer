@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ipc, type Recording, formatRelative, formatDuration } from '@/lib/ipc';
+import { ipc, type Recording } from '@/lib/ipc';
 import { firstPlainTextLine, toPlainText } from '@/lib/plainText';
 import { ChatDock } from './ChatDock';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
@@ -189,11 +189,6 @@ export function RecordingPage({
         </button>
         <div className="recording-page__heading" data-no-drag>
           <span className="recording-page__title">{title}</span>
-          <div className="recording-page__meta">
-            <span>{formatRelative(recording.createdAt)}</span>
-            <span aria-hidden>·</span>
-            <span>{formatDuration(recording.durationMs)}</span>
-          </div>
         </div>
         <div className="recording-page__actions" data-no-drag>
           <button

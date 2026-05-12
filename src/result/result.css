@@ -175,11 +175,9 @@ html, body {
 }
 
 .card__header {
-  /* time | title | actions — duration column dropped so the title gets the
-     freed width and can show a longer brief. Left padding leaves room for the
-     status dot with breathing room before the timestamp. */
+  /* title | actions. Left padding leaves room for the status dot. */
   display: grid;
-  grid-template-columns: 82px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   width: 100%;
@@ -192,12 +190,6 @@ html, body {
   color: inherit;
   font: inherit;
   -webkit-app-region: no-drag;
-}
-.card__time {
-  font-size: 13px;
-  color: var(--color-fg-dim);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 .card__title {
   font-size: 14.5px;
@@ -1051,16 +1043,6 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.recording-page__meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--color-fg-dim);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 .recording-page__actions {
   display: inline-flex;

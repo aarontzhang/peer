@@ -38,7 +38,7 @@ function getStoredPinnedIds(): Set<string> {
 
 function getStoredTab(): Tab {
   const raw = window.localStorage.getItem(ACTIVE_TAB_KEY);
-  return raw === 'saved' ? 'saved' : 'history';
+  return raw === 'history' ? 'history' : 'saved';
 }
 
 export function App() {
@@ -344,22 +344,22 @@ export function App() {
             <button
               type="button"
               role="tab"
-              aria-selected={tab === 'history'}
-              className={`tab${tab === 'history' ? ' tab--active' : ''}`}
-              onClick={() => setTab('history')}
-            >
-              <span className="tab__icon" aria-hidden><HistoryIcon /></span>
-              <span>History</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
               aria-selected={tab === 'saved'}
               className={`tab${tab === 'saved' ? ' tab--active' : ''}`}
               onClick={() => setTab('saved')}
             >
               <span className="tab__icon" aria-hidden><SavedIcon /></span>
               <span>Saved</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'history'}
+              className={`tab${tab === 'history' ? ' tab--active' : ''}`}
+              onClick={() => setTab('history')}
+            >
+              <span className="tab__icon" aria-hidden><HistoryIcon /></span>
+              <span>History</span>
             </button>
           </nav>
           <div className="topbar__actions" data-no-drag>

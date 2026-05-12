@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type Recording, formatRelative } from '@/lib/ipc';
+import { type Recording } from '@/lib/ipc';
 import { firstPlainTextLine, toPlainText } from '@/lib/plainText';
 
 type Props = {
@@ -114,9 +114,6 @@ export function MessageCard({
         onClick={onOpen}
         onKeyDown={onHeaderKey}
       >
-        <span className="card__time" aria-hidden>
-          {formatRelative(recording.createdAt)}
-        </span>
         <span className="card__title">{title}</span>
         <span className="card__actions" data-no-drag ref={actionsRef}>
           <span className="card__actionsExpand" data-open={menuOpen} aria-hidden={!menuOpen}>
