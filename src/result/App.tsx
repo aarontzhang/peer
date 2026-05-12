@@ -59,10 +59,8 @@ export function App() {
   const [, force] = useState(0);
   const triggerRender = useCallback(() => force((n) => n + 1), []);
 
-  // Tracks the most recent recording id we've auto-jumped to. The pill emits
-  // a `recording` event on every elapsed-time tick; without this we'd reset
-  // the user's manual expansion on every tick.
-  const autoSelectedRecRef = useRef<string | null>(null);
+  // Tracks the most recent recording id we've auto-jumped tabs for.
+  const autoTabSwitchedRecRef = useRef<string | null>(null);
 
   const [showSettings, setShowSettings] = useState(false);
   const [hotkey, setHotkey] = useState<HotkeyStatus | null>(null);
@@ -133,13 +131,12 @@ export function App() {
       ) {
         void refreshList();
       }
-      // Auto-expand a fresh recording — but only on the first tick of a new
-      // session so manual clicks aren't yanked back on subsequent ticks. Also
-      // hop the user back to History so they see the live entry instead of
-      // staring at a stale Saved view.
-      if (e.kind === 'recording' && autoSelectedRecRef.current !== e.id) {
-        autoSelectedRecRef.current = e.id;
-        setExpandedId(e.id);
+      // Hop the user back to History when a brand-new recording starts so
+      // they see the live entry instead of staring at a stale Saved view.
+      // Only on the first tick of a new session — the pill emits this on
+      // every elapsed-time update.
+      if (e.kind === 'recording' && autoTabSwitchedRecRef.current !== e.id) {
+        autoTabSwitchedRecRef.current = e.id;
         setTab('history');
       }
     });
@@ -158,7 +155,6 @@ export function App() {
     const unsub = ipc.onResultChunk((c) => {
       if (c.kind === 'begin') {
         liveRef.current = { id: c.id, body: '' };
-        setExpandedId(c.id);
         triggerRender();
         return;
       }
