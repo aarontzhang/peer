@@ -14,7 +14,7 @@
 
   <meta http-equiv="Cache-Control" content="no-store">
   <link rel="stylesheet" href="/styles/tokens.css?v=2">
-  <link rel="stylesheet" href="/site/styles.css?v=17">
+  <link rel="stylesheet" href="/site/styles.css?v=21">
 </head>
 <body>
   <!-- Atmospheric light. Two soft colored blobs + a bottom warm glow simulate
@@ -71,25 +71,11 @@
                   <rect x="0" y="0" width="1024" height="1024" fill="white"/>
                   <circle cx="512" cy="512" r="259" fill="none" stroke="black" stroke-width="44"/>
                 </mask>
-                <!-- Lens-interior tint. The lens circles use fill="none" so
-                     they're truly see-through to the page atmosphere, but
-                     the area directly behind the SVG is mostly flat --bg,
-                     so they were reading as black holes. This soft radial
-                     wash adds the same blue/violet aurora tint the rest of
-                     the page picks up, so the lenses feel like a window
-                     onto the gradient instead of a punched-out void. -->
-                <radialGradient id="hero-lens-tint" cx="50%" cy="38%" r="65%">
-                  <stop offset="0%"   stop-color="oklch(0.42 0.11 250)" stop-opacity="0.55"/>
-                  <stop offset="60%"  stop-color="oklch(0.32 0.08 270)" stop-opacity="0.38"/>
-                  <stop offset="100%" stop-color="oklch(0.20 0.02 260)" stop-opacity="0.10"/>
-                </radialGradient>
               </defs>
               <g stroke-linecap="round">
                 <circle cx="512" cy="512" r="259" fill="none" stroke="currentColor" stroke-width="44" mask="url(#hero-head-mask)"/>
                 <g class="face-glasses" mask="url(#hero-glasses-mask)">
                   <g fill="none" stroke="currentColor" stroke-width="38">
-                    <circle cx="407" cy="512" r="51" fill="url(#hero-lens-tint)" stroke="none"/>
-                    <circle cx="617" cy="512" r="51" fill="url(#hero-lens-tint)" stroke="none"/>
                     <circle cx="407" cy="512" r="70"/>
                     <circle cx="617" cy="512" r="70"/>
                     <line x1="477" y1="512" x2="547" y2="512"/>
