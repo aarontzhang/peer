@@ -198,16 +198,6 @@ export function RecordingPage({
         <div className="recording-page__actions" data-no-drag>
           <button
             type="button"
-            className={`card-icon-btn${historyOpen ? ' card-icon-btn--solid' : ''}`}
-            onClick={() => setHistoryOpen((v) => !v)}
-            aria-label={historyOpen ? 'Hide history' : 'Show history'}
-            aria-pressed={historyOpen}
-            title="Prompt history"
-          >
-            <ClockIcon />
-          </button>
-          <button
-            type="button"
             className="card-icon-btn"
             onClick={onRetry}
             disabled={retryButtonDisabled}
@@ -249,6 +239,7 @@ export function RecordingPage({
         </div>
       </header>
       <div className="recording-page__layout">
+        <div className="recording-page__content">
         <div className="recording-page__body" tabIndex={-1}>
           <div className="recording-page__inner">
             {isFailed ? (
@@ -302,15 +293,17 @@ export function RecordingPage({
               </>
             )}
           </div>
-          {chatEnabled && (
-            <ChatDock
-              recordingId={recording.id}
-              liveAssistantText={liveChat?.assistantText ?? null}
-              refreshKey={versionBump}
-              disabled={!chatEnabled}
-              onSendStart={() => setChatPending(true)}
-            />
-          )}
+        </div>
+        {chatEnabled && (
+          <ChatDock
+            recordingId={recording.id}
+            liveAssistantText={liveChat?.assistantText ?? null}
+            disabled={!chatEnabled}
+            onSendStart={() => setChatPending(true)}
+            historyOpen={historyOpen}
+            onToggleHistory={() => setHistoryOpen((v) => !v)}
+          />
+        )}
         </div>
         <VersionHistoryPanel
           recordingId={recording.id}
@@ -410,36 +403,6 @@ function RetryIcon() {
       />
       <path
         d="M13.5 2.5v3h-3"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
-      <path
-        d="M3.2 4.4A6 6 0 1 1 2.5 9"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M1.5 2.5v3h3"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8 5v3.2l2 1.2"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"

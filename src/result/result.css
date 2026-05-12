@@ -1075,6 +1075,18 @@ html, body {
   flex-direction: row;
   align-items: stretch;
 }
+/* Left column inside the layout: scroll body on top, chat dock pinned to the
+   page bottom. Splitting the body and dock into siblings (instead of the dock
+   being a sticky child of the scroll container) is what actually anchors the
+   input to the window bottom rather than to whatever happens to be the
+   bottom of the scrolled content. */
+.recording-page__content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .recording-page__body {
   flex: 1;
   min-height: 0;
@@ -1426,66 +1438,32 @@ html, body {
 .field__error { color: oklch(0.82 0.14 42); }
 
 /* ─── chat dock ────────────────────────────────────────────────────────── */
+/* Sits as a flex row below the scroll body so the input stays glued to the
+   page bottom without overlapping content. Background is intentionally
+   transparent — the parent gradient flows behind it; a soft top fade keeps
+   any scrolled-up content from butting hard against the input. */
 .chat-dock {
-  position: sticky;
-  bottom: 0;
-  background: linear-gradient(180deg,
-    oklch(0.19 0 0 / 0) 0%,
-    oklch(0.19 0 0 / 0.85) 22%,
-    oklch(0.19 0 0 / 0.96) 100%);
-  margin: 0 -36px;
-  padding: 18px 36px 24px 36px;
+  flex: 0 0 auto;
+  padding: 14px 36px 22px 36px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-width: 100%;
+  gap: 8px;
+  background:
+    linear-gradient(180deg,
+      transparent 0%,
+      oklch(0.17 0 0 / 0.55) 100%);
 }
-.chat-dock__messages {
+.chat-dock__error {
   max-width: 760px;
   width: 100%;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 260px;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-.chat-dock__messages::-webkit-scrollbar { width: 0; height: 0; }
-.chat-msg {
-  font-size: 13.5px;
-  line-height: 1.55;
-  padding: 9px 13px;
-  border-radius: 12px;
-  max-width: 88%;
-  word-wrap: break-word;
-  white-space: pre-wrap;
-}
-.chat-msg--user {
-  align-self: flex-end;
-  background: oklch(0.78 0.16 245 / 0.16);
-  border: 1px solid oklch(0.78 0.16 245 / 0.30);
-  color: var(--color-fg);
-}
-.chat-msg--assistant {
-  align-self: flex-start;
-  background: oklch(1 0 0 / 0.05);
-  border: 1px solid var(--color-line);
-  color: var(--color-fg-muted);
-}
-.chat-msg--streaming { color: var(--color-fg); }
-.chat-msg__cursor {
-  display: inline-block;
-  margin-left: 2px;
-  opacity: 0.6;
-  animation: blink 1s steps(2, jump-none) infinite;
-}
-.chat-msg--error {
-  align-self: stretch;
+  padding: 7px 12px;
+  border-radius: 10px;
   background: oklch(0.82 0.14 42 / 0.10);
-  border: 1px solid oklch(0.82 0.14 42 / 0.30);
+  border: 1px solid oklch(0.82 0.14 42 / 0.28);
   color: oklch(0.86 0.18 22);
   font-size: 12.5px;
+  line-height: 1.45;
 }
 .chat-dock__input {
   max-width: 760px;
@@ -1493,17 +1471,17 @@ html, body {
   margin: 0 auto;
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  background: oklch(1 0 0 / 0.06);
+  gap: 4px;
+  background: oklch(1 0 0 / 0.05);
   border: 1px solid var(--color-line);
-  border-radius: 14px;
-  padding: 8px 8px 8px 14px;
+  border-radius: 22px;
+  padding: 6px 6px 6px 16px;
   transition: border-color var(--dur-fast) var(--ease-spring),
               background var(--dur-fast) var(--ease-spring);
 }
 .chat-dock__input:focus-within {
-  border-color: oklch(0.78 0.16 245 / 0.55);
-  background: oklch(1 0 0 / 0.09);
+  background: oklch(1 0 0 / 0.07);
+  border-color: var(--color-line-strong);
 }
 .chat-dock__textarea {
   flex: 1;
@@ -1515,26 +1493,54 @@ html, body {
   font: inherit;
   font-size: 13.5px;
   line-height: 1.5;
-  padding: 6px 0;
+  padding: 7px 0;
   max-height: 160px;
 }
 .chat-dock__textarea::placeholder { color: var(--color-fg-dim); }
+.chat-dock__iconBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: transparent;
+  border: 0;
+  color: var(--color-fg-dim);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--dur-fast) var(--ease-spring),
+              color var(--dur-fast) var(--ease-spring),
+              transform 120ms var(--ease-spring);
+}
+.chat-dock__iconBtn:hover:not(:disabled) {
+  background: oklch(1 0 0 / 0.10);
+  color: var(--color-fg);
+}
+.chat-dock__iconBtn:active:not(:disabled) { transform: scale(0.94); }
+.chat-dock__iconBtn--active {
+  background: oklch(1 0 0 / 0.14);
+  color: var(--color-fg);
+}
 .chat-dock__send {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: oklch(0.78 0.16 245 / 0.85);
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--color-fg);
   border: none;
-  color: oklch(0.15 0 0);
+  color: oklch(0.18 0 0);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-spring),
-              opacity var(--dur-fast) var(--ease-spring);
+              opacity var(--dur-fast) var(--ease-spring),
+              transform 120ms var(--ease-spring);
 }
-.chat-dock__send:hover:not(:disabled) { background: oklch(0.82 0.16 245); }
+.chat-dock__send:hover:not(:disabled) { background: oklch(0.98 0 0); }
+.chat-dock__send:active:not(:disabled) { transform: scale(0.94); }
 .chat-dock__send:disabled {
   background: oklch(1 0 0 / 0.08);
   color: var(--color-fg-dim);
@@ -1620,8 +1626,8 @@ html, body {
   gap: 8px;
 }
 .version-row--current {
-  border-color: oklch(0.78 0.16 245 / 0.45);
-  background: oklch(0.78 0.16 245 / 0.06);
+  border-color: oklch(1 0 0 / 0.18);
+  background: oklch(1 0 0 / 0.07);
 }
 .version-row__head {
   display: flex;
@@ -1643,9 +1649,9 @@ html, body {
   background: oklch(1 0 0 / 0.05);
 }
 .version-pill--chat {
-  color: oklch(0.86 0.16 245);
-  border-color: oklch(0.78 0.16 245 / 0.4);
-  background: oklch(0.78 0.16 245 / 0.10);
+  color: var(--color-fg);
+  border-color: oklch(1 0 0 / 0.18);
+  background: oklch(1 0 0 / 0.08);
 }
 .version-pill--retry {
   color: oklch(0.86 0.14 80);
@@ -1704,7 +1710,7 @@ html, body {
 }
 .version-row__current {
   font-size: 11px;
-  color: oklch(0.86 0.16 245);
+  color: var(--color-fg-muted);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;

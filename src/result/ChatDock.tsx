@@ -2,11 +2,10 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
-import { ipc, type RecordingMessage } from '@/lib/ipc';
+import { ipc } from '@/lib/ipc';
 
 type Props = {
   recordingId: string;
@@ -14,47 +13,30 @@ type Props = {
   disabled?: boolean;
   /** In-flight assistant text, or null when no chat turn is streaming. */
   liveAssistantText: string | null;
-  /** Bumped externally when a chat turn completes so the thread re-fetches. */
-  refreshKey: number;
   /** Fires the moment the user submits, before any backend round-trip — lets
    *  the parent flip the prompt pane to "Writing the refined prompt…"
    *  instantly instead of waiting on the begin event from Rust. */
   onSendStart?: () => void;
+  /** History side-panel state — mirrored into the dock's clock button so it
+   *  reads as pressed while the panel is open. */
+  historyOpen: boolean;
+  onToggleHistory: () => void;
 };
 
 export function ChatDock({
   recordingId,
   disabled,
   liveAssistantText,
-  refreshKey,
   onSendStart,
+  historyOpen,
+  onToggleHistory,
 }: Props) {
-  const [thread, setThread] = useState<RecordingMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const messagesRef = useRef<HTMLDivElement | null>(null);
-  // Tracks the optimistic user message id so we can dedupe once it arrives
-  // back from the persisted thread refresh.
-  const optimisticUserRef = useRef<RecordingMessage | null>(null);
 
-  const loadThread = useCallback(async () => {
-    try {
-      const list = await ipc.getChatThread(recordingId);
-      setThread(list);
-      // Persisted echo now exists — drop the optimistic copy.
-      optimisticUserRef.current = null;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, [recordingId]);
-
-  useEffect(() => {
-    void loadThread();
-  }, [loadThread, refreshKey]);
-
-  // Surface backend chat errors as inline messages instead of swallowing them.
+  // Surface backend chat errors inline above the input.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     ipc
@@ -73,17 +55,9 @@ export function ChatDock({
 
   useEffect(() => {
     if (liveAssistantText === null) {
-      // Stream ended (or never started this mount) → re-enable send.
       setSending(false);
     }
   }, [liveAssistantText]);
-
-  // Keep the message list pinned to the bottom as new content arrives.
-  useLayoutEffect(() => {
-    const el = messagesRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [thread, liveAssistantText]);
 
   // Auto-grow the textarea up to a soft max.
   useLayoutEffect(() => {
@@ -98,70 +72,21 @@ export function ChatDock({
     if (!trimmed || sending || disabled) return;
     setError(null);
     setSending(true);
-    // Optimistic user bubble so the dock feels instant. The persisted echo
-    // arrives in the next loadThread() and replaces this entry.
-    const optimistic: RecordingMessage = {
-      id: `optimistic-${Date.now()}`,
-      recordingId,
-      createdAt: new Date().toISOString(),
-      turnIndex: thread.length,
-      role: 'user',
-      content: trimmed,
-      producedVersionId: null,
-    };
-    optimisticUserRef.current = optimistic;
     setDraft('');
     onSendStart?.();
     try {
       await ipc.sendChatMessage(recordingId, trimmed);
-      // Pull the canonical user row back; assistant message and final body
-      // land later via the chat:turn-complete event (see App.tsx).
-      await loadThread();
     } catch (err) {
-      optimisticUserRef.current = null;
       setError(err instanceof Error ? err.message : String(err));
       setSending(false);
     }
-  }, [draft, sending, disabled, recordingId, thread.length, loadThread, onSendStart]);
-
-  const displayedMessages = useMemo(() => {
-    if (!optimisticUserRef.current) return thread;
-    // If the optimistic row isn't yet present in the fetched thread, show it
-    // appended; otherwise the thread already has it.
-    const hasIt = thread.some(
-      (m) =>
-        m.role === 'user' &&
-        m.content === optimisticUserRef.current?.content &&
-        m.turnIndex >= (optimisticUserRef.current?.turnIndex ?? 0),
-    );
-    return hasIt ? thread : [...thread, optimisticUserRef.current];
-  }, [thread]);
-
-  const showLiveAssistant = liveAssistantText !== null && liveAssistantText.length > 0;
+  }, [draft, sending, disabled, recordingId, onSendStart]);
 
   return (
     <div className="chat-dock">
-      {(displayedMessages.length > 0 || showLiveAssistant || error) && (
-        <div className="chat-dock__messages" ref={messagesRef}>
-          {displayedMessages.map((m) => (
-            <div
-              key={m.id}
-              className={`chat-msg chat-msg--${m.role}`}
-            >
-              {m.content}
-            </div>
-          ))}
-          {showLiveAssistant && (
-            <div className="chat-msg chat-msg--assistant chat-msg--streaming">
-              {liveAssistantText}
-              <span className="chat-msg__cursor" aria-hidden>▍</span>
-            </div>
-          )}
-          {error && (
-            <div className="chat-msg chat-msg--error" role="status">
-              {error}
-            </div>
-          )}
+      {error && (
+        <div className="chat-dock__error" role="status">
+          {error}
         </div>
       )}
       <form
@@ -191,6 +116,16 @@ export function ChatDock({
           disabled={disabled || sending}
         />
         <button
+          type="button"
+          className={`chat-dock__iconBtn${historyOpen ? ' chat-dock__iconBtn--active' : ''}`}
+          onClick={onToggleHistory}
+          aria-label={historyOpen ? 'Hide history' : 'Show history'}
+          aria-pressed={historyOpen}
+          title="Prompt history"
+        >
+          <ClockIcon />
+        </button>
+        <button
           type="submit"
           className="chat-dock__send"
           disabled={disabled || sending || draft.trim().length === 0}
@@ -210,6 +145,36 @@ function SendIcon() {
       <path
         d="M2.5 8L13 3.2 10.4 13 7.6 9.3 11.5 5 6.3 8z"
         fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+      <path
+        d="M3.2 4.4A6 6 0 1 1 2.5 9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M1.5 2.5v3h3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 5v3.2l2 1.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
