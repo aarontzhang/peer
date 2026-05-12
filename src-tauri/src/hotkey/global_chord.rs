@@ -29,7 +29,7 @@ pub fn install(app: AppHandle, state: Arc<AppState>, tx: mpsc::UnboundedSender<(
                     return;
                 }
                 let selected = plugin_state.recording_keybind.lock().clone();
-                let Some(target) = chord_from_keybind(&selected) else {
+                let Some(ChordResult::Shortcut(target)) = chord_from_keybind(&selected) else {
                     return;
                 };
                 if shortcut == &target {
@@ -77,7 +77,7 @@ pub fn sync_registration(app: &AppHandle, state: &AppState) {
     }
 
     match chord_from_keybind(&selected) {
-        Some(shortcut) => match global_shortcut.register(shortcut.clone()) {
+        Some(ChordResult::Shortcut(shortcut)) => match global_shortcut.register(shortcut.clone()) {
             Ok(()) => {
                 eprintln!("[peer] Chord hotkey installed: {}", selected.label());
                 *prev = Some(shortcut);
@@ -90,6 +90,11 @@ pub fn sync_registration(app: &AppHandle, state: &AppState) {
                 hotkey::set_chord_availability(app, state, Err(reason));
             }
         },
+        Some(ChordResult::Rejected(reason)) => {
+            tracing::warn!(reason = %reason, "refused to register chord");
+            eprintln!("[peer] Chord hotkey UNAVAILABLE: {reason}");
+            hotkey::set_chord_availability(app, state, Err(reason));
+        }
         None => {
             // Fn / Right Option taps don't use the global-shortcut path.
             hotkey::set_chord_availability(app, state, Ok(()));
@@ -97,7 +102,12 @@ pub fn sync_registration(app: &AppHandle, state: &AppState) {
     }
 }
 
-fn chord_from_keybind(keybind: &RecordingKeybind) -> Option<Shortcut> {
+enum ChordResult {
+    Shortcut(Shortcut),
+    Rejected(String),
+}
+
+fn chord_from_keybind(keybind: &RecordingKeybind) -> Option<ChordResult> {
     let RecordingKeybind::Chord { mods, code, .. } = keybind else {
         return None;
     };
@@ -110,15 +120,21 @@ fn chord_from_keybind(keybind: &RecordingKeybind) -> Option<Shortcut> {
             "ctrl" | "control" => modifiers |= Modifiers::CONTROL,
             other => {
                 tracing::warn!(modifier = other, "unknown chord modifier");
-                return None;
+                return Some(ChordResult::Rejected(format!(
+                    "Can't use “{other}” as a modifier."
+                )));
             }
         }
     }
-    let parsed_code = Code::from_str(code).ok()?;
-    let mods = if modifiers.is_empty() {
-        None
-    } else {
-        Some(modifiers)
+    let Some(parsed_code) = Code::from_str(code).ok() else {
+        return Some(ChordResult::Rejected(format!(
+            "Can't use “{code}” as a shortcut key.",
+        )));
     };
-    Some(Shortcut::new(mods, parsed_code))
+    if modifiers.is_empty() {
+        return Some(ChordResult::Rejected(
+            "Add a modifier (⌘, ⌃, ⌥, or ⇧) to use this shortcut.".into(),
+        ));
+    }
+    Some(ChordResult::Shortcut(Shortcut::new(Some(modifiers), parsed_code)))
 }

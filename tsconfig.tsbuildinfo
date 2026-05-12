@@ -1,1 +1,0 @@
-{"root":["./src/lib/ipc.ts","./src/lib/keys.ts","./src/lib/plaintext.ts","./src/pill/pill.tsx","./src/pill/main.tsx","./src/result/app.tsx","./src/result/confirmdialog.tsx","./src/result/messagecard.tsx","./src/result/settings.tsx","./src/result/thinkingpage.tsx","./src/result/main.tsx"],"version":"5.9.3"}

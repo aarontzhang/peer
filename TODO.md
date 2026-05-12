@@ -97,9 +97,9 @@ Don't send the link to an external tester until you've done one full clean-room 
 5. macOS will prompt for three permissions in System Settings → Privacy & Security. Grant all three:
    - **Screen & System Audio Recording**
    - **Microphone**
-   - **Accessibility** (required for the Fn key-tap detection)
+   - **Accessibility** (required for the Right Option / Fn key-tap detection)
 6. When the pill window appears, click the sign-in button. A browser tab opens to Google sign-in (Supabase OAuth implicit flow) → pick a Google account → after sign-in you should be deep-linked back to `peer://auth`. Token gets stored in macOS Keychain.
-7. Press **Fn** to start recording → narrate a 5-second screen task → press **Fn** again to stop.
+7. Tap **Right Option** to start recording → narrate a 5-second screen task → tap **Right Option** again to stop.
 8. The result window should populate with markdown within ~12 seconds.
 
 ### If sign-in fails

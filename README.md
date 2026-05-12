@@ -1,45 +1,46 @@
 # Peer
 
-Screen-recording → Claude-Code instruction set. Tap **Fn** to start, tap again to stop, while you talk and point. Peer turns the clip into a copy-paste-ready instruction set in <12 seconds.
+Screen-recording → Claude-Code instruction set. Tap **Right Option** to start, tap again to stop, while you talk and point. Peer turns the clip into a copy-paste-ready instruction set.
 
 ## Architecture
 
 ```
-Recording keybind (Fn by default, Right Option/Cmd+Shift+R optional)
+Recording keybind (Right Option by default; Fn or a user-chosen chord in Settings)
    └─ Rust orchestrator
-       ├─ Swift sidecar (ScreenCaptureKit) → mp4
+       ├─ Swift sidecar (ScreenCaptureKit) → mp4   [ffmpeg avfoundation fallback]
        ├─ ffmpeg scene-detect keyframes (uniform-fps fallback)
        ├─ ffmpeg → mp3 → parallel transcription chunks → dedupe
        └─ parallel vision window analyzers → aggregator → markdown stream
 ```
 
-Two windows: a 280×40 always-on-top **pill** (`pill.html`) and a 760×560 **result window** (`index.html`).
+Two windows: a 56×144 always-on-top **pill** (`pill.html`) and a 760×560 **result window** (`index.html`).
 
 ## Develop
 
 ```sh
 pnpm install
-pnpm tauri dev
+pnpm tauri:dev
 ```
 
-Local development reads provider keys from `.env.local` as a fallback, so this
-is enough for model calls without signing in to the managed backend:
+`tauri:dev` builds the Swift sidecar, sources `.env.local`, and starts Tauri. `.env.local` is enough to run end-to-end against the upstream model providers without signing in to the managed backend:
 
 ```sh
 OPENAI_API_KEY=...
 ANTHROPIC_API_KEY=...
-PEER_BACKEND_URL=... # optional
+PEER_BACKEND_URL=... # optional, points the app at a managed backend
 ```
 
-The first run pulls Tauri 2 deps and compiles the Rust core (~60s the first time). Once the pill window appears, tap **Fn** to start a recording, tap **Fn** again to stop. You can switch the recording keybind in Settings.
+The first run pulls Tauri 2 deps and compiles the Rust core (~60s the first time). Once the pill window appears, tap **Right Option** to start a recording, tap **Right Option** again to stop. You can switch the recording keybind (Right Option / Fn / a custom chord) in Settings.
 
-### Swift sidecar (optional, for production capture quality)
+### Swift sidecar
 
-In dev mode, capture falls back to `ffmpeg avfoundation` automatically — no Swift build needed. For final builds (better cursor rendering, lower CPU), build the ScreenCaptureKit sidecar:
+`pnpm tauri:dev` runs `pnpm sidecar` for you. The standalone script is:
 
 ```sh
 pnpm sidecar
 ```
+
+If the sidecar binary is missing at runtime, capture falls back to `ffmpeg avfoundation` automatically — useful when iterating without Xcode available. Production builds always use the sidecar for better cursor rendering and lower CPU.
 
 This requires **full Xcode** (not just Command Line Tools) so that `xcrun --sdk macosx --show-sdk-platform-path` resolves. If `swift build` errors with `unable to lookup item 'PlatformPath'`, install Xcode from the App Store and run `sudo xcode-select -s /Applications/Xcode.app`.
 
@@ -55,10 +56,13 @@ Required Vercel environment:
 OPENAI_API_KEY=...
 ANTHROPIC_API_KEY=...
 SUPABASE_URL=...
-SUPABASE_ANON_KEY=...
-SUPABASE_JWT_SECRET=...
 SUPABASE_SERVICE_ROLE_KEY=...
 PEER_MACOS_DOWNLOAD_URL=...   # optional; falls back to https://github.com/aarontzhang/peer/releases/latest/download/Peer.dmg
+
+# Optional model overrides
+PEER_WINDOW_MODEL=...
+PEER_AGGREGATOR_MODEL=...
+PEER_TITLE_MODEL=...
 ```
 
 The public download/account site lives in `site/`. Sign-in is Google OAuth via Supabase implicit flow: the desktop app opens `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=…/api/auth-callback`, the callback page deep-links back to `peer://auth#access_token=…`, and the session lands in macOS Keychain. Open the Supabase dashboard → Authentication → Sign In/Up to toggle whether new users can self-serve sign up.
@@ -77,7 +81,7 @@ The release script builds the Swift sidecar, builds the Tauri macOS app, signs w
 
 ```
 src/                        # React 19 frontend
-  pill/                     # 280×40 ambient pill (entry: pill.html)
+  pill/                     # 56×144 ambient pill (entry: pill.html)
   result/                   # main result window (entry: index.html)
   lib/                      # ipc + global key hooks
   styles/tokens.css         # Apple-tuned design tokens (Tailwind v4 @theme)

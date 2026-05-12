@@ -1,6 +1,7 @@
 node_modules/
 dist/
 target/
+tsconfig.tsbuildinfo
 .DS_Store
 .!*
 *.log
