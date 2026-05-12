@@ -43,12 +43,25 @@ export function MessageCard({
 
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const actionsRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     return () => {
       if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [menuOpen]);
 
   const onCopyClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -105,48 +118,68 @@ export function MessageCard({
           {formatRelative(recording.createdAt)}
         </span>
         <span className="card__title">{title}</span>
-        <span className="card__actions" data-no-drag>
-          {isCanceled && (
+        <span className="card__actions" data-no-drag ref={actionsRef}>
+          <span className="card__actionsExpand" data-open={menuOpen} aria-hidden={!menuOpen}>
+            {isCanceled && (
+              <button
+                type="button"
+                className="card-icon-btn"
+                onClick={onRetryClick}
+                disabled={retryDisabled}
+                tabIndex={menuOpen ? 0 : -1}
+                aria-label="Analyze the video"
+                title="Analyze the video"
+              >
+                <RetryIcon />
+              </button>
+            )}
+            {showCopy && (
+              <button
+                type="button"
+                className={`card-icon-btn${copied ? ' card-icon-btn--solid' : ''}`}
+                onClick={onCopyClick}
+                tabIndex={menuOpen ? 0 : -1}
+                aria-label={copied ? 'Copied' : 'Copy'}
+                title={copied ? 'Copied' : 'Copy'}
+              >
+                {copied ? <CheckIcon /> : <CopyIcon />}
+              </button>
+            )}
             <button
               type="button"
-              className="card-icon-btn"
-              onClick={onRetryClick}
-              disabled={retryDisabled}
-              aria-label="Analyze the video"
-              title="Analyze the video"
+              className={`card-icon-btn card-icon-btn--pin${isPinned ? ' card-icon-btn--pinActive' : ''}`}
+              onClick={onPinClick}
+              tabIndex={menuOpen ? 0 : -1}
+              aria-label={isPinned ? 'Unsave' : 'Save'}
+              aria-pressed={isPinned}
+              title={isPinned ? 'Unsave' : 'Save'}
             >
-              <RetryIcon />
+              <BookmarkIcon filled={isPinned} />
             </button>
-          )}
-          {showCopy && (
             <button
               type="button"
-              className={`card-icon-btn${copied ? ' card-icon-btn--solid' : ''}`}
-              onClick={onCopyClick}
-              aria-label={copied ? 'Copied' : 'Copy'}
-              title={copied ? 'Copied' : 'Copy'}
+              className="card-icon-btn card-icon-btn--danger"
+              onClick={onDeleteClick}
+              tabIndex={menuOpen ? 0 : -1}
+              aria-label="Delete recording"
+              title="Delete"
             >
-              {copied ? <CheckIcon /> : <CopyIcon />}
+              <TrashIcon />
             </button>
-          )}
+          </span>
           <button
             type="button"
-            className={`card-icon-btn card-icon-btn--pin${isPinned ? ' card-icon-btn--pinActive' : ''}`}
-            onClick={onPinClick}
-            aria-label={isPinned ? 'Unsave' : 'Save'}
-            aria-pressed={isPinned}
-            title={isPinned ? 'Unsave' : 'Save'}
+            className={`card-icon-btn card-icon-btn--more${menuOpen ? ' card-icon-btn--moreOpen' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((v) => !v);
+            }}
+            aria-label={menuOpen ? 'Hide actions' : 'Show actions'}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            title="More actions"
           >
-            <PinIcon filled={isPinned} />
-          </button>
-          <button
-            type="button"
-            className="card-icon-btn card-icon-btn--danger"
-            onClick={onDeleteClick}
-            aria-label="Delete recording"
-            title="Delete"
-          >
-            <TrashIcon />
+            <MoreIcon />
           </button>
         </span>
       </div>
@@ -154,17 +187,27 @@ export function MessageCard({
   );
 }
 
-function PinIcon({ filled }: { filled: boolean }) {
+function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
     <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
       <path
-        d="M10.4 1.9 14.1 5.6M11 2.5 7.8 4.3 4.9 4.6 3.4 6.1l6.5 6.5 1.5-1.5.3-2.9 1.8-3.2M5.2 10.8 1.9 14.1"
+        d="M4 2.5h8v11l-4-2.7-4 2.7z"
         fill={filled ? 'currentColor' : 'none'}
         stroke="currentColor"
         strokeWidth="1.3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function MoreIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+      <circle cx="3.25" cy="8" r="1.25" fill="currentColor" />
+      <circle cx="8" cy="8" r="1.25" fill="currentColor" />
+      <circle cx="12.75" cy="8" r="1.25" fill="currentColor" />
     </svg>
   );
 }

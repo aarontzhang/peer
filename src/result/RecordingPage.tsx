@@ -162,7 +162,7 @@ export function RecordingPage({
             aria-pressed={isPinned}
             title={isPinned ? 'Unsave' : 'Save'}
           >
-            <PinIcon filled={isPinned} />
+            <BookmarkIcon filled={isPinned} />
           </button>
           <button
             type="button"
@@ -244,11 +244,11 @@ function BackIcon() {
   );
 }
 
-function PinIcon({ filled }: { filled: boolean }) {
+function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
     <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
       <path
-        d="M10.4 1.9 14.1 5.6M11 2.5 7.8 4.3 4.9 4.6 3.4 6.1l6.5 6.5 1.5-1.5.3-2.9 1.8-3.2M5.2 10.8 1.9 14.1"
+        d="M4 2.5h8v11l-4-2.7-4 2.7z"
         fill={filled ? 'currentColor' : 'none'}
         stroke="currentColor"
         strokeWidth="1.3"

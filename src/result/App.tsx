@@ -202,20 +202,28 @@ export function App() {
   });
 
   // Stopped recordings are waiting on the pill review choice. Let keyboard
-  // confirmation mirror those two pill buttons.
+  // confirmation mirror those two pill buttons. For any other expanded
+  // recording, Enter opens its detail overlay (same as clicking the card).
   useGlobalKey(['Enter', 'Delete', 'Backspace'], (e) => {
-    if (showSettings || isEditableTarget(e.target)) return;
+    if (showSettings || detailForId !== null || isEditableTarget(e.target)) return;
     const expanded = recordings.find((r) => r.id === expandedId) ?? null;
-    if (expanded?.status !== 'stopped') return;
+    if (!expanded) return;
 
-    if (e.key === 'Enter') {
+    if (expanded.status === 'stopped') {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        void ipc.sendRecording();
+        return;
+      }
       e.preventDefault();
-      void ipc.sendRecording();
+      void ipc.cancelRecording();
       return;
     }
 
-    e.preventDefault();
-    void ipc.cancelRecording();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setDetailForId(expanded.id);
+    }
   });
 
   // ⌘C copies the visible prompt body when no text selection is active.
@@ -397,7 +405,7 @@ function FeedEmpty({ tab }: { tab: Tab }) {
       <div className="feed-empty">
         <div className="feed-empty__title">Nothing saved yet.</div>
         <div className="feed-empty__sub">
-          Hover a recording in History and click the pin to keep it here.
+          Open the actions menu on a recording in History and tap the bookmark to keep it here.
         </div>
       </div>
     );
@@ -533,13 +541,13 @@ function HistoryIcon() {
   );
 }
 
-/** Push-pin glyph — the same shape used on the per-card save toggle, so the
- *  Saved tab visually echoes the action that fills it. */
+/** Bookmark glyph — matches the per-card save toggle so the Saved tab
+ *  visually echoes the action that fills it. */
 function SavedIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
       <path
-        d="M10.4 1.9 14.1 5.6M11 2.5 7.8 4.3 4.9 4.6 3.4 6.1l6.5 6.5 1.5-1.5.3-2.9 1.8-3.2M5.2 10.8 1.9 14.1"
+        d="M4 2.5h8v11l-4-2.7-4 2.7z"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.3"

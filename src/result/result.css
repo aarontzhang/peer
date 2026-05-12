@@ -217,18 +217,33 @@ html, body {
   white-space: nowrap;
 }
 
-/* Actions are always visible so the right edge of every row aligns. The
-   min-width reserves room for the widest possible action set (retry + copy
-   + pin + trash on canceled cards) — narrower rows just leave that space
-   empty on the left side of the cluster, which keeps duration columns
-   from shifting between rows that have different action counts. */
+/* Only the three-dots toggle is always visible. The expandable cluster
+   to its left unfurls horizontally on click — keeps row height stable and
+   the right edge aligned across rows. */
 .card__actions {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 2px;
-  min-width: 112px;
 }
+.card__actionsExpand {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-width 180ms var(--ease-spring),
+              opacity 140ms var(--ease-spring);
+}
+.card__actionsExpand[data-open='true'] {
+  max-width: 140px;
+  opacity: 1;
+  pointer-events: auto;
+}
+.card-icon-btn--more { color: var(--color-fg-muted); }
+.card-icon-btn--moreOpen { background: oklch(1 0 0 / 0.08); color: var(--color-fg); }
 
 .card-icon-btn {
   width: 28px;
