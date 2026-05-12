@@ -32,6 +32,50 @@ export type ResultChunk = {
 
 export type ThinkingEvent = { id: string; thinking: string };
 
+export type VersionSource = 'initial' | 'chat' | 'retry' | 'revert';
+
+export type RecordingVersion = {
+  id: string;
+  recordingId: string;
+  createdAt: string;
+  versionNo: number;
+  source: VersionSource;
+  body: string;
+  thinking: string | null;
+  sourceMessageId: string | null;
+  sourceMessageContent: string | null;
+  revertedFromVersionId: string | null;
+};
+
+export type ChatRole = 'user' | 'assistant';
+
+export type RecordingMessage = {
+  id: string;
+  recordingId: string;
+  createdAt: string;
+  turnIndex: number;
+  role: ChatRole;
+  content: string;
+  producedVersionId: string | null;
+};
+
+export type ChatChunk = {
+  recordingId: string;
+  turnId: string;
+  kind: 'begin' | 'delta' | 'end';
+  text: string;
+};
+
+export type ChatTurnCompleteEvent = {
+  recordingId: string;
+  versionId: string;
+};
+
+export type ChatErrorEvent = {
+  recordingId: string;
+  message: string;
+};
+
 export type AccountStatus = {
   signedIn: boolean;
   email: string | null;
@@ -77,6 +121,15 @@ export const ipc = {
   setPermissionMode: (mode: PermissionMode) =>
     invoke<PermissionMode>('set_permission_mode', { mode }),
 
+  listVersions: (id: string) => invoke<RecordingVersion[]>('list_versions', { id }),
+  getVersion: (id: string) => invoke<RecordingVersion | null>('get_version', { id }),
+  revertToVersion: (id: string) =>
+    invoke<RecordingVersion>('revert_to_version', { id }),
+  getChatThread: (id: string) =>
+    invoke<RecordingMessage[]>('get_chat_thread', { id }),
+  sendChatMessage: (id: string, content: string) =>
+    invoke<RecordingMessage>('send_chat_message', { id, content }),
+
   onPillEvent: (cb: (e: PillEvent) => void): Promise<UnlistenFn> =>
     listen<PillEvent>('pill:state', (e) => cb(e.payload)),
   onResultChunk: (cb: (c: ResultChunk) => void): Promise<UnlistenFn> =>
@@ -87,7 +140,25 @@ export const ipc = {
     listen<HotkeyStatus>('hotkey:status', (e) => cb(e.payload)),
   onAuthChanged: (cb: (s: AuthChangedPayload) => void): Promise<UnlistenFn> =>
     listen<AuthChangedPayload>('auth:changed', (e) => cb(e.payload)),
+  onChatChunk: (cb: (c: ChatChunk) => void): Promise<UnlistenFn> =>
+    listen<ChatChunk>('chat:chunk', (e) => cb(e.payload)),
+  onChatTurnComplete: (
+    cb: (t: ChatTurnCompleteEvent) => void,
+  ): Promise<UnlistenFn> =>
+    listen<ChatTurnCompleteEvent>('chat:turn-complete', (e) => cb(e.payload)),
+  onChatError: (cb: (e: ChatErrorEvent) => void): Promise<UnlistenFn> =>
+    listen<ChatErrorEvent>('chat:error', (e) => cb(e.payload)),
 };
+
+/**
+ * Errors thrown from the retry IPC are stringified `anyhow` Display output.
+ * The Rust side prefixes a stable sentinel when the on-disk video is gone so
+ * the UI can disable the button instead of throwing a generic alert.
+ */
+export function isVideoMissingError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  return msg.includes('VIDEO_MISSING');
+}
 
 export function formatDuration(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));

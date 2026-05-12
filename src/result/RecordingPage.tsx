@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type Recording, formatRelative, formatDuration } from '@/lib/ipc';
+import { ipc, type Recording, formatRelative, formatDuration } from '@/lib/ipc';
 import { firstPlainTextLine, toPlainText } from '@/lib/plainText';
+import { ChatDock } from './ChatDock';
+import { VersionHistoryPanel } from './VersionHistoryPanel';
 
 type Props = {
   recording: Recording;
   isPinned: boolean;
   liveBody: string | null;
   liveThinking: string | null;
+  liveChat: { turnId: string; assistantText: string } | null;
   onBack: () => void;
   onTogglePin: () => void;
   onCopy: (text: string) => Promise<void>;
   onDelete: () => void;
   onRetry: () => void;
   retryDisabled?: boolean;
+  refreshRecordings: () => Promise<void>;
 };
 
 export function RecordingPage({
@@ -20,12 +24,14 @@ export function RecordingPage({
   isPinned,
   liveBody,
   liveThinking,
+  liveChat,
   onBack,
   onTogglePin,
   onCopy,
   onDelete,
   onRetry,
   retryDisabled,
+  refreshRecordings,
 }: Props) {
   const body = useMemo(
     () => toPlainText(liveBody ?? recording.body ?? ''),
@@ -51,6 +57,10 @@ export function RecordingPage({
   const [displayed, setDisplayed] = useState(body);
   const [copied, setCopied] = useState(false);
   const [thinkingOpen, setThinkingOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  // Bumped to nudge the history panel + chat dock to re-fetch after a chat
+  // turn lands or a revert happens.
+  const [versionBump, setVersionBump] = useState(0);
   const copiedTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -94,6 +104,34 @@ export function RecordingPage({
     root?.focus();
   }, []);
 
+  // Bump history + dock refresh when a chat turn or initial/retry stream
+  // ends for THIS recording. The bump signals downstream components to
+  // re-fetch versions and the chat thread.
+  useEffect(() => {
+    let unlistenChat: (() => void) | undefined;
+    let unlistenResult: (() => void) | undefined;
+    ipc
+      .onChatTurnComplete((evt) => {
+        if (evt.recordingId !== recording.id) return;
+        setVersionBump((n) => n + 1);
+      })
+      .then((u) => {
+        unlistenChat = u;
+      });
+    ipc
+      .onResultChunk((c) => {
+        if (c.id !== recording.id) return;
+        if (c.kind === 'end') setVersionBump((n) => n + 1);
+      })
+      .then((u) => {
+        unlistenResult = u;
+      });
+    return () => {
+      unlistenChat?.();
+      unlistenResult?.();
+    };
+  }, [recording.id]);
+
   const onCopyClick = async () => {
     if (!body) return;
     await onCopy(body);
@@ -108,6 +146,11 @@ export function RecordingPage({
   const showCopy = !!body;
   const isCanceled = recording.status === 'canceled';
   const isFailed = recording.status === 'failed';
+  const isProcessing = recording.status === 'processing';
+  const isRecording = recording.status === 'recording';
+  const isStopped = recording.status === 'stopped';
+  const retryButtonDisabled = retryDisabled || isProcessing || isRecording || isStopped;
+  const chatEnabled = !isProcessing && !isRecording && !isStopped && !!body;
 
   return (
     <div className="recording-page" role="dialog" aria-label="Recording detail">
@@ -131,18 +174,26 @@ export function RecordingPage({
           </div>
         </div>
         <div className="recording-page__actions" data-no-drag>
-          {isCanceled && (
-            <button
-              type="button"
-              className="card-icon-btn"
-              onClick={onRetry}
-              disabled={retryDisabled}
-              aria-label="Analyze the video"
-              title="Analyze the video"
-            >
-              <RetryIcon />
-            </button>
-          )}
+          <button
+            type="button"
+            className={`card-icon-btn${historyOpen ? ' card-icon-btn--solid' : ''}`}
+            onClick={() => setHistoryOpen((v) => !v)}
+            aria-label={historyOpen ? 'Hide history' : 'Show history'}
+            aria-pressed={historyOpen}
+            title="Prompt history"
+          >
+            <ClockIcon />
+          </button>
+          <button
+            type="button"
+            className="card-icon-btn"
+            onClick={onRetry}
+            disabled={retryButtonDisabled}
+            aria-label="Re-analyze the recording"
+            title="Re-analyze"
+          >
+            <RetryIcon />
+          </button>
           {showCopy && (
             <button
               type="button"
@@ -175,55 +226,75 @@ export function RecordingPage({
           </button>
         </div>
       </header>
-      <div className="recording-page__body" tabIndex={-1}>
-        <div className="recording-page__inner">
-          {isFailed ? (
-            <p className="recording-page__error">{recording.error ?? 'Unknown error.'}</p>
-          ) : isCanceled ? (
-            <p className="recording-page__muted">
-              You cancelled before analysis. The video is still here — use Retry above
-              to analyze it now, or Delete to discard it.
-            </p>
-          ) : (
-            <>
-              {thinking && (
-                <>
-                  <button
-                    type="button"
-                    className="thinking-toggle"
-                    onClick={() => setThinkingOpen((v) => !v)}
-                    aria-expanded={thinkingOpen}
-                    aria-controls="thinking-inline"
-                  >
-                    <ChevronIcon />
-                    <span>{thinkingOpen ? 'Hide thinking' : 'Show thinking'}</span>
-                  </button>
-                  {thinkingOpen && (
-                    <div
-                      id="thinking-inline"
-                      className="thinking-inline"
-                      role="region"
-                      aria-label="Thinking"
+      <div className="recording-page__layout">
+        <div className="recording-page__body" tabIndex={-1}>
+          <div className="recording-page__inner">
+            {isFailed ? (
+              <p className="recording-page__error">{recording.error ?? 'Unknown error.'}</p>
+            ) : isCanceled && !body ? (
+              <p className="recording-page__muted">
+                You cancelled before analysis. The video is still here — use Retry above
+                to analyze it now, or Delete to discard it.
+              </p>
+            ) : (
+              <>
+                {thinking && (
+                  <>
+                    <button
+                      type="button"
+                      className="thinking-toggle"
+                      onClick={() => setThinkingOpen((v) => !v)}
+                      aria-expanded={thinkingOpen}
+                      aria-controls="thinking-inline"
                     >
-                      {thinking}
-                    </div>
-                  )}
-                </>
-              )}
-              {body ? (
-                <div className="prompt-body">{displayed}</div>
-              ) : (
-                <p className="recording-page__muted">
-                  {recording.status === 'recording'
-                    ? 'Recording…'
-                    : recording.status === 'stopped'
-                    ? 'Captured. Press Enter on the pill to analyze.'
-                    : "Writing the refined prompt…"}
-                </p>
-              )}
-            </>
+                      <ChevronIcon />
+                      <span>{thinkingOpen ? 'Hide thinking' : 'Show thinking'}</span>
+                    </button>
+                    {thinkingOpen && (
+                      <div
+                        id="thinking-inline"
+                        className="thinking-inline"
+                        role="region"
+                        aria-label="Thinking"
+                      >
+                        {thinking}
+                      </div>
+                    )}
+                  </>
+                )}
+                {body ? (
+                  <div className="prompt-body">{displayed}</div>
+                ) : (
+                  <p className="recording-page__muted">
+                    {recording.status === 'recording'
+                      ? 'Recording…'
+                      : recording.status === 'stopped'
+                      ? 'Captured. Press Enter on the pill to analyze.'
+                      : "Writing the refined prompt…"}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+          {chatEnabled && (
+            <ChatDock
+              recordingId={recording.id}
+              liveAssistantText={liveChat?.assistantText ?? null}
+              refreshKey={versionBump}
+              disabled={!chatEnabled}
+            />
           )}
         </div>
+        <VersionHistoryPanel
+          recordingId={recording.id}
+          open={historyOpen}
+          refreshKey={versionBump}
+          onClose={() => setHistoryOpen(false)}
+          onReverted={() => {
+            setVersionBump((n) => n + 1);
+            void refreshRecordings();
+          }}
+        />
       </div>
     </div>
   );
@@ -312,6 +383,36 @@ function RetryIcon() {
       />
       <path
         d="M13.5 2.5v3h-3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
+      <path
+        d="M3.2 4.4A6 6 0 1 1 2.5 9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M1.5 2.5v3h3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 5v3.2l2 1.2"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"

@@ -12,7 +12,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
-use crate::db::{Recording, RecordingStatus};
+use crate::db::{Recording, RecordingStatus, VersionSource};
 use crate::pipeline;
 use crate::reveal_result_window;
 use crate::state::AppState;
@@ -352,6 +352,7 @@ pub async fn send(app: AppHandle, state: Arc<AppState>) -> Result<()> {
             id.clone(),
             video_path,
             duration_ms,
+            VersionSource::Initial,
         )
         .await
         {
@@ -413,9 +414,11 @@ pub async fn shutdown(state: Arc<AppState>) {
     }
 }
 
-/// Re-run the pipeline on a previously cancelled recording. The video was
-/// kept on disk specifically so the user can change their mind from the
-/// result window without having to record again.
+/// Re-run the pipeline on a previously analyzed (or cancelled) recording.
+/// The video stays on disk after both cancel and a normal send specifically
+/// so the user can re-analyze without having to record again. The new
+/// prompt is appended as a fresh `retry` version — earlier versions
+/// (including any chat refinements) stay in the history.
 pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<()> {
     {
         let cur = state.current.lock();
@@ -432,15 +435,22 @@ pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<(
         .await?
         .ok_or_else(|| anyhow!("recording not found"))?;
 
-    if rec.status != RecordingStatus::Canceled {
-        return Err(anyhow!("only cancelled recordings can be retried"));
+    // Retry is allowed from any terminal state (done / failed / canceled).
+    // Block only mid-flight statuses, which would race with the live pipeline.
+    match rec.status {
+        RecordingStatus::Recording | RecordingStatus::Stopped | RecordingStatus::Processing => {
+            return Err(anyhow!(
+                "this recording is still in progress — wait for it to finish before retrying"
+            ));
+        }
+        _ => {}
     }
 
     let video_path = PathBuf::from(&rec.video_path);
     if !tokio::fs::try_exists(&video_path).await.unwrap_or(false) {
-        return Err(anyhow!(
-            "video file is missing — it may have been cleaned up"
-        ));
+        // Surface a stable error code so the frontend can disable the retry
+        // button with a tooltip instead of throwing a generic alert.
+        return Err(anyhow!("VIDEO_MISSING: the original video is no longer on disk"));
     }
 
     let duration_ms = rec.duration_ms;
@@ -466,6 +476,7 @@ pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<(
             id2.clone(),
             video_path,
             duration_ms,
+            VersionSource::Retry,
         )
         .await
         {

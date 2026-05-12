@@ -50,6 +50,12 @@ export function App() {
   const liveRef = useRef<{ id: string; body: string } | null>(null);
   // Thinking arrives ahead of the streamed prompt and is cached per-recording.
   const liveThinkingRef = useRef<Map<string, string>>(new Map());
+  // In-flight chat turn per recording. The assistant text doubles as the new
+  // prompt body, so we mirror deltas into liveRef so the existing typewriter
+  // animates the prompt pane while the dock bubble streams in parallel.
+  const liveChatRef = useRef<
+    Map<string, { turnId: string; assistantText: string }>
+  >(new Map());
   const [, force] = useState(0);
   const triggerRender = useCallback(() => force((n) => n + 1), []);
 
@@ -170,6 +176,65 @@ export function App() {
         void refreshList();
         if (c.text) void copyBodyToClipboard(c.text);
       }
+    });
+    return () => { void unsub.then((fn) => fn()); };
+  }, [refreshList, triggerRender]);
+
+  // Chat refinements: the assistant message body IS the new prompt, so each
+  // chat:chunk delta updates both the dock bubble (via liveChatRef) and the
+  // prompt pane (via liveRef) so the existing typewriter animation can drive
+  // the prompt swap.
+  useEffect(() => {
+    const unsub = ipc.onChatChunk((c) => {
+      if (c.kind === 'begin') {
+        liveChatRef.current.set(c.recordingId, {
+          turnId: c.turnId,
+          assistantText: '',
+        });
+        liveRef.current = { id: c.recordingId, body: '' };
+        triggerRender();
+        return;
+      }
+      if (c.kind === 'delta') {
+        const existing = liveChatRef.current.get(c.recordingId);
+        if (!existing || existing.turnId !== c.turnId) {
+          liveChatRef.current.set(c.recordingId, {
+            turnId: c.turnId,
+            assistantText: c.text,
+          });
+        } else {
+          existing.assistantText += c.text;
+        }
+        if (!liveRef.current || liveRef.current.id !== c.recordingId) {
+          liveRef.current = { id: c.recordingId, body: '' };
+        }
+        liveRef.current.body += c.text;
+        triggerRender();
+        return;
+      }
+      if (c.kind === 'end') {
+        liveChatRef.current.set(c.recordingId, {
+          turnId: c.turnId,
+          assistantText: c.text,
+        });
+        liveRef.current = { id: c.recordingId, body: c.text };
+        triggerRender();
+        if (c.text) void copyBodyToClipboard(c.text);
+      }
+    });
+    return () => { void unsub.then((fn) => fn()); };
+  }, [triggerRender]);
+
+  // The persisted version + assistant message rows are written after the
+  // stream ends; refresh the recording list (and the dock will refetch its
+  // chat thread independently) when we hear the completion signal.
+  useEffect(() => {
+    const unsub = ipc.onChatTurnComplete((evt) => {
+      // Clear the live buffer now that the version row exists — subsequent
+      // reads will pull from recording.body.
+      liveChatRef.current.delete(evt.recordingId);
+      void refreshList();
+      triggerRender();
     });
     return () => { void unsub.then((fn) => fn()); };
   }, [refreshList, triggerRender]);
@@ -344,12 +409,14 @@ export function App() {
           ? liveRef.current.body
           : null;
         const liveThinking = liveThinkingRef.current.get(rec.id) ?? null;
+        const liveChat = liveChatRef.current.get(rec.id) ?? null;
         return (
           <RecordingPage
             recording={rec}
             isPinned={pinnedIds.has(rec.id)}
             liveBody={liveBody}
             liveThinking={liveThinking}
+            liveChat={liveChat}
             onBack={() => setDetailForId(null)}
             onTogglePin={() => togglePin(rec.id)}
             onCopy={copyBodyToClipboard}
@@ -365,6 +432,7 @@ export function App() {
               }
             }}
             retryDisabled={retrying}
+            refreshRecordings={refreshList}
           />
         );
       })()}
