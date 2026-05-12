@@ -16,6 +16,10 @@ type Props = {
   liveAssistantText: string | null;
   /** Bumped externally when a chat turn completes so the thread re-fetches. */
   refreshKey: number;
+  /** Fires the moment the user submits, before any backend round-trip — lets
+   *  the parent flip the prompt pane to "Writing the refined prompt…"
+   *  instantly instead of waiting on the begin event from Rust. */
+  onSendStart?: () => void;
 };
 
 export function ChatDock({
@@ -23,6 +27,7 @@ export function ChatDock({
   disabled,
   liveAssistantText,
   refreshKey,
+  onSendStart,
 }: Props) {
   const [thread, setThread] = useState<RecordingMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -106,6 +111,7 @@ export function ChatDock({
     };
     optimisticUserRef.current = optimistic;
     setDraft('');
+    onSendStart?.();
     try {
       await ipc.sendChatMessage(recordingId, trimmed);
       // Pull the canonical user row back; assistant message and final body
@@ -116,7 +122,7 @@ export function ChatDock({
       setError(err instanceof Error ? err.message : String(err));
       setSending(false);
     }
-  }, [draft, sending, disabled, recordingId, thread.length, loadThread]);
+  }, [draft, sending, disabled, recordingId, thread.length, loadThread, onSendStart]);
 
   const displayedMessages = useMemo(() => {
     if (!optimisticUserRef.current) return thread;

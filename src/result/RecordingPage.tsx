@@ -110,9 +110,11 @@ export function RecordingPage({
   useEffect(() => {
     let unlistenChat: (() => void) | undefined;
     let unlistenResult: (() => void) | undefined;
+    let unlistenChatErr: (() => void) | undefined;
     ipc
       .onChatTurnComplete((evt) => {
         if (evt.recordingId !== recording.id) return;
+        setChatPending(false);
         setVersionBump((n) => n + 1);
       })
       .then((u) => {
@@ -126,9 +128,18 @@ export function RecordingPage({
       .then((u) => {
         unlistenResult = u;
       });
+    ipc
+      .onChatError((e) => {
+        if (e.recordingId !== recording.id) return;
+        setChatPending(false);
+      })
+      .then((u) => {
+        unlistenChatErr = u;
+      });
     return () => {
       unlistenChat?.();
       unlistenResult?.();
+      unlistenChatErr?.();
     };
   }, [recording.id]);
 
@@ -150,7 +161,18 @@ export function RecordingPage({
   const isRecording = recording.status === 'recording';
   const isStopped = recording.status === 'stopped';
   const retryButtonDisabled = retryDisabled || isProcessing || isRecording || isStopped;
-  const chatEnabled = !isProcessing && !isRecording && !isStopped && !!body;
+  // Gate chat on the persisted body so the dock stays mounted while a chat
+  // turn is streaming (during which the merged live body is briefly empty).
+  // Without this the dock unmounts mid-turn — and so does its inline error
+  // surface, which is how backend 404s ended up looking like an infinite
+  // "Writing the refined prompt…" hang.
+  const chatEnabled =
+    !isProcessing && !isRecording && !isStopped && !!recording.body;
+  // True between the user pressing Send and the first chat:chunk begin event
+  // arriving from Rust. Bridges the few-hundred-ms gap during which the old
+  // body would otherwise still be displayed.
+  const [chatPending, setChatPending] = useState(false);
+  const chatStreaming = liveChat !== null || chatPending;
 
   return (
     <div className="recording-page" role="dialog" aria-label="Recording detail">
@@ -262,7 +284,11 @@ export function RecordingPage({
                     )}
                   </>
                 )}
-                {body ? (
+                {chatStreaming && !displayed ? (
+                  <p className="recording-page__muted">
+                    Writing the refined prompt…
+                  </p>
+                ) : body ? (
                   <div className="prompt-body">{displayed}</div>
                 ) : (
                   <p className="recording-page__muted">
@@ -270,7 +296,7 @@ export function RecordingPage({
                       ? 'Recording…'
                       : recording.status === 'stopped'
                       ? 'Captured. Press Enter on the pill to analyze.'
-                      : "Writing the refined prompt…"}
+                      : 'Writing the refined prompt…'}
                   </p>
                 )}
               </>
@@ -282,6 +308,7 @@ export function RecordingPage({
               liveAssistantText={liveChat?.assistantText ?? null}
               refreshKey={versionBump}
               disabled={!chatEnabled}
+              onSendStart={() => setChatPending(true)}
             />
           )}
         </div>

@@ -239,6 +239,19 @@ export function App() {
     return () => { void unsub.then((fn) => fn()); };
   }, [refreshList, triggerRender]);
 
+  // If a chat turn fails (backend 404, network drop, etc.) the begin event
+  // already blanked liveRef — without this cleanup the prompt pane stays
+  // stuck on "Writing the refined prompt…" forever. Drop the live buffers
+  // so the UI falls back to the prior persisted body.
+  useEffect(() => {
+    const unsub = ipc.onChatError((e) => {
+      liveChatRef.current.delete(e.recordingId);
+      if (liveRef.current?.id === e.recordingId) liveRef.current = null;
+      triggerRender();
+    });
+    return () => { void unsub.then((fn) => fn()); };
+  }, [triggerRender]);
+
   // History shows everything, newest first (already the storage order).
   // Saved filters down to pinned items, preserving the same chronology.
   const visibleRecordings = useMemo(() => {
