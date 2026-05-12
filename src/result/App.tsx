@@ -90,8 +90,11 @@ export function App() {
     });
   }, []);
 
-  // Prune pinned ids that no longer exist in the recordings list.
+  // Prune pinned ids that no longer exist in the recordings list. Skip while
+  // the list is empty — that's the pre-load state, not a real "no recordings"
+  // signal, and pruning then would wipe every saved id from localStorage.
   useEffect(() => {
+    if (recordings.length === 0) return;
     setPinnedIds((cur) => {
       if (cur.size === 0) return cur;
       const known = new Set(recordings.map((r) => r.id));
@@ -108,10 +111,7 @@ export function App() {
   const refreshList = useCallback(async () => {
     const list = await ipc.listRecordings();
     setRecordings(list);
-    setExpandedId((cur) => {
-      if (cur && list.some((r) => r.id === cur)) return cur;
-      return list[0]?.id ?? null;
-    });
+    setExpandedId((cur) => (cur && list.some((r) => r.id === cur) ? cur : null));
   }, []);
 
   useEffect(() => {
@@ -387,10 +387,7 @@ export function App() {
                   isPinned={pinnedIds.has(rec.id)}
                   isSelected={expandedId === rec.id}
                   liveBody={liveBody}
-                  onOpen={() => {
-                    setExpandedId(rec.id);
-                    setDetailForId(rec.id);
-                  }}
+                  onOpen={() => setDetailForId(rec.id)}
                   onTogglePin={() => togglePin(rec.id)}
                   onCopy={copyBodyToClipboard}
                   onDelete={() => setPendingDeleteId(rec.id)}
