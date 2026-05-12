@@ -114,8 +114,25 @@ export function MessageCard({
         onClick={onOpen}
         onKeyDown={onHeaderKey}
       >
+        {isCanceled ? (
+          // Inert spacer keeps titles aligned with rows that have a save button.
+          <span className="card__pinSlot" aria-hidden data-no-drag />
+        ) : (
+          <button
+            type="button"
+            className={`card-icon-btn card-icon-btn--pin${isPinned ? ' card-icon-btn--pinActive' : ''}`}
+            onClick={onPinClick}
+            aria-label={isPinned ? 'Unsave' : 'Save'}
+            aria-pressed={isPinned}
+            title={isPinned ? 'Unsave' : 'Save'}
+            data-no-drag
+          >
+            <BookmarkIcon filled={isPinned} />
+          </button>
+        )}
         <span className="card__title">{title}</span>
         <span className="card__actions" data-no-drag ref={actionsRef}>
+          <span className="card__pip" aria-hidden />
           <span className="card__actionsExpand" data-open={menuOpen} aria-hidden={!menuOpen}>
             {isCanceled && (
               <button
@@ -142,17 +159,6 @@ export function MessageCard({
                 {copied ? <CheckIcon /> : <CopyIcon />}
               </button>
             )}
-            <button
-              type="button"
-              className={`card-icon-btn card-icon-btn--pin${isPinned ? ' card-icon-btn--pinActive' : ''}`}
-              onClick={onPinClick}
-              tabIndex={menuOpen ? 0 : -1}
-              aria-label={isPinned ? 'Unsave' : 'Save'}
-              aria-pressed={isPinned}
-              title={isPinned ? 'Unsave' : 'Save'}
-            >
-              <BookmarkIcon filled={isPinned} />
-            </button>
             <button
               type="button"
               className="card-icon-btn card-icon-btn--danger"

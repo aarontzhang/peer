@@ -344,22 +344,22 @@ export function App() {
             <button
               type="button"
               role="tab"
-              aria-selected={tab === 'saved'}
-              className={`tab${tab === 'saved' ? ' tab--active' : ''}`}
-              onClick={() => setTab('saved')}
-            >
-              <span className="tab__icon" aria-hidden><SavedIcon /></span>
-              <span>Saved</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
               aria-selected={tab === 'history'}
               className={`tab${tab === 'history' ? ' tab--active' : ''}`}
               onClick={() => setTab('history')}
             >
               <span className="tab__icon" aria-hidden><HistoryIcon /></span>
               <span>History</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'saved'}
+              className={`tab${tab === 'saved' ? ' tab--active' : ''}`}
+              onClick={() => setTab('saved')}
+            >
+              <span className="tab__icon" aria-hidden><SavedIcon /></span>
+              <span>Saved</span>
             </button>
           </nav>
           <div className="topbar__actions" data-no-drag>
