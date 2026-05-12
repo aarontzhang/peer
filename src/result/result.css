@@ -24,10 +24,10 @@ html, body {
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, oklch(0.25 0.006 82 / 0.64), oklch(0.17 0.005 82 / 0.56)),
-    oklch(0.18 0.005 82 / 0.52);
-  backdrop-filter: blur(38px) saturate(165%);
-  -webkit-backdrop-filter: blur(38px) saturate(165%);
+    linear-gradient(180deg,
+      oklch(0.21 0 0) 0%,
+      oklch(0.19 0 0) 50%,
+      oklch(0.17 0 0) 100%);
 }
 
 /* ─── top bar ──────────────────────────────────────────────────────────── */
@@ -283,6 +283,7 @@ html, body {
 .card[data-status='done']::before       { background: oklch(0.74 0.16 156); }
 .card[data-status='failed']::before     { background: oklch(0.66 0.20 22); }
 .card[data-status='canceled']::before   { background: oklch(0.82 0.16 88); }
+.card[data-pinned='true']::before       { background: var(--color-accent); animation: none; }
 @keyframes pip { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
 
 .card__muted { color: var(--color-fg-dim); margin: 0; }
