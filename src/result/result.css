@@ -1439,19 +1439,17 @@ html, body {
 
 /* ─── chat dock ────────────────────────────────────────────────────────── */
 /* Sits as a flex row below the scroll body so the input stays glued to the
-   page bottom without overlapping content. Background is intentionally
-   transparent — the parent gradient flows behind it; a soft top fade keeps
-   any scrolled-up content from butting hard against the input. */
+   page bottom without overlapping content. The wrapper itself is a no-op
+   container — the glass treatment lives on the input pill so scrolled body
+   text passes behind the gap above the pill, matching the Show thinking
+   pill's free-floating recipe. */
 .chat-dock {
   flex: 0 0 auto;
   padding: 14px 36px 22px 36px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background:
-    linear-gradient(180deg,
-      transparent 0%,
-      oklch(0.17 0 0 / 0.55) 100%);
+  background: transparent;
 }
 .chat-dock__error {
   max-width: 760px;
@@ -1465,6 +1463,63 @@ html, body {
   font-size: 12.5px;
   line-height: 1.45;
 }
+/* Granola-style summary card that floats above the input after a refinement
+   is sent. Layout mirrors the home-page automation row: relative time on the
+   left, title on the right, no status dot. The same glass recipe as the
+   input pill so the two read as a connected stack. */
+.chat-dock__summary {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 9px 8px 9px 14px;
+  background: oklch(1 0 0 / 0.05);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+.chat-dock__summaryRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+.chat-dock__summaryTime {
+  font-size: 12px;
+  color: var(--color-fg-dim);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.chat-dock__summaryTitle {
+  font-size: 13px;
+  color: var(--color-fg);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+.chat-dock__summaryClose {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: transparent;
+  border: 0;
+  color: var(--color-fg-dim);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--dur-fast) var(--ease-spring),
+              color var(--dur-fast) var(--ease-spring);
+}
+.chat-dock__summaryClose:hover {
+  background: oklch(1 0 0 / 0.10);
+  color: var(--color-fg);
+}
 .chat-dock__input {
   max-width: 760px;
   width: 100%;
@@ -1472,10 +1527,16 @@ html, body {
   display: flex;
   align-items: flex-end;
   gap: 4px;
+  /* Same translucent-glass recipe as .thinking-toggle / .thinking-inline so
+     the input reads as part of the same family of floating chrome — bright
+     enough not to look like a darker chip, opaque enough that body text
+     scrolling behind it is masked rather than legible. */
   background: oklch(1 0 0 / 0.05);
   border: 1px solid var(--color-line);
   border-radius: 22px;
   padding: 6px 6px 6px 16px;
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
   transition: border-color var(--dur-fast) var(--ease-spring),
               background var(--dur-fast) var(--ease-spring);
 }
@@ -1494,7 +1555,7 @@ html, body {
   font-size: 13.5px;
   line-height: 1.5;
   padding: 7px 0;
-  max-height: 160px;
+  overflow: hidden;
 }
 .chat-dock__textarea::placeholder { color: var(--color-fg-dim); }
 .chat-dock__iconBtn {

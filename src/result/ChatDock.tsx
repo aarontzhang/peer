@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ipc } from '@/lib/ipc';
+import { ipc, formatRelative } from '@/lib/ipc';
 
 type Props = {
   recordingId: string;
@@ -34,6 +34,10 @@ export function ChatDock({
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Mirrors Granola's tiny floating tab above the input — surfaces the most
+  // recent refinement so the user sees a concrete record of what was asked
+  // for, in the same row shape as the home-page automation cards.
+  const [recentSummary, setRecentSummary] = useState<{ text: string; iso: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Surface backend chat errors inline above the input.
@@ -59,12 +63,13 @@ export function ChatDock({
     }
   }, [liveAssistantText]);
 
-  // Auto-grow the textarea up to a soft max.
+  // Auto-grow the textarea uncapped — page scrolls if needed instead of
+  // introducing a second scroll container inside the input.
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    el.style.height = `${el.scrollHeight}px`;
   }, [draft]);
 
   const onSubmit = useCallback(async () => {
@@ -73,6 +78,7 @@ export function ChatDock({
     setError(null);
     setSending(true);
     setDraft('');
+    setRecentSummary({ text: trimmed, iso: new Date().toISOString() });
     onSendStart?.();
     try {
       await ipc.sendChatMessage(recordingId, trimmed);
@@ -84,6 +90,29 @@ export function ChatDock({
 
   return (
     <div className="chat-dock">
+      {recentSummary && (
+        <div
+          className="chat-dock__summary"
+          role="status"
+          aria-label="Most recent refinement"
+        >
+          <div className="chat-dock__summaryRow">
+            <span className="chat-dock__summaryTime">
+              {formatRelative(recentSummary.iso)}
+            </span>
+            <span className="chat-dock__summaryTitle">{recentSummary.text}</span>
+            <button
+              type="button"
+              className="chat-dock__summaryClose"
+              onClick={() => setRecentSummary(null)}
+              aria-label="Dismiss"
+              title="Dismiss"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+        </div>
+      )}
       {error && (
         <div className="chat-dock__error" role="status">
           {error}
@@ -175,6 +204,20 @@ function ClockIcon() {
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden>
+      <path
+        d="M3.5 3.5l9 9M12.5 3.5l-9 9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
       />
     </svg>
   );
