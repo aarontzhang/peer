@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::{AppHandle, Emitter};
 
-use crate::db::{RecordingStatus, VersionSource};
+use crate::db::RecordingStatus;
 use crate::recording::{emit, PillEvent};
 use crate::saas::SaasClient;
 use crate::state::AppState;
@@ -41,7 +41,6 @@ pub async fn run(
     id: String,
     video_path: PathBuf,
     duration_ms: u64,
-    version_source: VersionSource,
 ) -> Result<()> {
     let total_started = Instant::now();
     let saas = SaasClient::from_keychain(app.clone())
@@ -188,26 +187,9 @@ pub async fn run(
     let final_text = normalize_prompt_text(&final_md);
     let fallback_summary = first_line(&final_text);
 
-    // Persist the prompt body and a provisional summary immediately so the
-    // sidebar updates as soon as the stream ends. The LLM-generated title
-    // arrives in a follow-up update below — a brief flicker from first-line
-    // to title is fine; making the user wait on Haiku before seeing the
-    // result row settle is not.
-    //
-    // `append_version` writes the new body AND a `recording_versions` row in
-    // one transaction so the timeline is never out of sync with `body`.
-    state
-        .db()
-        .append_version(
-            &id,
-            version_source,
-            &final_text,
-            Some(&thinking_md),
-            None,
-            None,
-        )
-        .await?;
     if let Some(mut rec) = state.db().get_recording(&id).await? {
+        rec.body = Some(final_text.clone());
+        rec.thinking = Some(thinking_md.clone());
         rec.status = RecordingStatus::Done;
         rec.summary = Some(fallback_summary.clone());
         state.db().update_recording(&rec).await?;

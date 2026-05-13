@@ -4,7 +4,6 @@ use tauri::{AppHandle, Manager, RunEvent, WebviewWindow, WindowEvent};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 mod binpath;
-mod chat;
 mod db;
 mod hotkey;
 mod ipc;
@@ -116,11 +115,6 @@ pub fn run() {
             ipc::list_recordings,
             ipc::get_recording,
             ipc::delete_recording,
-            ipc::list_versions,
-            ipc::get_version,
-            ipc::revert_to_version,
-            ipc::get_chat_thread,
-            ipc::send_chat_message,
             ipc::open_result_window,
             ipc::get_session,
             ipc::start_google_sign_in,

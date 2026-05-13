@@ -12,7 +12,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
-use crate::db::{Recording, RecordingStatus, VersionSource};
+use crate::db::{Recording, RecordingStatus};
 use crate::pipeline;
 use crate::reveal_result_window;
 use crate::state::AppState;
@@ -352,7 +352,6 @@ pub async fn send(app: AppHandle, state: Arc<AppState>) -> Result<()> {
             id.clone(),
             video_path,
             duration_ms,
-            VersionSource::Initial,
         )
         .await
         {
@@ -416,9 +415,7 @@ pub async fn shutdown(state: Arc<AppState>) {
 
 /// Re-run the pipeline on a previously analyzed (or cancelled) recording.
 /// The video stays on disk after both cancel and a normal send specifically
-/// so the user can re-analyze without having to record again. The new
-/// prompt is appended as a fresh `retry` version — earlier versions
-/// (including any chat refinements) stay in the history.
+/// so the user can re-analyze without having to record again.
 pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<()> {
     {
         let cur = state.current.lock();
@@ -476,7 +473,6 @@ pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<(
             id2.clone(),
             video_path,
             duration_ms,
-            VersionSource::Retry,
         )
         .await
         {

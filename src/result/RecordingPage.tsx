@@ -1,22 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ipc, type Recording } from '@/lib/ipc';
+import { type Recording } from '@/lib/ipc';
 import { firstPlainTextLine, toPlainText } from '@/lib/plainText';
-import { ChatDock } from './ChatDock';
-import { VersionHistoryPanel } from './VersionHistoryPanel';
 
 type Props = {
   recording: Recording;
   isPinned: boolean;
   liveBody: string | null;
   liveThinking: string | null;
-  liveChat: { turnId: string; assistantText: string } | null;
   onBack: () => void;
   onTogglePin: () => void;
   onCopy: (text: string) => Promise<void>;
   onDelete: () => void;
   onRetry: () => void;
   retryDisabled?: boolean;
-  refreshRecordings: () => Promise<void>;
 };
 
 export function RecordingPage({
@@ -24,14 +20,12 @@ export function RecordingPage({
   isPinned,
   liveBody,
   liveThinking,
-  liveChat,
   onBack,
   onTogglePin,
   onCopy,
   onDelete,
   onRetry,
   retryDisabled,
-  refreshRecordings,
 }: Props) {
   const body = useMemo(
     () => toPlainText(liveBody ?? recording.body ?? ''),
@@ -57,10 +51,6 @@ export function RecordingPage({
   const [displayed, setDisplayed] = useState(body);
   const [copied, setCopied] = useState(false);
   const [thinkingOpen, setThinkingOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  // Bumped to nudge the history panel + chat dock to re-fetch after a chat
-  // turn lands or a revert happens.
-  const [versionBump, setVersionBump] = useState(0);
   const copiedTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -104,45 +94,6 @@ export function RecordingPage({
     root?.focus();
   }, []);
 
-  // Bump history + dock refresh when a chat turn or initial/retry stream
-  // ends for THIS recording. The bump signals downstream components to
-  // re-fetch versions and the chat thread.
-  useEffect(() => {
-    let unlistenChat: (() => void) | undefined;
-    let unlistenResult: (() => void) | undefined;
-    let unlistenChatErr: (() => void) | undefined;
-    ipc
-      .onChatTurnComplete((evt) => {
-        if (evt.recordingId !== recording.id) return;
-        setChatPending(false);
-        setVersionBump((n) => n + 1);
-      })
-      .then((u) => {
-        unlistenChat = u;
-      });
-    ipc
-      .onResultChunk((c) => {
-        if (c.id !== recording.id) return;
-        if (c.kind === 'end') setVersionBump((n) => n + 1);
-      })
-      .then((u) => {
-        unlistenResult = u;
-      });
-    ipc
-      .onChatError((e) => {
-        if (e.recordingId !== recording.id) return;
-        setChatPending(false);
-      })
-      .then((u) => {
-        unlistenChatErr = u;
-      });
-    return () => {
-      unlistenChat?.();
-      unlistenResult?.();
-      unlistenChatErr?.();
-    };
-  }, [recording.id]);
-
   const onCopyClick = async () => {
     if (!body) return;
     await onCopy(body);
@@ -161,18 +112,6 @@ export function RecordingPage({
   const isRecording = recording.status === 'recording';
   const isStopped = recording.status === 'stopped';
   const retryButtonDisabled = retryDisabled || isProcessing || isRecording || isStopped;
-  // Gate chat on the persisted body so the dock stays mounted while a chat
-  // turn is streaming (during which the merged live body is briefly empty).
-  // Without this the dock unmounts mid-turn — and so does its inline error
-  // surface, which is how backend 404s ended up looking like an infinite
-  // "Writing the refined prompt…" hang.
-  const chatEnabled =
-    !isProcessing && !isRecording && !isStopped && !!recording.body;
-  // True between the user pressing Send and the first chat:chunk begin event
-  // arriving from Rust. Bridges the few-hundred-ms gap during which the old
-  // body would otherwise still be displayed.
-  const [chatPending, setChatPending] = useState(false);
-  const chatStreaming = liveChat !== null || chatPending;
 
   return (
     <div className="recording-page" role="dialog" aria-label="Recording detail">
@@ -233,53 +172,47 @@ export function RecordingPage({
           </button>
         </div>
       </header>
-      <div className="recording-page__layout">
-        <div className="recording-page__content">
-        <div className="recording-page__body" tabIndex={-1}>
-          <div className="recording-page__inner">
-            {isFailed ? (
-              <p className="recording-page__error">{recording.error ?? 'Unknown error.'}</p>
-            ) : isCanceled && !body ? (
-              <p className="recording-page__muted">
-                You cancelled before analysis. The video is still here — use Retry above
-                to analyze it now, or Delete to discard it.
-              </p>
-            ) : (
-              <>
-                {thinking && (
-                  <>
-                    <button
-                      type="button"
-                      className="thinking-toggle"
-                      onClick={() => setThinkingOpen((v) => !v)}
-                      aria-expanded={thinkingOpen}
-                      aria-controls="thinking-inline"
+      <div className="recording-page__body" tabIndex={-1}>
+        <div className="recording-page__inner">
+          {isFailed ? (
+            <p className="recording-page__error">{recording.error ?? 'Unknown error.'}</p>
+          ) : isCanceled && !body ? (
+            <p className="recording-page__muted">
+              You cancelled before analysis. The video is still here — use Retry above
+              to analyze it now, or Delete to discard it.
+            </p>
+          ) : (
+            <>
+              {thinking && (
+                <>
+                  <button
+                    type="button"
+                    className="thinking-toggle"
+                    onClick={() => setThinkingOpen((v) => !v)}
+                    aria-expanded={thinkingOpen}
+                    aria-controls="thinking-inline"
+                  >
+                    <ChevronIcon />
+                    <span>{thinkingOpen ? 'Hide thinking' : 'Show thinking'}</span>
+                  </button>
+                  {thinkingOpen && (
+                    <div
+                      id="thinking-inline"
+                      className="thinking-inline"
+                      role="region"
+                      aria-label="Thinking"
                     >
-                      <ChevronIcon />
-                      <span>{thinkingOpen ? 'Hide thinking' : 'Show thinking'}</span>
-                    </button>
-                    {thinkingOpen && (
-                      <div
-                        id="thinking-inline"
-                        className="thinking-inline"
-                        role="region"
-                        aria-label="Thinking"
-                      >
-                        {thinking}
-                      </div>
-                    )}
-                  </>
-                )}
-                {chatStreaming && !displayed ? (
-                  <p className="recording-page__muted">
-                    Writing the refined prompt…
-                  </p>
-                ) : body ? (
-                  <div className="prompt-body">{displayed}</div>
-                ) : (
-                  <p className="recording-page__muted">
-                    {recording.status === 'recording'
-                      ? 'Recording…'
+                      {thinking}
+                    </div>
+                  )}
+                </>
+              )}
+              {body ? (
+                <div className="prompt-body">{displayed}</div>
+              ) : (
+                <p className="recording-page__muted">
+                  {recording.status === 'recording'
+                    ? 'Recording…'
                       : recording.status === 'stopped'
                       ? 'Captured. Press Enter on the pill to analyze.'
                       : 'Writing the refined prompt…'}
@@ -289,28 +222,6 @@ export function RecordingPage({
             )}
           </div>
         </div>
-        {chatEnabled && (
-          <ChatDock
-            recordingId={recording.id}
-            liveAssistantText={liveChat?.assistantText ?? null}
-            disabled={!chatEnabled}
-            onSendStart={() => setChatPending(true)}
-            historyOpen={historyOpen}
-            onToggleHistory={() => setHistoryOpen((v) => !v)}
-          />
-        )}
-        </div>
-        <VersionHistoryPanel
-          recordingId={recording.id}
-          open={historyOpen}
-          refreshKey={versionBump}
-          onClose={() => setHistoryOpen(false)}
-          onReverted={() => {
-            setVersionBump((n) => n + 1);
-            void refreshRecordings();
-          }}
-        />
-      </div>
     </div>
   );
 }
