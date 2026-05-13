@@ -1,5 +1,7 @@
-use std::path::PathBuf;
 use std::sync::Arc;
+
+#[cfg(debug_assertions)]
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Context, Result};
 use base64::Engine;

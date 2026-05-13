@@ -16,13 +16,13 @@ These are done — listed so you know the current state.
 - [x] **All required env vars** are set on Vercel production (OPENAI_API_KEY, ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET, PEER_BACKEND_URL). `PEER_MACOS_DOWNLOAD_URL` is not set — that's fine; `api/download-latest.js` has the correct default baked in.
 - [x] **Sign-in is open beta, no invite code.** The auth flow is Google OAuth via Supabase implicit flow (`src-tauri/src/saas.rs:187`). There is no invite-code prompt in the desktop app and no code that reads `PEER_BETA_INVITE_CODE` — that Vercel env var is dormant. Same for `PEER_FREE_BETA_MONTHLY_LIMIT` (the `recording_usage` table only logs; no code enforces a cap). Both env vars can be deleted from Vercel; they're cosmetic. (See Task 2 below.)
 - [x] **Supabase auth callback** (`/api/auth-callback`) returns 200 and contains the `peer://auth` deep-link logic.
-- [x] **The single missing piece** is the GitHub release artifact — `https://github.com/aarontzhang/peer/releases/latest/download/Peer.dmg` returns 404 today because no release exists yet. Tasks 1–3 below fix that.
+- [x] **The GitHub release artifact exists.** `https://www.peercv.com/download/latest` resolves to `Peer.dmg`. Do not replace it with another self-signed or unsigned build; public replacement DMGs must be Developer ID signed and notarized.
 
 ---
 
 ## 1. Publish the v0.2.0 GitHub release  ⏱ ~3 minutes
 
-After Claude finishes rebuilding the DMG (see "Status check" below), you need to publish it as a GitHub release so `/download/latest` resolves.
+After `pnpm release:mac` completes with Developer ID signing and notarization, upload `src-tauri/target/release/bundle/dmg/Peer.dmg` as the release asset so `/download/latest` resolves to the fixed build.
 
 ### Easiest path — let Claude run `gh release create`
 Just say: **"go ahead and publish the release."**
@@ -31,7 +31,7 @@ Claude will run:
 gh release create v0.2.0 \
   src-tauri/target/release/bundle/dmg/Peer.dmg \
   --title "Peer 0.2.0 (beta)" \
-  --notes-file <( echo "First public beta. macOS Apple Silicon only.\n\nFirst-time install: open the DMG, drag Peer to Applications, right-click Peer → Open. macOS will ask once; click Open again." ) \
+  --notes-file <( echo "First public beta. macOS Apple Silicon only.\n\nFirst-time install: open the DMG, drag Peer to Applications, then open Peer from Applications. Click Sign in to create an account with Google." ) \
   --prerelease
 ```
 
@@ -44,10 +44,10 @@ gh release create v0.2.0 \
    First public beta. macOS Apple Silicon only.
 
    First-time install: open the DMG, drag Peer to Applications,
-   right-click Peer → Open. macOS will ask once; click Open again.
+   then open Peer from Applications. Click Sign in to create an account with Google.
    ```
 5. **Attach the DMG:** drag the file from `src-tauri/target/release/bundle/dmg/Peer.dmg` into the assets box.
-   ⚠️ The asset **must be named exactly `Peer.dmg`** — without the version suffix — because `api/download-latest.js` redirects to that exact filename. Claude will rename it before you upload.
+   ⚠️ The asset **must be named exactly `Peer.dmg`** — without the version suffix — because `api/download-latest.js` redirects to that exact filename. `pnpm release:mac` now writes this file directly.
 6. Tick **"Set as a pre-release"**.
 7. Click **Publish release**.
 
@@ -81,7 +81,7 @@ Both `PEER_BETA_INVITE_CODE` and `PEER_FREE_BETA_MONTHLY_LIMIT` are not consumed
 ### Share with the tester
 Send your tester:
 - The link: **https://www.peercv.com**
-- A short note: *"Click Download. After it downloads, open the DMG, drag Peer into Applications, then right-click Peer → Open (macOS will ask once because the beta isn't notarized — it's safe). When Peer launches, click Sign in — it'll open a Google sign-in tab in your browser. Use any Google account."*
+- A short note: *"Click Download. After it downloads, open the DMG, drag Peer into Applications, then open Peer. When Peer launches, click Sign in — it'll open a Google sign-in tab in your browser. Use any Google account."*
 
 ---
 
@@ -93,7 +93,7 @@ Don't send the link to an external tester until you've done one full clean-room 
 1. Open **https://www.peercv.com** in a fresh browser tab.
 2. Click **Download for macOS** → DMG downloads.
 3. Open the DMG in Finder, drag `Peer.app` into Applications.
-4. Open Applications → **right-click `Peer.app` → Open** → confirm at the Gatekeeper dialog.
+4. Open Applications → `Peer.app`. A notarized build should open without the right-click Gatekeeper workaround.
 5. macOS will prompt for three permissions in System Settings → Privacy & Security. Grant all three:
    - **Screen & System Audio Recording**
    - **Microphone**
@@ -118,7 +118,7 @@ Don't send the link to an external tester until you've done one full clean-room 
 Not blocking the current ship, but worth tracking:
 
 - **Intel Mac users will be locked out.** The current DMG is `arm64` only. ~50% of macOS active-user base is still Intel as of late 2025. If you want broader testing, ask Claude to build a universal binary (`pnpm tauri build --target universal-apple-darwin`). Adds ~30min to build time and ~2x to DMG size.
-- **Gatekeeper friction is real.** Even with the install note on the landing page, a meaningful fraction of testers will bounce. The fix is a $99/yr Apple Developer Program → Developer ID Application cert → notarytool credentials. The release script already handles signing + notarization when those env vars are present; you'd just need to add `APPLE_SIGNING_IDENTITY` and `APPLE_NOTARYTOOL_PROFILE` to your shell and rerun `pnpm release:mac`.
+- **Gatekeeper blocks self-signed builds.** The release script now refuses public builds unless `APPLE_SIGNING_IDENTITY` is a Developer ID Application identity and `APPLE_NOTARYTOOL_PROFILE` is set. This machine currently only has `Peer Self Signed`, so Aaron still needs Apple Developer Program credentials before publishing a replacement DMG.
 - **No GitHub Actions release workflow.** Every release is currently a manual `pnpm release:mac` on this machine. When you have notarization set up, ask Claude to add `.github/workflows/release.yml` using `tauri-apps/tauri-action` so tag pushes auto-build and release.
 - **No in-app updater.** Testers who installed beta-1 will not be auto-prompted for beta-2. For 1–5 testers this is fine; for >10 it's a pain. Tauri's updater plugin is the path.
 - **No way to revoke a tester's access.** The beta gate is one shared invite code. If you want per-tester revocation, you'd want a small admin endpoint that issues per-user codes against Supabase.
@@ -127,9 +127,9 @@ Not blocking the current ship, but worth tracking:
 
 ## Status check — is the DMG done building?
 
-Claude kicked off `pnpm release:mac` in the background. To check progress:
+To check a release build:
 ```sh
 ls -la src-tauri/target/release/bundle/dmg/
-# Look for Peer_0.2.0_arm64.dmg with today's timestamp.
+# Look for Peer.dmg and Peer_0.2.0_arm64.dmg with today's timestamp.
 ```
-If the timestamp is fresh (today), the build is done and Claude will rename it to `Peer.dmg` before publishing. If you see the May-10 file still, the build is still running or failed — paste the tail of the output to Claude.
+If the public build exits before compiling, the missing Developer ID / notary credentials are still not configured. For local-only launch smoke testing, use `PEER_ALLOW_UNSIGNED_RELEASE=1 pnpm release:mac`; never upload that unsigned build.

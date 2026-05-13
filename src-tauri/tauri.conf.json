@@ -67,8 +67,7 @@
     "macOS": {
       "minimumSystemVersion": "13.0",
       "entitlements": "./entitlements.plist",
-      "infoPlist": "./Info.plist",
-      "signingIdentity": "Peer Self Signed"
+      "infoPlist": "./Info.plist"
     },
     "resources": [],
     "externalBin": ["bin/PeerCapture"]

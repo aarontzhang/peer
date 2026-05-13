@@ -75,7 +75,15 @@ APPLE_NOTARYTOOL_PROFILE="peer-notary" \
 pnpm release:mac
 ```
 
-The release script builds the Swift sidecar, builds the Tauri macOS app, signs with the hardened runtime, creates a DMG, signs the DMG, and notarizes/staples it when a notary profile is present.
+The release script builds the Swift sidecar, builds the Tauri macOS app, removes LaunchServices keys that block modern macOS launch, signs with the hardened runtime, creates a DMG, signs the DMG, and notarizes/staples it. Public releases require a Developer ID Application identity and a notarytool profile so the downloadable DMG opens normally for first-time users.
+
+For local packaging smoke tests only:
+
+```sh
+PEER_ALLOW_UNSIGNED_RELEASE=1 pnpm release:mac
+```
+
+That path creates an ad-hoc signed DMG for launch testing, but Gatekeeper will reject it on other Macs. Do not upload it as the public website download.
 
 ## Layout
 
