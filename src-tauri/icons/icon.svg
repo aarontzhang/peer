@@ -8,18 +8,16 @@
   <defs>
     <mask id="head-mask" maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
       <rect x="-50" y="-50" width="100" height="100" fill="#ffffff"/>
-      <circle cx="-15" cy="0" r="13.5" fill="#000000"/>
-      <circle cx="15" cy="0" r="13.5" fill="#000000"/>
+      <circle cx="-15" cy="0" r="7.25" fill="#000000"/>
+      <circle cx="15" cy="0" r="7.25" fill="#000000"/>
     </mask>
   </defs>
   <g fill="none" stroke="#ffffff" stroke-linecap="round" transform="translate(512 512) scale(6.4)">
-    <circle cx="0" cy="0" r="37" stroke-width="6.5" mask="url(#head-mask)"/>
     <g stroke-width="5.5">
-      <circle cx="-15" cy="0" r="8.75" fill="#13161c" stroke="none"/>
-      <circle cx="15"  cy="0" r="8.75" fill="#13161c" stroke="none"/>
       <circle cx="-15" cy="0" r="10"/>
       <circle cx="15"  cy="0" r="10"/>
       <line x1="-5" y1="0" x2="5" y2="0"/>
     </g>
+    <circle cx="0" cy="0" r="37" stroke-width="6.5" mask="url(#head-mask)"/>
   </g>
 </svg>

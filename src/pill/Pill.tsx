@@ -279,19 +279,28 @@ function GlassesLogo({
       aria-hidden
     >
       <defs>
-        {/* Punch the lens discs out of the head's stroke so it never shows
-            through where the glasses cross or extend past the face. Hole
-            radius is lens radius + lens stroke so the head stroke is fully
-            erased under the lens stroke too. */}
+        {/* Cut only the lens interiors out of the face stroke. The glasses
+            are drawn underneath the face so the face wins at the overlap
+            without leaving a dark rim around the lenses. */}
         <mask id={maskId} maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100">
           <rect x="-50" y="-50" width="100" height="100" fill="white" />
           <g ref={maskRef} fill="black">
-            <circle cx="-15" cy="0" r="13.5" />
-            <circle cx="15"  cy="0" r="13.5" />
+            <circle cx="-15" cy="0" r="7.25" />
+            <circle cx="15"  cy="0" r="7.25" />
           </g>
         </mask>
       </defs>
       <g className="logo__group" fill="none" strokeLinecap="round">
+        {/* glasses — translated so the character "looks" toward the cursor */}
+        <g
+          ref={glassesRef}
+          className="logo__glasses"
+          strokeWidth="5.5"
+        >
+          <circle cx="-15" cy="0" r="10" />
+          <circle cx="15"  cy="0" r="10" />
+          <line x1="-5" y1="0" x2="5" y2="0" />
+        </g>
         {/* head */}
         <circle
           className="logo__head"
@@ -301,18 +310,6 @@ function GlassesLogo({
           strokeWidth="6.5"
           mask={`url(#${maskId})`}
         />
-        {/* glasses — translated so the character "looks" toward the cursor */}
-        <g
-          ref={glassesRef}
-          className="logo__glasses"
-          strokeWidth="5.5"
-        >
-          <circle className="logo__lens-fill" cx="-15" cy="0" r="8.75" />
-          <circle className="logo__lens-fill" cx="15" cy="0" r="8.75" />
-          <circle cx="-15" cy="0" r="10" />
-          <circle cx="15"  cy="0" r="10" />
-          <line x1="-5" y1="0" x2="5" y2="0" />
-        </g>
       </g>
     </svg>
   );
