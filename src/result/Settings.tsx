@@ -75,6 +75,17 @@ export function Settings({ open, onClose }: Props) {
   }, []);
 
   useEffect(() => {
+    if (!pendingSignIn) return;
+
+    const timeout = window.setTimeout(() => {
+      setPendingSignIn(false);
+      setSignInError('Sign-in timed out — open Settings and try again.');
+    }, 10 * 60 * 1000);
+
+    return () => window.clearTimeout(timeout);
+  }, [pendingSignIn]);
+
+  useEffect(() => {
     if (!capturing) return;
 
     const onKeyDown = (e: KeyboardEvent) => {

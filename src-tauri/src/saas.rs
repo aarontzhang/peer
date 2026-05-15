@@ -1,4 +1,8 @@
-use std::sync::Arc;
+use std::{
+    net::{SocketAddr, TcpListener as StdTcpListener},
+    sync::Arc,
+    time::Duration,
+};
 
 #[cfg(debug_assertions)]
 use std::path::PathBuf;
@@ -11,6 +15,10 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+};
 
 #[cfg(not(debug_assertions))]
 const SERVICE: &str = "Peer";
@@ -20,6 +28,8 @@ const SESSION_ACCOUNT: &str = "peer-session";
 const LEGACY_DEVICE_TOKEN_ACCOUNT: &str = "peer-device-token";
 const DEFAULT_BACKEND_URL: &str = "https://peer-wheat.vercel.app";
 const DEFAULT_SUPABASE_URL: &str = "https://hmkpgxlfxwztficbuktj.supabase.co";
+const LOOPBACK_AUTH_ADDR: &str = "127.0.0.1:17643";
+const LOOPBACK_AUTH_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 
 /// CSRF state generated when launching the OAuth browser leg, consumed when
 /// the deep-link handler fires. Static because the deep-link callback runs
@@ -167,24 +177,29 @@ pub fn account_status() -> AccountStatus {
     }
 }
 
-pub fn open_login(_app: &AppHandle) -> Result<String> {
+pub fn open_login(app: &AppHandle) -> Result<String> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        return Err(anyhow!("desktop login is only supported on macOS"));
+    }
+
     let mut buf = [0u8; 32];
     OsRng.fill_bytes(&mut buf);
     let nonce = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(buf);
+    let listener = bind_loopback_auth_listener()?;
     *PENDING_STATE.lock() = Some(nonce.clone());
 
     let supabase = supabase_url();
     // Carry the CSRF nonce through `redirect_to` rather than the OAuth `state`
     // param. Supabase wants to own `state` for its own implicit-flow validation;
-    // passing our own value triggers a bad_oauth_state on the callback leg.
-    // `scheme` tells the Vercel callback page which deep-link scheme to bounce
-    // to — `peer-dev://` for debug builds so a co-installed prod /Applications/Peer.app
-    // doesn't intercept the callback.
+    // passing our own value triggers a bad_oauth_state on the callback leg. Use
+    // a loopback callback so stale macOS peer:// handlers cannot steal the
+    // OAuth completion from the currently running app.
     let callback = format!(
-        "{}/api/auth-callback?nonce={}&scheme={}",
-        backend_url().trim_end_matches('/'),
+        "http://{}/auth-callback?nonce={}",
+        LOOPBACK_AUTH_ADDR,
         percent_encode(&nonce),
-        deep_link_scheme(),
     );
     let url = format!(
         "{}/auth/v1/authorize?provider=google&redirect_to={}&flow_type=implicit",
@@ -196,15 +211,296 @@ pub fn open_login(_app: &AppHandle) -> Result<String> {
     eprintln!("[peer] sign-in URL: {url}");
 
     #[cfg(target_os = "macos")]
-    std::process::Command::new("open")
-        .arg(&url)
-        .spawn()
-        .context("opening browser login")?;
-
-    #[cfg(not(target_os = "macos"))]
-    return Err(anyhow!("desktop login is only supported on macOS"));
+    {
+        if let Err(err) = std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .context("opening browser login")
+        {
+            *PENDING_STATE.lock() = None;
+            return Err(err);
+        }
+        spawn_loopback_auth_server(app.clone(), listener);
+    }
 
     Ok(url)
+}
+
+fn bind_loopback_auth_listener() -> Result<StdTcpListener> {
+    let listener = StdTcpListener::bind(LOOPBACK_AUTH_ADDR)
+        .with_context(|| format!("sign-in helper port {LOOPBACK_AUTH_ADDR} is busy"))?;
+    listener
+        .set_nonblocking(true)
+        .context("configuring sign-in helper listener")?;
+    Ok(listener)
+}
+
+fn spawn_loopback_auth_server(app: AppHandle, listener: StdTcpListener) {
+    tauri::async_runtime::spawn(async move {
+        let listener = match TcpListener::from_std(listener) {
+            Ok(listener) => listener,
+            Err(err) => {
+                tracing::warn!(?err, "starting sign-in helper listener failed");
+                let mut pending = PENDING_STATE.lock();
+                if pending.take().is_some() {
+                    let _ = app.emit(
+                        "auth:changed",
+                        json!({
+                            "signedIn": false,
+                            "email": null,
+                            "error": "Could not start sign-in helper — open Settings and try again.",
+                        }),
+                    );
+                }
+                return;
+            }
+        };
+
+        let serve = async {
+            loop {
+                let (stream, addr) = listener.accept().await?;
+                match handle_loopback_auth_request(&app, stream, addr).await {
+                    Ok(done) if done => break,
+                    Ok(_) => {}
+                    Err(err) => tracing::warn!(?err, "loopback auth request failed"),
+                }
+            }
+            Ok::<(), anyhow::Error>(())
+        };
+
+        if tokio::time::timeout(LOOPBACK_AUTH_TIMEOUT, serve)
+            .await
+            .is_err()
+        {
+            let mut pending = PENDING_STATE.lock();
+            if pending.take().is_some() {
+                let _ = app.emit(
+                    "auth:changed",
+                    json!({
+                        "signedIn": false,
+                        "email": null,
+                        "error": "Sign-in timed out — open Settings and try again.",
+                    }),
+                );
+            }
+        }
+    });
+}
+
+async fn handle_loopback_auth_request(
+    app: &AppHandle,
+    mut stream: TcpStream,
+    addr: SocketAddr,
+) -> Result<bool> {
+    if !addr.ip().is_loopback() {
+        write_http_response(
+            &mut stream,
+            403,
+            "Forbidden",
+            "text/plain; charset=utf-8",
+            "Forbidden",
+        )
+        .await?;
+        return Ok(false);
+    }
+
+    let request = read_http_request(&mut stream).await?;
+    let done = match (request.method.as_str(), request.path.as_str()) {
+        ("GET", "/auth-callback") => {
+            let html = loopback_callback_page();
+            write_http_response(&mut stream, 200, "OK", "text/html; charset=utf-8", &html).await?;
+            false
+        }
+        ("POST", "/auth-token") => {
+            let payload: LoopbackAuthPayload =
+                serde_json::from_slice(&request.body).context("parsing loopback auth payload")?;
+            let hash = payload.hash.trim();
+            let fragment = hash.strip_prefix('#').unwrap_or(hash);
+            let raw_url = format!(
+                "{}://auth?nonce={}#{}",
+                deep_link_scheme(),
+                percent_encode(&payload.nonce),
+                fragment
+            );
+            handle_deep_link(app, &raw_url)?;
+            write_http_response(
+                &mut stream,
+                200,
+                "OK",
+                "application/json; charset=utf-8",
+                r#"{"ok":true}"#,
+            )
+            .await?;
+            true
+        }
+        _ => {
+            write_http_response(
+                &mut stream,
+                404,
+                "Not Found",
+                "text/plain; charset=utf-8",
+                "Not Found",
+            )
+            .await?;
+            false
+        }
+    };
+    Ok(done)
+}
+
+#[derive(Debug, Deserialize)]
+struct LoopbackAuthPayload {
+    nonce: String,
+    hash: String,
+}
+
+struct HttpRequest {
+    method: String,
+    path: String,
+    body: Vec<u8>,
+}
+
+async fn read_http_request(stream: &mut TcpStream) -> Result<HttpRequest> {
+    let mut buf = Vec::with_capacity(4096);
+    let mut tmp = [0u8; 1024];
+    let header_end = loop {
+        let n = stream
+            .read(&mut tmp)
+            .await
+            .context("reading auth callback")?;
+        if n == 0 {
+            return Err(anyhow!("auth callback connection closed before headers"));
+        }
+        buf.extend_from_slice(&tmp[..n]);
+        if let Some(pos) = find_header_end(&buf) {
+            break pos;
+        }
+        if buf.len() > 16 * 1024 {
+            return Err(anyhow!("auth callback headers too large"));
+        }
+    };
+
+    let headers = String::from_utf8_lossy(&buf[..header_end]);
+    let mut lines = headers.lines();
+    let request_line = lines
+        .next()
+        .ok_or_else(|| anyhow!("auth callback missing request line"))?;
+    let mut parts = request_line.split_whitespace();
+    let method = parts
+        .next()
+        .ok_or_else(|| anyhow!("auth callback missing method"))?
+        .to_string();
+    let target = parts
+        .next()
+        .ok_or_else(|| anyhow!("auth callback missing path"))?;
+    let path = target.split('?').next().unwrap_or(target).to_string();
+    let mut content_length = 0usize;
+    for line in lines {
+        if let Some((name, value)) = line.split_once(':') {
+            if name.eq_ignore_ascii_case("content-length") {
+                content_length = value
+                    .trim()
+                    .parse()
+                    .context("parsing auth callback content-length")?;
+            }
+        }
+    }
+    if content_length > 16 * 1024 {
+        return Err(anyhow!("auth callback body too large"));
+    }
+
+    let body_start = header_end + 4;
+    let mut body = buf.get(body_start..).unwrap_or_default().to_vec();
+    while body.len() < content_length {
+        let n = stream
+            .read(&mut tmp)
+            .await
+            .context("reading auth callback body")?;
+        if n == 0 {
+            return Err(anyhow!("auth callback connection closed before body"));
+        }
+        body.extend_from_slice(&tmp[..n]);
+    }
+    body.truncate(content_length);
+
+    Ok(HttpRequest { method, path, body })
+}
+
+fn find_header_end(buf: &[u8]) -> Option<usize> {
+    buf.windows(4).position(|w| w == b"\r\n\r\n")
+}
+
+async fn write_http_response(
+    stream: &mut TcpStream,
+    status: u16,
+    reason: &str,
+    content_type: &str,
+    body: &str,
+) -> Result<()> {
+    let response = format!(
+        "HTTP/1.1 {status} {reason}\r\ncontent-type: {content_type}\r\ncontent-length: {}\r\nconnection: close\r\ncache-control: no-store\r\n\r\n{body}",
+        body.len()
+    );
+    stream
+        .write_all(response.as_bytes())
+        .await
+        .context("writing auth callback response")?;
+    Ok(())
+}
+
+fn loopback_callback_page() -> String {
+    r#"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Signing in to Peer</title>
+  <style>
+    body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",Segoe UI,sans-serif;background:#151515;color:#f5f2ec;display:grid;place-items:center;min-height:100vh}
+    main{width:min(420px,calc(100vw - 40px));border:1px solid #3a3833;border-radius:12px;padding:24px;background:#20201e;text-align:center}
+    h1{font-size:22px;margin:0 0 8px}
+    p{color:#b9b3a8;margin:0}
+    code{display:block;white-space:pre-wrap;word-break:break-all;background:#111;padding:12px;border-radius:8px;margin-top:14px;color:#f08a8a;text-align:left}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Signing in to Peer</h1>
+    <p id="status">Returning you to the app...</p>
+    <div id="error"></div>
+  </main>
+  <script>
+    (async function () {
+      var status = document.getElementById('status');
+      var errorBox = document.getElementById('error');
+      var nonce = new URLSearchParams(window.location.search).get('nonce') || '';
+      var hash = window.location.hash || '';
+      if (!hash) {
+        status.textContent = 'No sign-in tokens were returned.';
+        return;
+      }
+      try {
+        var res = await fetch('/auth-token', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ nonce: nonce, hash: hash })
+        });
+        if (!res.ok) throw new Error('Peer returned HTTP ' + res.status);
+        if (hash.indexOf('error=') !== -1) {
+          status.textContent = 'Sign-in failed. Return to Peer to try again.';
+        } else {
+          status.textContent = 'Signed in. You can close this tab.';
+        }
+      } catch (err) {
+        status.textContent = 'Could not return sign-in to Peer.';
+        var msg = String(err && err.message ? err.message : err);
+        errorBox.innerHTML = '<code>' + msg.replace(/[&<>]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]; }) + '</code>';
+      }
+    })();
+  </script>
+</body>
+</html>"#
+        .to_string()
 }
 
 /// Parse the `peer://auth#…` URL produced by the Vercel callback page.
@@ -256,10 +552,7 @@ pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
         // signups are turned off in the dashboard. Surface that as a distinct
         // reason so the UI can show a friendly "no account" path instead of
         // the generic error message.
-        let desc_lower = error_description
-            .as_deref()
-            .unwrap_or("")
-            .to_lowercase();
+        let desc_lower = error_description.as_deref().unwrap_or("").to_lowercase();
         let is_no_account = error_code.as_deref() == Some("signup_disabled")
             || desc_lower.contains("signups not allowed")
             || desc_lower.contains("signup is disabled");

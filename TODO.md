@@ -16,7 +16,7 @@ These are done — listed so you know the current state.
 - [x] **All required env vars** are set on Vercel production (OPENAI_API_KEY, ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET, PEER_BACKEND_URL). `PEER_MACOS_DOWNLOAD_URL` is not set — that's fine; `api/download-latest.js` has the correct default baked in.
 - [x] **Sign-in is open beta, no invite code.** The auth flow is Google OAuth via Supabase implicit flow (`src-tauri/src/saas.rs:187`). There is no invite-code prompt in the desktop app and no code that reads `PEER_BETA_INVITE_CODE`.
 - [x] **The free beta recording cap is enforced.** `PEER_FREE_BETA_MONTHLY_LIMIT` defaults to 25 completed recordings per Supabase user per UTC calendar month. Empty or invalid values fall back to 25, and over-limit recording API calls return `429` with `{ "error": "monthly beta recording limit reached" }`.
-- [x] **Supabase auth callback** (`/api/auth-callback`) returns 200 and contains the `peer://auth` deep-link logic.
+- [x] **Supabase auth callbacks** allow the current loopback callback (`http://127.0.0.1:17643/auth-callback`) and keep `/api/auth-callback` for old builds that still use `peer://auth`.
 - [x] **The GitHub release artifact exists.** `https://www.peercv.com/download/latest` resolves to `Peer.dmg`. Do not replace it with another self-signed or unsigned build; public replacement DMGs must be Developer ID signed and notarized.
 
 ---
@@ -77,7 +77,7 @@ The desktop app's sign-in is just **Google OAuth via Supabase** — no invite co
 3. Confirm **Google** is enabled and the OAuth client ID / secret are set. (They must be — your dev sign-in works.)
 4. Go to **Authentication → Sign In / Up → User Signups**.
 5. Make sure **"Allow new users to sign up"** is **ON**. If it's off, only existing users can sign in and new visitors will hit a wall.
-6. Make sure the **Site URL** (Authentication → URL Configuration) and **Redirect URLs** include `https://www.peercv.com/api/auth-callback`. If only the `peer-wheat.vercel.app` URL is whitelisted, sign-in from the custom domain will fail with a redirect-not-allowed error.
+6. Make sure the **Site URL** (Authentication → URL Configuration) and **Redirect URLs** include `http://127.0.0.1:17643/auth-callback` for current desktop builds. Keep `https://www.peercv.com/api/auth-callback` and `https://peer-wheat.vercel.app/api/auth-callback` whitelisted for old builds.
 
 ### Remove the stale invite env var from Vercel
 `PEER_BETA_INVITE_CODE` is not consumed by the desktop app or backend. Safe to delete:
@@ -106,13 +106,13 @@ Don't send the link to an external tester until you've done one full clean-room 
    - **Screen & System Audio Recording**
    - **Microphone**
    - **Accessibility** (required for the Right Option / Fn key-tap detection)
-6. When the pill window appears, click the sign-in button. A browser tab opens to Google sign-in (Supabase OAuth implicit flow) → pick a Google account → after sign-in you should be deep-linked back to `peer://auth`. Token gets stored in macOS Keychain.
+6. When the pill window appears, click the sign-in button. A browser tab opens to Google sign-in (Supabase OAuth implicit flow) → pick a Google account → after sign-in the browser returns to `http://127.0.0.1:17643/auth-callback` and Peer stores the token in macOS Keychain.
 7. Tap **Right Option** to start recording → narrate a 5-second screen task → tap **Right Option** again to stop.
 8. The result window should populate with markdown within ~12 seconds.
 
 ### If sign-in fails
-- Most likely cause: the redirect URL `https://www.peercv.com/api/auth-callback` isn't whitelisted in Supabase. Fix in Supabase → Authentication → URL Configuration (see Task 2 above).
-- Second most likely: Google OAuth client in Supabase doesn't have `https://www.peercv.com/api/auth-callback` (or the Supabase auth callback URL `https://<project>.supabase.co/auth/v1/callback`) in its Authorized redirect URIs. Fix in the Google Cloud Console for the OAuth client tied to Supabase.
+- Most likely cause: the redirect URL `http://127.0.0.1:17643/auth-callback` isn't whitelisted in Supabase. Fix in Supabase → Authentication → URL Configuration (see Task 2 above).
+- Second most likely: Google OAuth client in Supabase doesn't have the Supabase auth callback URL `https://<project>.supabase.co/auth/v1/callback` in its Authorized redirect URIs. Fix in the Google Cloud Console for the OAuth client tied to Supabase.
 - If you see a Keychain prompt asking to allow Peer to access an item, click **Always Allow**.
 
 ### If a recording fails

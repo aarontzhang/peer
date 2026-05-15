@@ -66,7 +66,7 @@ PEER_AGGREGATOR_MODEL=...
 PEER_TITLE_MODEL=...
 ```
 
-The public download/account site lives in `site/`. Sign-in is Google OAuth via Supabase implicit flow: the desktop app opens `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=…/api/auth-callback`, the callback page deep-links back to `peer://auth#access_token=…`, and the session lands in macOS Keychain. Open the Supabase dashboard → Authentication → Sign In/Up to toggle whether new users can self-serve sign up.
+The public download/account site lives in `site/`. Sign-in is Google OAuth via Supabase implicit flow: the desktop app opens `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=http://127.0.0.1:17643/auth-callback`, the local callback returns the browser fragment to the running app, and the session lands in macOS Keychain. Supabase Auth redirect URLs must include `http://127.0.0.1:17643/auth-callback`; keep the hosted `/api/auth-callback` URLs allowed for old builds that still deep-link back to `peer://auth#access_token=…`. Open the Supabase dashboard → Authentication → Sign In/Up to toggle whether new users can self-serve sign up.
 
 Recording-generation endpoints enforce `PEER_FREE_BETA_MONTHLY_LIMIT` completed recordings per Supabase user per UTC calendar month. Over-limit users receive `429` with `{ "error": "monthly beta recording limit reached" }` before new provider calls are made.
 
