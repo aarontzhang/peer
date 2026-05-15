@@ -3,6 +3,7 @@
 mod capture;
 
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -21,7 +22,7 @@ pub use capture::CaptureProcess;
 
 // Hard cap as a safety net so a forgotten recording can't fill the disk.
 // Display shows elapsed only — no countdown.
-const MAX_DURATION_MS: u64 = 3 * 60 * 1000;
+const MAX_DURATION_MS: u64 = 10 * 60 * 1000;
 
 #[derive(Default)]
 pub struct RecordingController;
@@ -93,6 +94,11 @@ pub fn emit(app: &AppHandle, event: &PillEvent) {
 }
 
 pub async fn start(app: AppHandle, state: Arc<AppState>) -> Result<String> {
+    if state.pipeline_in_flight.load(Ordering::Acquire) {
+        return Err(anyhow!(
+            "another recording is still processing — wait for it to finish before starting a new one"
+        ));
+    }
     {
         let cur = state.current.lock();
         if cur.is_some() {
@@ -345,16 +351,18 @@ pub async fn send(app: AppHandle, state: Arc<AppState>) -> Result<()> {
     let id = review.id.clone();
     let video_path = review.video_path.clone();
     let duration_ms = review.duration_ms;
+    state.pipeline_in_flight.store(true, Ordering::Release);
     tokio::spawn(async move {
-        match pipeline::run(
+        let result = pipeline::run(
             app2.clone(),
             state2.clone(),
             id.clone(),
             video_path,
             duration_ms,
         )
-        .await
-        {
+        .await;
+        state2.pipeline_in_flight.store(false, Ordering::Release);
+        match result {
             Ok(()) => {
                 emit(&app2, &PillEvent::Done { id: id.clone() });
             }
@@ -417,6 +425,11 @@ pub async fn shutdown(state: Arc<AppState>) {
 /// The video stays on disk after both cancel and a normal send specifically
 /// so the user can re-analyze without having to record again.
 pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<()> {
+    if state.pipeline_in_flight.load(Ordering::Acquire) {
+        return Err(anyhow!(
+            "another recording is still processing — wait for it to finish before retrying"
+        ));
+    }
     {
         let cur = state.current.lock();
         if cur.is_some() {
@@ -466,16 +479,18 @@ pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<(
     let app2 = app.clone();
     let state2 = state.clone();
     let id2 = id.clone();
+    state.pipeline_in_flight.store(true, Ordering::Release);
     tokio::spawn(async move {
-        match pipeline::run(
+        let result = pipeline::run(
             app2.clone(),
             state2.clone(),
             id2.clone(),
             video_path,
             duration_ms,
         )
-        .await
-        {
+        .await;
+        state2.pipeline_in_flight.store(false, Ordering::Release);
+        match result {
             Ok(()) => {
                 emit(&app2, &PillEvent::Done { id: id2.clone() });
             }

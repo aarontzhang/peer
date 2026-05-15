@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
@@ -19,6 +20,11 @@ pub struct AppState {
     /// Set while a recording is in flight; clears the moment we hand the file
     /// to the pipeline.
     pub current: Arc<Mutex<Option<crate::recording::RecordingPhase>>>,
+    /// True from the moment `send()`/`retry()` spawns the pipeline until that
+    /// pipeline terminates (success or failure). Blocks new recordings so the
+    /// user can't stack multiple automations. Cancel doesn't touch this flag
+    /// — cancelling pre-send leaves a fresh slot available immediately.
+    pub pipeline_in_flight: Arc<AtomicBool>,
     /// User-selected recording keybind, persisted in app data.
     pub recording_keybind: Arc<Mutex<RecordingKeybind>>,
     /// Permission mode that shapes the generated agent prompt.
@@ -59,6 +65,7 @@ impl AppState {
             frames_dir,
             bin_dir,
             current: Arc::new(Mutex::new(None)),
+            pipeline_in_flight: Arc::new(AtomicBool::new(false)),
             recording_keybind: Arc::new(Mutex::new(recording_keybind.clone())),
             permission_mode: Arc::new(Mutex::new(permission_mode)),
             hotkey_availability: Arc::new(Mutex::new(HotkeyAvailability::default())),
