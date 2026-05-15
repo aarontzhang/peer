@@ -1,5 +1,6 @@
 import {
   WINDOW_SYSTEM,
+  assertRecordingQuota,
   extractJson,
   handleError,
   readJson,
@@ -15,7 +16,8 @@ export const config = {
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
-    await requireUser(req);
+    const auth = await requireUser(req);
+    await assertRecordingQuota(auth);
 
     const body = await readJson(req);
     const frames = Array.isArray(body.frames) ? body.frames : [];

@@ -1,4 +1,11 @@
-import { handleError, readJson, requireUser, requiredEnv, sendJson } from './_backend.js';
+import {
+  assertRecordingQuota,
+  handleError,
+  readJson,
+  requireUser,
+  requiredEnv,
+  sendJson,
+} from './_backend.js';
 
 export const config = {
   api: { bodyParser: { sizeLimit: '16mb' } },
@@ -7,7 +14,8 @@ export const config = {
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
-    await requireUser(req);
+    const auth = await requireUser(req);
+    await assertRecordingQuota(auth);
 
     const body = await readJson(req);
     const audioBase64 = String(body.audioBase64 || '');

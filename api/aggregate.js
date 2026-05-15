@@ -2,6 +2,7 @@ import {
   AGGREGATOR_SYSTEM,
   MODE_ASK_SUFFIX,
   MODE_BYPASS_SUFFIX,
+  assertRecordingQuota,
   handleError,
   readJson,
   recordUsage,
@@ -18,6 +19,7 @@ export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
     const auth = await requireUser(req);
+    await assertRecordingQuota(auth);
     const body = await readJson(req);
 
     const userMessage = `Recording duration: ${Number(body.totalSecs || 0).toFixed(1)}s\n\nFull transcript (with timestamps):\n${body.transcriptText || '(no narration captured)'}\n\nPer-window notes (JSON, ordered):\n${body.observationsJson || '[]'}\n\nNow produce the refined prompt per the system prompt.`;

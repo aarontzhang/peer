@@ -126,6 +126,58 @@ export async function requireUser(req) {
   }
 }
 
+const DEFAULT_FREE_BETA_MONTHLY_LIMIT = 25;
+const RECORDING_LIMIT_ERROR = 'monthly beta recording limit reached';
+
+export function freeBetaMonthlyLimit() {
+  const parsed = Number.parseInt(process.env.PEER_FREE_BETA_MONTHLY_LIMIT || '', 10);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_FREE_BETA_MONTHLY_LIMIT;
+}
+
+function monthStartIso(now = new Date()) {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+}
+
+async function countMonthlyUsage(auth, kind) {
+  const supabaseUrl = requiredEnv('SUPABASE_URL').replace(/\/$/, '');
+  const serviceKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const params = new URLSearchParams({
+    select: 'id',
+    user_id: `eq.${auth.userId}`,
+    kind: `eq.${kind}`,
+    created_at: `gte.${monthStartIso()}`,
+    limit: '1',
+  });
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/recording_usage?${params}`, {
+    headers: {
+      apikey: serviceKey,
+      authorization: `Bearer ${serviceKey}`,
+      prefer: 'count=exact',
+    },
+  });
+
+  if (!response.ok) {
+    throw httpError(500, 'recording quota check failed');
+  }
+
+  const contentRange = response.headers.get('content-range') || '';
+  const total = Number.parseInt(contentRange.split('/').pop() || '', 10);
+  return Number.isFinite(total) ? total : 0;
+}
+
+export async function assertRecordingQuota(auth) {
+  if (process.env.PEER_BACKEND_BYPASS_AUTH === '1') return;
+
+  const limit = freeBetaMonthlyLimit();
+  const used = await countMonthlyUsage(auth, 'recording');
+  if (used >= limit) {
+    throw httpError(429, RECORDING_LIMIT_ERROR);
+  }
+}
+
 export async function recordUsage(auth, kind) {
   if (process.env.PEER_BACKEND_BYPASS_AUTH === '1') return;
   const supabaseUrl = process.env.SUPABASE_URL;

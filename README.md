@@ -57,6 +57,7 @@ OPENAI_API_KEY=...
 ANTHROPIC_API_KEY=...
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
+PEER_FREE_BETA_MONTHLY_LIMIT=25   # optional; invalid/empty values fall back to 25
 PEER_MACOS_DOWNLOAD_URL=...   # optional; falls back to https://github.com/aarontzhang/peer/releases/latest/download/Peer.dmg
 
 # Optional model overrides
@@ -66,6 +67,8 @@ PEER_TITLE_MODEL=...
 ```
 
 The public download/account site lives in `site/`. Sign-in is Google OAuth via Supabase implicit flow: the desktop app opens `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=…/api/auth-callback`, the callback page deep-links back to `peer://auth#access_token=…`, and the session lands in macOS Keychain. Open the Supabase dashboard → Authentication → Sign In/Up to toggle whether new users can self-serve sign up.
+
+Recording-generation endpoints enforce `PEER_FREE_BETA_MONTHLY_LIMIT` completed recordings per Supabase user per UTC calendar month. Over-limit users receive `429` with `{ "error": "monthly beta recording limit reached" }` before new provider calls are made.
 
 ### macOS release
 
