@@ -19,6 +19,7 @@ export function Settings({ open, onClose }: Props) {
   const [account, setAccount] = useState<AccountStatus | null>(null);
   const [pendingSignIn, setPendingSignIn] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
+  const [noAccount, setNoAccount] = useState(false);
   const [hotkey, setHotkey] = useState<HotkeyStatus | null>(null);
   const [keybind, setKeybind] = useState<RecordingKeybind>(DEFAULT_KEYBIND);
   const [initialKeybind, setInitialKeybind] = useState<RecordingKeybind>(DEFAULT_KEYBIND);
@@ -42,6 +43,7 @@ export function Settings({ open, onClose }: Props) {
       });
       setPendingSignIn(false);
       setSignInError(null);
+      setNoAccount(false);
       setCapturing(false);
       setCaptureError(null);
     }
@@ -53,10 +55,15 @@ export function Settings({ open, onClose }: Props) {
       .onAuthChanged(async (payload: AuthChangedPayload) => {
         setAccount(await ipc.getSession());
         setPendingSignIn(false);
-        if (payload.error) {
+        if (payload.reason === 'no_account') {
+          setNoAccount(true);
+          setSignInError(null);
+        } else if (payload.error) {
           setSignInError(payload.error);
+          setNoAccount(false);
         } else if (payload.signedIn) {
           setSignInError(null);
+          setNoAccount(false);
         }
       })
       .then((u) => {
@@ -136,6 +143,7 @@ export function Settings({ open, onClose }: Props) {
 
   const onLogin = async () => {
     setSignInError(null);
+    setNoAccount(false);
     setPendingSignIn(true);
     try {
       await ipc.startGoogleSignIn();
@@ -173,6 +181,32 @@ export function Settings({ open, onClose }: Props) {
                 Sign out
               </button>
             </div>
+          ) : noAccount ? (
+            <>
+              <p className="settings__hint">
+                Hey, you don't have an account yet. Create one to start using Peer.
+              </p>
+              <div className="settings__row">
+                <button
+                  className="btn btn--neutral"
+                  type="button"
+                  disabled
+                  title="Sign-up isn't available yet"
+                >
+                  Creating account is disabled
+                </button>
+                <button
+                  className="btn btn--neutral"
+                  type="button"
+                  onClick={() => {
+                    setNoAccount(false);
+                    setSignInError(null);
+                  }}
+                >
+                  Use a different account
+                </button>
+              </div>
+            </>
           ) : (
             <div className="settings__row">
               <button
@@ -185,10 +219,10 @@ export function Settings({ open, onClose }: Props) {
               </button>
             </div>
           )}
-          {pendingSignIn && !account?.signedIn && (
+          {pendingSignIn && !account?.signedIn && !noAccount && (
             <p className="settings__hint">Waiting for browser sign-in…</p>
           )}
-          {signInError && <p className="settings__error">{signInError}</p>}
+          {signInError && !noAccount && <p className="settings__error">{signInError}</p>}
         </section>
 
         <section className="settings__section">

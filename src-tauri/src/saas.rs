@@ -227,6 +227,8 @@ pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
     let mut expires_at: Option<i64> = None;
     let mut nonce_param: Option<String> = None;
     let mut error: Option<String> = None;
+    let mut error_code: Option<String> = None;
+    let mut error_description: Option<String> = None;
 
     // Nonce arrives via the redirect_to query string; tokens via the fragment.
     for (k, v) in parsed.query_pairs() {
@@ -241,17 +243,50 @@ pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
             "expires_in" => expires_in = v.parse().ok(),
             "expires_at" => expires_at = v.parse().ok(),
             "nonce" => nonce_param = Some(v.into_owned()),
-            "error" | "error_description" => error = Some(v.into_owned()),
+            "error" => error = Some(v.into_owned()),
+            "error_code" => error_code = Some(v.into_owned()),
+            "error_description" => error_description = Some(v.into_owned()),
             _ => {}
         }
     }
 
-    if let Some(err) = error {
-        tracing::warn!(error = %err, "OAuth callback returned error");
-        let _ = app.emit(
-            "auth:changed",
-            json!({ "signedIn": false, "email": null, "error": err }),
-        );
+    if error.is_some() || error_code.is_some() || error_description.is_some() {
+        // Supabase returns `error_code=signup_disabled` (and an `access_denied`
+        // error) when OAuth is attempted with an unrecognised account while
+        // signups are turned off in the dashboard. Surface that as a distinct
+        // reason so the UI can show a friendly "no account" path instead of
+        // the generic error message.
+        let desc_lower = error_description
+            .as_deref()
+            .unwrap_or("")
+            .to_lowercase();
+        let is_no_account = error_code.as_deref() == Some("signup_disabled")
+            || desc_lower.contains("signups not allowed")
+            || desc_lower.contains("signup is disabled");
+
+        let raw_msg = error_description
+            .clone()
+            .or(error_code.clone())
+            .or(error.clone())
+            .unwrap_or_else(|| "unknown error".to_string());
+
+        tracing::warn!(error = %raw_msg, no_account = is_no_account, "OAuth callback returned error");
+
+        if is_no_account {
+            let _ = app.emit(
+                "auth:changed",
+                json!({
+                    "signedIn": false,
+                    "email": null,
+                    "reason": "no_account",
+                }),
+            );
+        } else {
+            let _ = app.emit(
+                "auth:changed",
+                json!({ "signedIn": false, "email": null, "error": raw_msg }),
+            );
+        }
         return Ok(());
     }
 

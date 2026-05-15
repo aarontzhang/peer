@@ -39,6 +39,7 @@ export type AccountStatus = {
 
 export type AuthChangedPayload = AccountStatus & {
   error?: string;
+  reason?: 'no_account';
 };
 
 export type RecordingKeybind =
