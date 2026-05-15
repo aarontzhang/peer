@@ -1,11 +1,9 @@
 fn main() {
     #[cfg(target_os = "macos")]
     {
-        // Embed Info.plist into the dev binary so macOS can resolve a stable
-        // CFBundleIdentifier even when running the raw target/debug/Peer
-        // executable. Without this, Cargo's linker-signed adhoc identity is
-        // a hash that changes per build, and TCC treats every rebuild as a
-        // different app — re-prompting for screen recording forever.
+        // Embed usage-description keys into the dev binary so macOS can show
+        // the standard mic/screen prompts before dev-runner applies a stable
+        // ad-hoc signing identifier.
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let plist = format!("{manifest_dir}/Info.plist");
         println!("cargo:rerun-if-changed=Info.plist");

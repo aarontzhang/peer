@@ -17,9 +17,6 @@ importers:
       '@tauri-apps/plugin-global-shortcut':
         specifier: ^2.2.0
         version: 2.3.1
-      '@tauri-apps/plugin-sql':
-        specifier: ^2.2.0
-        version: 2.4.0
       jose:
         specifier: ^5.9.6
         version: 5.10.0
@@ -612,9 +609,6 @@ packages:
 
   '@tauri-apps/plugin-global-shortcut@2.3.1':
     resolution: {integrity: sha512-vr40W2N6G63dmBPaha1TsBQLLURXG538RQbH5vAm0G/ovVZyXJrmZR1HF1W+WneNloQvwn4dm8xzwpEXRW560g==}
-
-  '@tauri-apps/plugin-sql@2.4.0':
-    resolution: {integrity: sha512-SIICc5JlnK6OrBZzOw7MmhXHPlmASpt5zLWIu10WW4kLr5cDYOXHdV2MoCgYQkgZLQfyBYgF3SQa5XCisUiQkw==}
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -1341,10 +1335,6 @@ snapshots:
       '@tauri-apps/api': 2.11.0
 
   '@tauri-apps/plugin-global-shortcut@2.3.1':
-    dependencies:
-      '@tauri-apps/api': 2.11.0
-
-  '@tauri-apps/plugin-sql@2.4.0':
     dependencies:
       '@tauri-apps/api': 2.11.0
 

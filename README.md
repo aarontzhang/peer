@@ -88,6 +88,20 @@ PEER_ALLOW_UNSIGNED_RELEASE=1 pnpm release:mac
 
 That path creates an ad-hoc signed DMG for launch testing, but Gatekeeper will reject it on other Macs. Do not upload it as the public website download.
 
+Published DMG smoke check:
+
+```sh
+curl -sIL https://www.peercv.com/download/latest
+curl -L https://www.peercv.com/download/latest -o Peer.dmg
+codesign -dv --verbose=4 Peer.dmg
+spctl -a -t open --context context:primary-signature -vv Peer.dmg
+hdiutil attach Peer.dmg
+defaults read /Volumes/Peer/Peer.app/Contents/Info CFBundleIdentifier
+hdiutil detach /Volumes/Peer
+```
+
+`spctl` must accept the DMG, and the bundle identifier must be `com.aaronzhang.peer`.
+
 ## Layout
 
 ```

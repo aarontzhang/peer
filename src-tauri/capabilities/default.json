@@ -13,11 +13,6 @@
     "core:window:allow-set-position",
     "core:window:allow-start-dragging",
     "clipboard-manager:allow-write-text",
-    "clipboard-manager:allow-read-text",
-    "sql:default",
-    "sql:allow-execute",
-    "sql:allow-load",
-    "sql:allow-select",
     "global-shortcut:default",
     "deep-link:default"
   ]

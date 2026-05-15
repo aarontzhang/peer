@@ -14,7 +14,8 @@ These are done — listed so you know the current state.
 
 - [x] **Vercel project `peer` is live** at `www.peercv.com`. `/` returns 200, `/download/latest` returns a clean 302 to GitHub Releases.
 - [x] **All required env vars** are set on Vercel production (OPENAI_API_KEY, ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET, PEER_BACKEND_URL). `PEER_MACOS_DOWNLOAD_URL` is not set — that's fine; `api/download-latest.js` has the correct default baked in.
-- [x] **Sign-in is open beta, no invite code.** The auth flow is Google OAuth via Supabase implicit flow (`src-tauri/src/saas.rs:187`). There is no invite-code prompt in the desktop app and no code that reads `PEER_BETA_INVITE_CODE` — that Vercel env var is dormant. Same for `PEER_FREE_BETA_MONTHLY_LIMIT` (the `recording_usage` table only logs; no code enforces a cap). Both env vars can be deleted from Vercel; they're cosmetic. (See Task 2 below.)
+- [x] **Sign-in is open beta, no invite code.** The auth flow is Google OAuth via Supabase implicit flow (`src-tauri/src/saas.rs:187`). There is no invite-code prompt in the desktop app and no code that reads `PEER_BETA_INVITE_CODE`.
+- [x] **The free beta recording cap is enforced.** `PEER_FREE_BETA_MONTHLY_LIMIT` defaults to 25 completed recordings per Supabase user per UTC calendar month. Empty or invalid values fall back to 25, and over-limit recording API calls return `429` with `{ "error": "monthly beta recording limit reached" }`.
 - [x] **Supabase auth callback** (`/api/auth-callback`) returns 200 and contains the `peer://auth` deep-link logic.
 - [x] **The GitHub release artifact exists.** `https://www.peercv.com/download/latest` resolves to `Peer.dmg`. Do not replace it with another self-signed or unsigned build; public replacement DMGs must be Developer ID signed and notarized.
 
@@ -55,12 +56,18 @@ gh release create v0.2.0 \
 After publishing, in a terminal:
 ```sh
 curl -sIL https://www.peercv.com/download/latest | head -25
+curl -L https://www.peercv.com/download/latest -o Peer.dmg
+codesign -dv --verbose=4 Peer.dmg
+spctl -a -t open --context context:primary-signature -vv Peer.dmg
+hdiutil attach Peer.dmg
+defaults read /Volumes/Peer/Peer.app/Contents/Info CFBundleIdentifier
+hdiutil detach /Volumes/Peer
 ```
-You want to see `HTTP/2 302 → HTTP/2 302 → HTTP/2 200` with `content-type: application/octet-stream` and a `content-length` of roughly 4–8 MB. If the last hop is 404, the asset name on the release page isn't `Peer.dmg` — rename it in the release UI.
+You want to see redirects ending in `200` with `content-disposition: attachment; filename=Peer.dmg`. `spctl` must accept the DMG, and the mounted app bundle identifier must be `com.aaronzhang.peer`. If the last hop is 404, the asset name on the release page isn't `Peer.dmg` — rename it in the release UI.
 
 ---
 
-## 2. Confirm Supabase signups are open + tidy unused Vercel env vars  ⏱ ~3 minutes
+## 2. Confirm Supabase signups are open + tidy beta env vars  ⏱ ~3 minutes
 
 The desktop app's sign-in is just **Google OAuth via Supabase** — no invite code, no email allowlist in code. Whether new people can sign up depends entirely on one Supabase toggle.
 
@@ -72,11 +79,12 @@ The desktop app's sign-in is just **Google OAuth via Supabase** — no invite co
 5. Make sure **"Allow new users to sign up"** is **ON**. If it's off, only existing users can sign in and new visitors will hit a wall.
 6. Make sure the **Site URL** (Authentication → URL Configuration) and **Redirect URLs** include `https://www.peercv.com/api/auth-callback`. If only the `peer-wheat.vercel.app` URL is whitelisted, sign-in from the custom domain will fail with a redirect-not-allowed error.
 
-### Remove the two unused env vars from Vercel (optional cosmetic cleanup)
-Both `PEER_BETA_INVITE_CODE` and `PEER_FREE_BETA_MONTHLY_LIMIT` are not consumed by any deployed code. Safe to delete:
+### Remove the stale invite env var from Vercel
+`PEER_BETA_INVITE_CODE` is not consumed by the desktop app or backend. Safe to delete:
 1. Go to https://vercel.com/aaronzhangper-gmailcoms-projects/peer/settings/environment-variables
-2. Delete `PEER_BETA_INVITE_CODE` and `PEER_FREE_BETA_MONTHLY_LIMIT`.
-3. No redeploy needed (the absence won't change behavior; the deployed code doesn't read them).
+2. Delete `PEER_BETA_INVITE_CODE`.
+3. Keep `PEER_FREE_BETA_MONTHLY_LIMIT` if you want a non-default cap. Leaving it empty or setting an invalid value falls back to 25.
+4. Redeploy after changing env vars so the active Vercel functions pick them up.
 
 ### Share with the tester
 Send your tester:
@@ -121,7 +129,7 @@ Not blocking the current ship, but worth tracking:
 - **Gatekeeper blocks self-signed builds.** The release script now refuses public builds unless `APPLE_SIGNING_IDENTITY` is a Developer ID Application identity and `APPLE_NOTARYTOOL_PROFILE` is set. This machine currently only has `Peer Self Signed`, so Aaron still needs Apple Developer Program credentials before publishing a replacement DMG.
 - **No GitHub Actions release workflow.** Every release is currently a manual `pnpm release:mac` on this machine. When you have notarization set up, ask Claude to add `.github/workflows/release.yml` using `tauri-apps/tauri-action` so tag pushes auto-build and release.
 - **No in-app updater.** Testers who installed beta-1 will not be auto-prompted for beta-2. For 1–5 testers this is fine; for >10 it's a pain. Tauri's updater plugin is the path.
-- **No way to revoke a tester's access.** The beta gate is one shared invite code. If you want per-tester revocation, you'd want a small admin endpoint that issues per-user codes against Supabase.
+- **No way to revoke a tester's access.** Sign-in is open via Google OAuth. If you want per-tester revocation, add a small allowlist/admin endpoint keyed by Supabase user.
 
 ---
 

@@ -45,7 +45,6 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_sql::Builder::new().build())
         .setup(|app| {
             let handle = app.handle().clone();
             let state = Arc::new(AppState::new(&handle)?);

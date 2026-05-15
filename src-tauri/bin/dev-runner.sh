@@ -39,7 +39,9 @@ if [[ "$(basename "${BIN}")" == "Peer" ]]; then
   mkdir -p "${APP_DIR}/Contents/MacOS"
   cp "Info.plist" "${APP_DIR}/Contents/Info.plist"
   PLIST="${APP_DIR}/Contents/Info.plist"
-  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier dev.aaronzhang.peer.dev" "${PLIST}" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier dev.aaronzhang.peer.dev" "${PLIST}" 2>/dev/null \
+    || /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string dev.aaronzhang.peer.dev" "${PLIST}" 2>/dev/null \
+    || true
   /usr/libexec/PlistBuddy -c "Set :CFBundleName Peer-dev" "${PLIST}" 2>/dev/null || true
   /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Peer-dev" "${PLIST}" 2>/dev/null || true
   /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLName com.aaronzhang.peer.dev.auth" "${PLIST}" 2>/dev/null || true

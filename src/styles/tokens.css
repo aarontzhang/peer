@@ -23,9 +23,9 @@
   --color-rec: oklch(0.66 0.22 22);
   --color-rec-glow: oklch(0.66 0.22 22 / 0.55);
 
-  --font-sans: 'Manrope', ui-sans-serif, system-ui, -apple-system,
+  --font-sans: ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, "SF Mono", Menlo, monospace;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   --shadow-pill: 0 8px 32px oklch(0 0 0 / 0.18),
     0 1px 0 oklch(1 0 0 / 0.08) inset;
