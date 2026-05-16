@@ -340,20 +340,33 @@ function FeedEmpty({ tab }: { tab: Tab }) {
   if (tab === 'saved') {
     return (
       <div className="feed-empty">
-        <div className="feed-empty__title">Nothing saved yet.</div>
+        <div className="feed-empty__title">
+          <span className="feed-empty__accent">Save</span> what you'll run again.
+        </div>
         <div className="feed-empty__sub">
-          Open the actions menu on a recording in History and tap the bookmark to keep it here.
+          Tap the <SavedIcon /> on any recording in History to keep its
+          instructions here, ready to hand to an agent whenever you need them.
         </div>
       </div>
     );
   }
   return (
     <div className="feed-empty">
-      <div className="feed-empty__title">Show, don't tell.</div>
-      <div className="feed-empty__sub">
-        Click the orb on the floating pill to start recording. Peer turns your
-        screen + narration into a paste-ready instruction set for Claude Code.
+      <div className="feed-empty__title">
+        <span className="feed-empty__accent">Show</span>, don't tell.
       </div>
+      <div className="feed-empty__sub">
+        Record yourself doing a task once. Peer turns your screen and narration
+        into a repeatable instruction set any computer-use agent can replay.
+      </div>
+      <button
+        type="button"
+        className="feed-empty__cta"
+        onClick={() => { void ipc.startRecording(); }}
+      >
+        <span className="feed-empty__cta-dot" aria-hidden />
+        Start your first recording
+      </button>
     </div>
   );
 }
