@@ -177,58 +177,6 @@ html, body {
   line-height: 1.55;
   text-wrap: balance;
 }
-.feed-empty__flow {
-  margin-top: 12px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 4px;
-  color: var(--color-fg-dim);
-}
-.feed-empty__flow-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.feed-empty__flow-step {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  /* Reserve space for the label so the row's center line stays on the node. */
-  padding-bottom: 0;
-}
-.feed-empty__flow-node {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 1px solid var(--color-line-strong);
-  display: inline-grid;
-  place-items: center;
-  color: var(--color-fg-dim);
-  background: oklch(1 0 0 / 0.015);
-}
-.feed-empty__flow-node--accent {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: oklch(1 0 0 / 0.025);
-}
-.feed-empty__flow-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-fg-muted);
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-.feed-empty__flow-label--accent { color: var(--color-fg); }
-.feed-empty__flow-arrow {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-fg-dim);
-  /* Lift the arrow to align with the center of the 56px node row, since the
-     step block is taller (node + label). */
-  margin-top: -22px;
-}
 
 /* ─── card ─────────────────────────────────────────────────────────────── */
 .card {
