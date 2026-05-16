@@ -349,49 +349,39 @@ kbd {
   margin: 0;
   padding: 4px 14px 22px 14px;
   display: flex; flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
+/* Mirrors .card in result.css: bookmark | title (1fr) | actions (pip + more).
+   Status is conveyed by the right-side pip; saved is conveyed by the
+   left-side blue bookmark — same split as the live app. */
 .aw-card {
   position: relative;
   display: grid;
-  /* Match the real app: time column | title (1fr) | actions cluster. The
-     status pip is absolutely placed inside the row's left padding. */
-  grid-template-columns: 82px minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  padding: 12px 12px 12px 26px;
-  border-radius: 16px;
-  transition: background var(--dur-fast) var(--ease-out);
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 22px;
+  transition: background var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
 }
-.aw-card::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 10px;
-  width: 8px; height: 8px;
-  margin-top: -4px;
+.aw-card:hover {
+  background: oklch(1 0 0 / 0.035);
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.07);
+}
+
+.aw-card__bookmark,
+.aw-card__pinSlot {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
   border-radius: 50%;
-  background: transparent;
-}
-.aw-card[data-state='done']::before     { background: oklch(0.74 0.16 156); }
-.aw-card[data-state='canceled']::before { background: oklch(0.82 0.16 88); }
-.aw-card[data-state='recording']::before {
-  background: var(--red);
-  animation: aw-pip-pulse 1.2s ease-in-out infinite;
-}
-@keyframes aw-pip-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.35; }
-}
-
-.aw-card:hover { background: oklch(1 0 0 / 0.035); }
-
-.aw-card__time {
-  font-size: 13px;
   color: var(--dim);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
 }
+.aw-card__bookmark--saved,
+.aw-card__bookmark--saved:hover { color: var(--blue); }
+
 .aw-card__title {
   font-size: 14.5px;
   color: var(--muted);
@@ -403,27 +393,37 @@ kbd {
 .aw-card:hover .aw-card__title { color: var(--text); }
 .aw-card[data-state='canceled'] .aw-card__title { color: var(--dim); }
 
-/* Action cluster — pinned to the right edge, fixed min-width so every row's
-   right gutter lines up regardless of how many icons are populated. Mirrors
-   .card__actions in the real result view. */
+/* Right cluster: colored status pip + collapsed three-dot affordance —
+   matches the resting state of .card__actions in the live result view. */
 .aw-card__actions {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 2px;
-  min-width: 116px;
 }
-.aw-iconbtn {
+.aw-card__pip {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  background: transparent;
+  flex-shrink: 0;
+}
+.aw-card[data-state='done']      .aw-card__pip { background: oklch(0.74 0.16 156); }
+.aw-card[data-state='canceled']  .aw-card__pip { background: oklch(0.82 0.16 88); }
+.aw-card[data-state='recording'] .aw-card__pip {
+  background: var(--red);
+  animation: aw-pip-pulse 1.2s ease-in-out infinite;
+}
+@keyframes aw-pip-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.aw-card__more {
   width: 28px; height: 28px;
   display: grid; place-items: center;
   border-radius: 50%;
-  color: var(--dim);
-  transition: background var(--dur-fast) var(--ease-out),
-              color var(--dur-fast) var(--ease-out);
-}
-.aw-iconbtn:hover {
-  background: oklch(1 0 0 / 0.10);
-  color: var(--text);
+  color: var(--muted);
 }
 
 /* ─── Section shell ───────────────────────────────────────────────── */
@@ -862,7 +862,6 @@ kbd {
 @media (max-width: 760px) {
   .app-window__bar { grid-template-columns: 1fr auto; }
   .app-window__tabs { display: none; }
-  .aw-card { grid-template-columns: 64px minmax(0, 1fr) auto; padding-left: 20px; }
   .cases__title { white-space: normal; }
   .cases-row {
     grid-template-columns: 28px minmax(0, 1fr) auto;

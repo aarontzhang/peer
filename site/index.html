@@ -14,7 +14,7 @@
 
   <meta http-equiv="Cache-Control" content="no-store">
   <link rel="stylesheet" href="/styles/tokens.css?v=2">
-  <link rel="stylesheet" href="/site/styles.css?v=21">
+  <link rel="stylesheet" href="/site/styles.css?v=22">
 </head>
 <body>
   <!-- Atmospheric light. Two soft colored blobs + a bottom warm glow simulate
@@ -137,71 +137,85 @@
 
         <ul class="aw-feed">
           <li class="aw-card" data-state="recording">
-            <span class="aw-card__time">just now</span>
-            <span class="aw-card__title">File a JIRA ticket from this Slack thread</span>
+            <span class="aw-card__bookmark" aria-hidden="true">
+              <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 2.5h8v11l-4-2.7-4 2.7z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="aw-card__title">Cut a release: bump the version, update CHANGELOG, tag, and push</span>
             <span class="aw-card__actions" aria-hidden="true">
-              <span class="aw-iconbtn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
+              <span class="aw-card__pip"></span>
+              <span class="aw-card__more">
+                <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="3.25" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.75" cy="8" r="1.25" fill="currentColor"/></svg>
               </span>
-              <span class="aw-iconbtn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg>
+            </span>
+          </li>
+          <li class="aw-card" data-state="done" data-saved="true">
+            <span class="aw-card__bookmark aw-card__bookmark--saved" aria-hidden="true">
+              <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 2.5h8v11l-4-2.7-4 2.7z" fill="currentColor" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="aw-card__title">Reconcile this morning's Stripe payouts against the QuickBooks ledger</span>
+            <span class="aw-card__actions" aria-hidden="true">
+              <span class="aw-card__pip"></span>
+              <span class="aw-card__more">
+                <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="3.25" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.75" cy="8" r="1.25" fill="currentColor"/></svg>
               </span>
-              <span class="aw-iconbtn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg>
-              </span>
-              <span class="aw-iconbtn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+            </span>
+          </li>
+          <li class="aw-card" data-state="done" data-saved="true">
+            <span class="aw-card__bookmark aw-card__bookmark--saved" aria-hidden="true">
+              <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 2.5h8v11l-4-2.7-4 2.7z" fill="currentColor" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="aw-card__title">Pull the latest funding round and exec team for every lead in this Airtable</span>
+            <span class="aw-card__actions" aria-hidden="true">
+              <span class="aw-card__pip"></span>
+              <span class="aw-card__more">
+                <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="3.25" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.75" cy="8" r="1.25" fill="currentColor"/></svg>
               </span>
             </span>
           </li>
           <li class="aw-card" data-state="done">
-            <span class="aw-card__time">2m ago</span>
-            <span class="aw-card__title">Reply to the latest five customer emails in my inbox</span>
+            <span class="aw-card__bookmark" aria-hidden="true">
+              <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 2.5h8v11l-4-2.7-4 2.7z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="aw-card__title">Triage every Sentry alert from this deploy and tag the owners in Slack</span>
             <span class="aw-card__actions" aria-hidden="true">
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
+              <span class="aw-card__pip"></span>
+              <span class="aw-card__more">
+                <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="3.25" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.75" cy="8" r="1.25" fill="currentColor"/></svg>
+              </span>
+            </span>
+          </li>
+          <li class="aw-card" data-state="done" data-saved="true">
+            <span class="aw-card__bookmark aw-card__bookmark--saved" aria-hidden="true">
+              <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 2.5h8v11l-4-2.7-4 2.7z" fill="currentColor" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="aw-card__title">Reply to today's customer-support emails in the tone of my last five drafts</span>
+            <span class="aw-card__actions" aria-hidden="true">
+              <span class="aw-card__pip"></span>
+              <span class="aw-card__more">
+                <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="3.25" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.75" cy="8" r="1.25" fill="currentColor"/></svg>
+              </span>
             </span>
           </li>
           <li class="aw-card" data-state="done">
-            <span class="aw-card__time">17m ago</span>
-            <span class="aw-card__title">Pull each invoice off Stripe and log it in the spreadsheet</span>
-            <span class="aw-card__actions" aria-hidden="true">
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
+            <span class="aw-card__bookmark" aria-hidden="true">
+              <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 2.5h8v11l-4-2.7-4 2.7z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </span>
-          </li>
-          <li class="aw-card" data-state="done">
-            <span class="aw-card__time">1h ago</span>
-            <span class="aw-card__title">Look up every company on this list and grab their last funding round</span>
+            <span class="aw-card__title">File a JIRA ticket from this Slack thread with the right component and assignee</span>
             <span class="aw-card__actions" aria-hidden="true">
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
-            </span>
-          </li>
-          <li class="aw-card" data-state="done">
-            <span class="aw-card__time">yesterday</span>
-            <span class="aw-card__title">Fix the typo on this page across the whole repo</span>
-            <span class="aw-card__actions" aria-hidden="true">
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
+              <span class="aw-card__pip"></span>
+              <span class="aw-card__more">
+                <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="3.25" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.75" cy="8" r="1.25" fill="currentColor"/></svg>
+              </span>
             </span>
           </li>
           <li class="aw-card" data-state="canceled">
-            <span class="aw-card__time">2d ago</span>
+            <span class="aw-card__pinSlot" aria-hidden="true"></span>
             <span class="aw-card__title">Cancelled</span>
             <span class="aw-card__actions" aria-hidden="true">
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 9 8 9"></polyline></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"></path></svg></span>
-              <span class="aw-iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 21 6"></polyline><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></span>
+              <span class="aw-card__pip"></span>
+              <span class="aw-card__more">
+                <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="3.25" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.75" cy="8" r="1.25" fill="currentColor"/></svg>
+              </span>
             </span>
           </li>
         </ul>
