@@ -336,8 +336,8 @@ html, body {
 .sidebar-resizer:focus-visible::before,
 .sidebar-resizer:active::before {
   width: 2px;
-  background: oklch(0.72 0.10 245 / 0.62);
-  box-shadow: 0 0 18px oklch(0.72 0.10 245 / 0.30);
+  background: rgba(142, 197, 255, 0.62);
+  box-shadow: 0 0 18px rgba(142, 197, 255, 0.30);
 }
 .sidebar-resizer:focus-visible {
   outline: none;
@@ -486,8 +486,8 @@ html, body {
   overflow: hidden;
 }
 .account-avatar[data-signed-in='true'] {
-  background: oklch(0.78 0.16 245 / 0.20);
-  color: oklch(0.92 0.06 245);
+  background: rgba(142, 197, 255, 0.20);
+  color: var(--color-accent);
 }
 
 .account-pop {
@@ -712,11 +712,11 @@ html, body {
 .btn:hover { background: oklch(1 0 0 / 0.10); border-color: var(--color-line-strong); }
 .btn:active { transform: scale(0.97); }
 .btn--primary {
-  background: oklch(0.78 0.16 245 / 0.18);
-  color: oklch(0.92 0.06 245);
-  border-color: oklch(0.78 0.16 245 / 0.28);
+  background: rgba(142, 197, 255, 0.18);
+  color: var(--color-accent);
+  border-color: rgba(142, 197, 255, 0.28);
 }
-.btn--primary:hover { background: oklch(0.78 0.16 245 / 0.28); }
+.btn--primary:hover { background: rgba(142, 197, 255, 0.28); }
 .btn--ghost { background: transparent; border-color: transparent; color: var(--color-fg-muted); }
 
 /* Neutral buttons — translucent glass look, no accent color. Used as a pair
@@ -1255,7 +1255,7 @@ html, body {
 .settings__input::placeholder { color: var(--color-fg-dim); }
 .settings__input:focus {
   outline: none;
-  border-color: oklch(0.78 0.16 245 / 0.55);
+  border-color: rgba(142, 197, 255, 0.55);
   background: oklch(1 0 0 / 0.06);
 }
 
@@ -1307,7 +1307,7 @@ html, body {
 }
 .settings__segmented__item:focus-visible {
   outline: none;
-  border-color: oklch(0.78 0.16 245 / 0.55);
+  border-color: rgba(142, 197, 255, 0.55);
 }
 
 .shortcut-display {
@@ -1330,9 +1330,9 @@ html, body {
   border-color: var(--color-line-strong);
 }
 .shortcut-display--capturing {
-  border-color: oklch(0.78 0.16 245 / 0.55);
-  background: oklch(0.78 0.16 245 / 0.08);
-  box-shadow: 0 0 0 3px oklch(0.78 0.16 245 / 0.10);
+  border-color: rgba(142, 197, 255, 0.55);
+  background: rgba(142, 197, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(142, 197, 255, 0.10);
 }
 .shortcut-display__hint {
   font-size: 12.5px;
@@ -1389,7 +1389,7 @@ html, body {
 }
 .field select { min-height: 34px; }
 .field input:focus,
-.field select:focus { outline: none; border-color: oklch(0.78 0.16 245 / 0.55); }
+.field select:focus { outline: none; border-color: rgba(142, 197, 255, 0.55); }
 .account-row { display: flex; align-items: center; gap: 8px; }
 .field__hint,
 .field__error {
@@ -1399,4 +1399,3 @@ html, body {
   color: var(--color-fg-muted);
 }
 .field__error { color: oklch(0.82 0.14 42); }
-

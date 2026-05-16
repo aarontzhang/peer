@@ -29,7 +29,7 @@
 
   /* Brand & status --------------------------------------------------- */
   --color-accent:       #8ec5ff;                /* peer blue */
-  --color-accent-2:     #b8dcff;                /* lighter accent */
+  --color-accent-2:     #8ec5ff;                /* peer blue */
   --color-accent-soft:  rgba(142, 197, 255, 0.12);
   --color-accent-glow:  rgba(142, 197, 255, 0.55);
 

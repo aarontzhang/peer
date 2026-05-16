@@ -12,7 +12,7 @@ export default function handler(req, res) {
     main{width:min(420px,calc(100vw - 40px));border:1px solid #3a3833;border-radius:12px;padding:24px;background:#20201e;text-align:center}
     h1{font-size:22px;margin:0 0 8px}
     p{color:#b9b3a8;margin:0 0 18px}
-    button{box-sizing:border-box;border-radius:8px;border:1px solid #5590da;padding:10px 18px;font:inherit;background:#3c79c8;color:white;font-weight:600;cursor:pointer}
+    button{box-sizing:border-box;border-radius:8px;border:1px solid #8ec5ff;padding:10px 18px;font:inherit;background:#8ec5ff;color:#151515;font-weight:600;cursor:pointer}
     code{display:block;white-space:pre-wrap;word-break:break-all;background:#111;padding:12px;border-radius:8px;margin-top:14px;color:#f08a8a;text-align:left}
   </style>
 </head>

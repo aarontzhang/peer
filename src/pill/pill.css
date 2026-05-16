@@ -42,7 +42,7 @@ html, body, #root {
   border-color: oklch(0.66 0.22 22 / 0.75);
 }
 .pill[data-state='processing'] {
-  border-color: oklch(0.78 0.16 245 / 0.45);
+  border-color: rgba(142, 197, 255, 0.45);
 }
 .pill[data-state='done'] {
   border-color: oklch(0.74 0.16 156 / 0.62);
@@ -130,12 +130,12 @@ html, body, #root {
 }
 
 .pill__review-btn--send {
-  background: oklch(0.78 0.16 245);
+  background: var(--color-accent);
   color: oklch(0.17 0.006 82);
-  box-shadow: 0 2px 6px oklch(0.78 0.16 245 / 0.32);
+  box-shadow: 0 2px 6px rgba(142, 197, 255, 0.32);
 }
 .pill__review-btn--send:hover {
-  background: oklch(0.84 0.16 245);
+  background: var(--color-accent);
 }
 
 /* ─── Bottom: 3-dot recording indicator ────────────────────────────────── */

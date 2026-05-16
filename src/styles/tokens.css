@@ -18,8 +18,8 @@
   --color-fg-muted: oklch(0.75 0.006 82);
   --color-fg-dim: oklch(0.56 0.007 82);
 
-  --color-accent: oklch(0.78 0.16 245);
-  --color-accent-soft: oklch(0.78 0.16 245 / 0.12);
+  --color-accent: #8ec5ff;
+  --color-accent-soft: rgba(142, 197, 255, 0.12);
   --color-rec: oklch(0.66 0.22 22);
   --color-rec-glow: oklch(0.66 0.22 22 / 0.55);
 
