@@ -449,6 +449,14 @@ kbd {
 .section__head {
   margin-bottom: 40px;
 }
+.section__head--center {
+  text-align: center;
+}
+.section__head--center .section__lede {
+  max-width: 64ch;
+  margin-left: auto;
+  margin-right: auto;
+}
 
 .section__title {
   margin: 0 0 22px;
