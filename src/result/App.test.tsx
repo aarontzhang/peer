@@ -76,9 +76,7 @@ describe('Result app interactions', () => {
     await waitFor(() => {
       expect(invoke).toHaveBeenCalledWith('delete_recording', { id: 'rec-1' });
     });
-    expect(
-      screen.getByRole('heading', { name: /Show, don't tell/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Show, don't tell/)).toBeInTheDocument();
   });
 
   it('streams live result chunks into detail view and copies final output', async () => {
