@@ -344,9 +344,10 @@ function FeedEmpty({ tab }: { tab: Tab }) {
           <span className="feed-empty__accent">Save</span> what you'll run again.
         </div>
         <div className="feed-empty__sub">
-          Tap the <SavedIcon /> on any recording in History to keep its
-          instructions here, ready to hand to an agent whenever you need them.
+          Bookmark a recording in History and it lives here — ready to hand to
+          an agent the next time you need the same workflow.
         </div>
+        <FlowDiagram variant="saved" />
       </div>
     );
   }
@@ -356,18 +357,120 @@ function FeedEmpty({ tab }: { tab: Tab }) {
         <span className="feed-empty__accent">Show</span>, don't tell.
       </div>
       <div className="feed-empty__sub">
-        Record yourself doing a task once. Peer turns your screen and narration
-        into a repeatable instruction set any computer-use agent can replay.
+        Record once with the floating pill. Peer turns your screen and
+        narration into a repeatable instruction set any agent can replay.
       </div>
-      <button
-        type="button"
-        className="feed-empty__cta"
-        onClick={() => { void ipc.startRecording(); }}
-      >
-        <span className="feed-empty__cta-dot" aria-hidden />
-        Start your first recording
-      </button>
+      <FlowDiagram variant="history" />
     </div>
+  );
+}
+
+/** Three connected nodes that mirror the recording → instructions → replay
+ *  loop. The accented node is whichever action the user needs to take next:
+ *  the pill (history) or the bookmark (saved). No labels — the glyphs map to
+ *  surfaces the user will recognize in the app. */
+function FlowDiagram({ variant }: { variant: 'history' | 'saved' }) {
+  const ACCENT = 'var(--color-accent)';
+  const MUTED = 'var(--color-fg-dim)';
+  const RING = 'var(--color-line-strong)';
+
+  const nodeCenters = [40, 130, 220];
+  const radius = 26;
+
+  return (
+    <svg
+      className="feed-empty__flow"
+      viewBox="0 0 260 64"
+      role="img"
+      aria-label={
+        variant === 'history'
+          ? 'Recording flow: pill captures, instructions are written, agent replays'
+          : 'Saved flow: a recording is bookmarked, then handed to an agent'
+      }
+    >
+      {/* Connector arrows between the three nodes. */}
+      {[0, 1].map((i) => {
+        const x1 = nodeCenters[i] + radius + 2;
+        const x2 = nodeCenters[i + 1] - radius - 2;
+        return (
+          <g key={i} stroke={MUTED} strokeWidth="1.2" fill="none" strokeLinecap="round">
+            <line x1={x1} y1="32" x2={x2 - 4} y2="32" />
+            <polyline points={`${x2 - 6},29 ${x2 - 2},32 ${x2 - 6},35`} strokeLinejoin="round" />
+          </g>
+        );
+      })}
+
+      {/* Three nodes. The accented index marks the action the user takes. */}
+      {nodeCenters.map((cx, i) => {
+        const accentIdx = variant === 'history' ? 0 : 1;
+        const isAccent = i === accentIdx;
+        return (
+          <g key={i}>
+            <circle
+              cx={cx}
+              cy="32"
+              r={radius}
+              fill="none"
+              stroke={isAccent ? ACCENT : RING}
+              strokeWidth={isAccent ? 1.5 : 1.1}
+            />
+            <g transform={`translate(${cx}, 32)`} stroke={isAccent ? ACCENT : MUTED} fill="none" strokeLinecap="round" strokeLinejoin="round">
+              {variant === 'history' && i === 0 && <NodePill />}
+              {variant === 'history' && i === 1 && <NodeDoc />}
+              {variant === 'history' && i === 2 && <NodePlay filled={isAccent} />}
+              {variant === 'saved' && i === 0 && <NodeDoc />}
+              {variant === 'saved' && i === 1 && <NodeBookmark filled={isAccent} />}
+              {variant === 'saved' && i === 2 && <NodePlay filled={false} />}
+            </g>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** Mini silhouette of the floating pill window: a tall rounded rect with the
+ *  brand face dot at its head. Tells the user which surface in the app actually
+ *  starts a recording. */
+function NodePill() {
+  return (
+    <g strokeWidth="1.3">
+      <rect x="-5" y="-12" width="10" height="24" rx="5" />
+      <circle cx="0" cy="-6" r="2.2" fill="currentColor" stroke="none" />
+    </g>
+  );
+}
+
+function NodeDoc() {
+  return (
+    <g strokeWidth="1.3">
+      <rect x="-8" y="-9" width="16" height="18" rx="2" />
+      <line x1="-5" y1="-4" x2="5" y2="-4" />
+      <line x1="-5" y1="0"  x2="5" y2="0"  />
+      <line x1="-5" y1="4"  x2="2" y2="4"  />
+    </g>
+  );
+}
+
+function NodeBookmark({ filled }: { filled: boolean }) {
+  return (
+    <g strokeWidth="1.4">
+      <path
+        d="M-6 -10 L6 -10 L6 11 L0 6 L-6 11 Z"
+        fill={filled ? 'currentColor' : 'none'}
+      />
+    </g>
+  );
+}
+
+function NodePlay({ filled }: { filled: boolean }) {
+  return (
+    <g strokeWidth="1.3">
+      <path
+        d="M-5 -8 L8 0 L-5 8 Z"
+        fill={filled ? 'currentColor' : 'none'}
+      />
+    </g>
   );
 }
 
