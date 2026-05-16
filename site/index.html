@@ -14,7 +14,7 @@
 
   <meta http-equiv="Cache-Control" content="no-store">
   <link rel="stylesheet" href="/styles/tokens.css?v=2">
-  <link rel="stylesheet" href="/site/styles.css?v=22">
+  <link rel="stylesheet" href="/site/styles.css?v=23">
 </head>
 <body>
   <!-- Atmospheric light. Two soft colored blobs + a bottom warm glow simulate
@@ -226,17 +226,16 @@
     <section class="section" id="how" aria-labelledby="how-title">
       <div class="section__head">
         <h2 id="how-title" class="section__title">
-          Show it once. Run it forever.
+          The intent. Not the clicks.
         </h2>
         <p class="section__lede">
-          One recording turns into something you can run whenever you want.
-          No flowcharts. No scripting. Just the thing you already did.
+          Peer doesn't memorize button presses. It watches your screen, listens to you narrate, and distills what you're actually trying to do — so an AI can run the workflow again, even when the page shifts or a step needs judgment.
         </p>
       </div>
 
       <div class="walk">
 
-        <!-- 01 · Record ------------------------------------------------- -->
+        <!-- 01 · Capture ----------------------------------------------- -->
         <article class="walk-stage">
           <div class="walk-stage__visual walk-stage__visual--record" aria-hidden="true">
             <div class="pill-mock" data-state="recording">
@@ -262,43 +261,46 @@
             </span>
           </div>
           <div class="walk-stage__copy">
-            <h3>Press <kbd>Option</kbd> and just do a task.</h3>
-            <p>It'll start recording your screen and audio. Talk through what you're doing. Peer is watching and listening.</p>
+            <span class="walk-stage__num">01 · Capture</span>
+            <h3>Show it once.</h3>
+            <p>Press <kbd>Option</kbd> and walk through the task. Peer watches your screen and listens as you narrate the why.</p>
           </div>
         </article>
 
-        <!-- 02 · Analyze ------------------------------------------------ -->
+        <!-- 02 · Distill ----------------------------------------------- -->
         <article class="walk-stage">
-          <div class="walk-stage__visual walk-stage__visual--analyze" aria-hidden="true">
-            <div class="pill-mock" data-state="processing">
-              <button class="pill-mock__core" type="button" tabindex="-1">
-                <svg class="pill-mock__logo" viewBox="-50 -50 100 100" width="26" height="26">
-                  <g fill="none" stroke="currentColor" stroke-linecap="round">
-                    <circle cx="0" cy="0" r="37" stroke-width="6.5"/>
-                    <circle cx="-15" cy="0" r="10" stroke-width="5.5"/>
-                    <circle cx="15"  cy="0" r="10" stroke-width="5.5"/>
-                    <line x1="-5" y1="0" x2="5" y2="0" stroke-width="5.5"/>
-                  </g>
-                </svg>
-              </button>
-              <span class="pill-mock__handle">
-                <span class="pill-mock__dot"></span>
-                <span class="pill-mock__dot"></span>
-                <span class="pill-mock__dot"></span>
-              </span>
+          <div class="walk-stage__visual walk-stage__visual--distill" aria-hidden="true">
+            <div class="intent-mock">
+              <div class="intent-mock__raw" aria-hidden="true">
+                <span>click 412,187</span>
+                <span>type "inv-"</span>
+                <span>⌘C</span>
+                <span>tab</span>
+                <span>click 720,310</span>
+                <span>⌘V</span>
+              </div>
+              <div class="intent-mock__arrow" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </div>
+              <div class="intent-mock__intent">
+                <span class="intent-mock__step">Open the next invoice</span>
+                <span class="intent-mock__step">Copy customer, amount, date</span>
+                <span class="intent-mock__step">Paste into the Revenue sheet</span>
+              </div>
             </div>
             <span class="walk-caption">
               <span class="walk-caption__dot walk-caption__dot--analyze"></span>
-              Processing
+              Extracting intent
             </span>
           </div>
           <div class="walk-stage__copy">
-            <h3>Peer figures out what matters.</h3>
-            <p>It looks through your recording and finds the parts worth repeating later.</p>
+            <span class="walk-stage__num">02 · Distill</span>
+            <h3>Peer keeps the essence.</h3>
+            <p>Not your coordinates and keystrokes — the meaning behind each step. So the workflow still holds when the page moves or the data changes.</p>
           </div>
         </article>
 
-        <!-- 03 · Output ------------------------------------------------- -->
+        <!-- 03 · Replay ------------------------------------------------ -->
         <article class="walk-stage">
           <div class="walk-stage__visual walk-stage__visual--output" aria-hidden="true">
             <div class="prompt-mock">
@@ -312,12 +314,13 @@
                   <span class="prompt-mock__meta">just now · 0:48</span>
                 </span>
               </div>
-              <div class="prompt-mock__body">For every paid invoice in the Stripe dashboard from this month, open the invoice and copy the customer name, amount, and date. Paste them into the next empty row of the "Revenue" sheet. Put the customer in column A, the amount in column B, and the date in column C. Skip any invoice already logged. Keep going until you reach an invoice from before the first of the month.<span class="prompt-mock__caret"></span></div>
+              <div class="prompt-mock__body">For every paid invoice in Stripe from this month, copy the customer, amount, and date into the next empty row of the "Revenue" sheet. Skip any invoice already logged. Stop when you reach one from before the first.<span class="prompt-mock__caret"></span></div>
             </div>
           </div>
           <div class="walk-stage__copy">
-            <h3>Get a workflow you can run.</h3>
-            <p>Out comes a repeatable action. Hand it to Claude or Cursor, or run it yourself, again and again.</p>
+            <span class="walk-stage__num">03 · Replay</span>
+            <h3>Hand it to your AI.</h3>
+            <p>Out comes a clear workflow your agent can run on its own — in Peer, in Claude, in Cursor. As often as you need.</p>
           </div>
         </article>
 
