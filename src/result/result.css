@@ -157,29 +157,77 @@ html, body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: clamp(40px, 9vh, 88px) clamp(20px, 6vw, 56px);
+  /* Fixed paddings + sizes so the block feels intentional regardless of window
+     width. Text reflows by adding lines, not by shrinking. */
+  padding: 64px 28px;
   color: var(--color-fg-muted);
-  gap: clamp(8px, 1.6vh, 14px);
+  gap: 18px;
 }
 .feed-empty__title {
-  font-size: clamp(20px, 5.2vw, 30px);
+  font-size: 32px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.012em;
   line-height: 1.15;
   color: var(--color-fg);
 }
 .feed-empty__accent { color: var(--color-accent); }
 .feed-empty__sub {
-  font-size: clamp(12px, 1.7vw, 14px);
-  max-width: 44ch;
-  line-height: 1.6;
+  font-size: 15px;
+  max-width: 56ch;
+  line-height: 1.55;
   text-wrap: balance;
 }
 .feed-empty__flow {
-  margin-top: clamp(12px, 2.4vh, 22px);
-  width: clamp(180px, 38vw, 260px);
-  height: auto;
-  display: block;
+  margin-top: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  color: var(--color-fg-dim);
+}
+.feed-empty__flow-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.feed-empty__flow-step {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  /* Reserve space for the label so the row's center line stays on the node. */
+  padding-bottom: 0;
+}
+.feed-empty__flow-node {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--color-line-strong);
+  display: inline-grid;
+  place-items: center;
+  color: var(--color-fg-dim);
+  background: oklch(1 0 0 / 0.015);
+}
+.feed-empty__flow-node--accent {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: oklch(1 0 0 / 0.025);
+}
+.feed-empty__flow-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-fg-muted);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.feed-empty__flow-label--accent { color: var(--color-fg); }
+.feed-empty__flow-arrow {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-fg-dim);
+  /* Lift the arrow to align with the center of the 56px node row, since the
+     step block is taller (node + label). */
+  margin-top: -22px;
 }
 
 /* ─── card ─────────────────────────────────────────────────────────────── */

@@ -344,8 +344,8 @@ function FeedEmpty({ tab }: { tab: Tab }) {
           <span className="feed-empty__accent">Save</span> what you'll run again.
         </div>
         <div className="feed-empty__sub">
-          Bookmark a recording in History and it lives here — ready to hand to
-          an agent the next time you need the same workflow.
+          Bookmark a recording in History and it lives here, ready to hand to an
+          agent the next time you need the same workflow.
         </div>
         <FlowDiagram variant="saved" />
       </div>
@@ -358,119 +358,112 @@ function FeedEmpty({ tab }: { tab: Tab }) {
       </div>
       <div className="feed-empty__sub">
         Record once with the floating pill. Peer turns your screen and
-        narration into a repeatable instruction set any agent can replay.
+        narration into a repeatable workflow any agent can replay.
       </div>
       <FlowDiagram variant="history" />
     </div>
   );
 }
 
-/** Three connected nodes that mirror the recording → instructions → replay
- *  loop. The accented node is whichever action the user needs to take next:
- *  the pill (history) or the bookmark (saved). No labels — the glyphs map to
- *  surfaces the user will recognize in the app. */
+/** Three labeled steps that mirror the actual app surfaces a user touches:
+ *  the floating pill, a History card, and the Run action. The accented step
+ *  is the one the user is missing — recording for History, bookmarking for
+ *  Saved. Labels are essential here; the glyphs alone aren't readable. */
 function FlowDiagram({ variant }: { variant: 'history' | 'saved' }) {
-  const ACCENT = 'var(--color-accent)';
-  const MUTED = 'var(--color-fg-dim)';
-  const RING = 'var(--color-line-strong)';
-
-  const nodeCenters = [40, 130, 220];
-  const radius = 26;
+  const steps =
+    variant === 'history'
+      ? [
+          { label: 'Record', glyph: <GlyphPill />, accent: true },
+          { label: 'Review', glyph: <GlyphCard />, accent: false },
+          { label: 'Replay', glyph: <GlyphPlay />, accent: false },
+        ]
+      : [
+          { label: 'Record', glyph: <GlyphCard />, accent: false },
+          { label: 'Bookmark', glyph: <GlyphBookmark filled />, accent: true },
+          { label: 'Replay', glyph: <GlyphPlay />, accent: false },
+        ];
 
   return (
-    <svg
+    <div
       className="feed-empty__flow"
-      viewBox="0 0 260 64"
       role="img"
-      aria-label={
-        variant === 'history'
-          ? 'Recording flow: pill captures, instructions are written, agent replays'
-          : 'Saved flow: a recording is bookmarked, then handed to an agent'
-      }
+      aria-label={steps.map((s) => s.label).join(' then ')}
     >
-      {/* Connector arrows between the three nodes. */}
-      {[0, 1].map((i) => {
-        const x1 = nodeCenters[i] + radius + 2;
-        const x2 = nodeCenters[i + 1] - radius - 2;
-        return (
-          <g key={i} stroke={MUTED} strokeWidth="1.2" fill="none" strokeLinecap="round">
-            <line x1={x1} y1="32" x2={x2 - 4} y2="32" />
-            <polyline points={`${x2 - 6},29 ${x2 - 2},32 ${x2 - 6},35`} strokeLinejoin="round" />
-          </g>
-        );
-      })}
-
-      {/* Three nodes. The accented index marks the action the user takes. */}
-      {nodeCenters.map((cx, i) => {
-        const accentIdx = variant === 'history' ? 0 : 1;
-        const isAccent = i === accentIdx;
-        return (
-          <g key={i}>
-            <circle
-              cx={cx}
-              cy="32"
-              r={radius}
-              fill="none"
-              stroke={isAccent ? ACCENT : RING}
-              strokeWidth={isAccent ? 1.5 : 1.1}
-            />
-            <g transform={`translate(${cx}, 32)`} stroke={isAccent ? ACCENT : MUTED} fill="none" strokeLinecap="round" strokeLinejoin="round">
-              {variant === 'history' && i === 0 && <NodePill />}
-              {variant === 'history' && i === 1 && <NodeDoc />}
-              {variant === 'history' && i === 2 && <NodePlay filled={isAccent} />}
-              {variant === 'saved' && i === 0 && <NodeDoc />}
-              {variant === 'saved' && i === 1 && <NodeBookmark filled={isAccent} />}
-              {variant === 'saved' && i === 2 && <NodePlay filled={false} />}
-            </g>
-          </g>
-        );
-      })}
-    </svg>
+      {steps.map((step, i) => (
+        <span key={i} className="feed-empty__flow-row">
+          <span className="feed-empty__flow-step">
+            <span
+              className={
+                'feed-empty__flow-node' +
+                (step.accent ? ' feed-empty__flow-node--accent' : '')
+              }
+            >
+              {step.glyph}
+            </span>
+            <span
+              className={
+                'feed-empty__flow-label' +
+                (step.accent ? ' feed-empty__flow-label--accent' : '')
+              }
+            >
+              {step.label}
+            </span>
+          </span>
+          {i < steps.length - 1 && (
+            <span className="feed-empty__flow-arrow" aria-hidden="true">
+              <svg viewBox="0 0 28 12" width="28" height="12" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2">
+                <line x1="2" y1="6" x2="22" y2="6" />
+                <polyline points="20,3 24,6 20,9" />
+              </svg>
+            </span>
+          )}
+        </span>
+      ))}
+    </div>
   );
 }
 
 /** Mini silhouette of the floating pill window: a tall rounded rect with the
- *  brand face dot at its head. Tells the user which surface in the app actually
- *  starts a recording. */
-function NodePill() {
+ *  brand face dot at its head. Mirrors the actual recording pill. */
+function GlyphPill() {
   return (
-    <g strokeWidth="1.3">
-      <rect x="-5" y="-12" width="10" height="24" rx="5" />
-      <circle cx="0" cy="-6" r="2.2" fill="currentColor" stroke="none" />
-    </g>
+    <svg viewBox="-16 -16 32 32" width="28" height="28" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="-5" y="-13" width="10" height="26" rx="5" strokeWidth="1.4" />
+      <circle cx="0" cy="-6.5" r="2.2" fill="currentColor" stroke="none" />
+    </svg>
   );
 }
 
-function NodeDoc() {
+/** A History card: horizontal rounded rect with a bookmark slot and a title
+ *  line. Matches the card rows users actually see. */
+function GlyphCard() {
   return (
-    <g strokeWidth="1.3">
-      <rect x="-8" y="-9" width="16" height="18" rx="2" />
-      <line x1="-5" y1="-4" x2="5" y2="-4" />
-      <line x1="-5" y1="0"  x2="5" y2="0"  />
-      <line x1="-5" y1="4"  x2="2" y2="4"  />
-    </g>
+    <svg viewBox="-16 -16 32 32" width="28" height="28" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="-13" y="-7" width="26" height="14" rx="3" strokeWidth="1.3" />
+      <path d="M-9 -4 L-9 4 L-7 2.6 L-5 4 L-5 -4 Z" strokeWidth="1.1" />
+      <line x1="-2" y1="-1.5" x2="10" y2="-1.5" strokeWidth="1.1" />
+      <line x1="-2" y1="2"    x2="6"  y2="2"    strokeWidth="1.1" />
+    </svg>
   );
 }
 
-function NodeBookmark({ filled }: { filled: boolean }) {
+function GlyphBookmark({ filled }: { filled: boolean }) {
   return (
-    <g strokeWidth="1.4">
+    <svg viewBox="-16 -16 32 32" width="28" height="28" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
       <path
-        d="M-6 -10 L6 -10 L6 11 L0 6 L-6 11 Z"
+        d="M-8 -12 L8 -12 L8 13 L0 7 L-8 13 Z"
         fill={filled ? 'currentColor' : 'none'}
+        strokeWidth="1.4"
       />
-    </g>
+    </svg>
   );
 }
 
-function NodePlay({ filled }: { filled: boolean }) {
+function GlyphPlay() {
   return (
-    <g strokeWidth="1.3">
-      <path
-        d="M-5 -8 L8 0 L-5 8 Z"
-        fill={filled ? 'currentColor' : 'none'}
-      />
-    </g>
+    <svg viewBox="-16 -16 32 32" width="28" height="28" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M-6 -10 L10 0 L-6 10 Z" strokeWidth="1.4" fill="currentColor" />
+    </svg>
   );
 }
 
