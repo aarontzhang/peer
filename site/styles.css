@@ -190,7 +190,7 @@ main { position: relative; z-index: 2; overflow: visible; }
 }
 
 .hero__lede {
-  max-width: 56ch;
+  max-width: 1040px;
   margin: 0 auto 32px;
   color: var(--text-2);
   font-size: clamp(17px, 1.45vw, 20px);
@@ -453,7 +453,7 @@ kbd {
   text-align: center;
 }
 .section__head--center .section__lede {
-  max-width: 64ch;
+  max-width: 1040px;
   margin-left: auto;
   margin-right: auto;
 }
