@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test": "pnpm test:frontend && pnpm test:rust",
+    "test:frontend": "vitest run",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "test:smoke:mac": "bash scripts/smoke-macos.sh",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "pnpm sidecar && set -a && . ./.env.local && set +a && tauri dev",
@@ -24,13 +28,18 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
     "@tauri-apps/cli": "^2.1.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^29.1.1",
     "tailwindcss": "^4.0.0",
-    "@tailwindcss/vite": "^4.0.0",
     "typescript": "^5.6.3",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "vitest": "^4.1.6"
   }
 }

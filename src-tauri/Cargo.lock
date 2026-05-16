@@ -2994,6 +2994,7 @@ dependencies = [
  "tauri-plugin-deep-link",
  "tauri-plugin-global-shortcut",
  "tauri-plugin-single-instance",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",

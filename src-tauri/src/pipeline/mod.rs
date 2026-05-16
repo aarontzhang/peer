@@ -249,10 +249,7 @@ async fn generate_title(saas: &SaasClient, prompt: &str) -> Result<String> {
     let res: TitleResponse = saas
         .post_json("/api/title", json!({ "prompt": prompt }))
         .await?;
-    let title = res
-        .title
-        .map(|t| t.trim().to_string())
-        .unwrap_or_default();
+    let title = res.title.map(|t| t.trim().to_string()).unwrap_or_default();
     tracing::info!(
         elapsed_ms = started.elapsed().as_millis(),
         chars = title.len(),
@@ -463,4 +460,44 @@ pub(crate) fn tail_stderr(stderr: &[u8]) -> String {
         out.push("no output");
     }
     out.join(" | ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{first_line, normalize_prompt_text, tail_stderr};
+
+    #[test]
+    fn normalizes_markdown_prompt_text() {
+        let input = r#"
+```markdown
+# Ship the fix
+
+> context
+
+- [x] **Update** the [button](https://example.com)
+1. Capture `state`
+~~old note~~
+```
+"#;
+
+        assert_eq!(
+            normalize_prompt_text(input),
+            "Ship the fix\n\ncontext\n\nUpdate the button\nCapture state\nold note"
+        );
+    }
+
+    #[test]
+    fn first_line_ignores_empty_lines_and_heading_markers() {
+        assert_eq!(first_line("\n\n### Useful title\nbody"), "Useful title");
+        assert_eq!(first_line("\n\n"), "Untitled");
+    }
+
+    #[test]
+    fn stderr_tail_keeps_last_non_empty_lines() {
+        assert_eq!(
+            tail_stderr(b"banner\n\nline one\nline two\nline three\nline four\n"),
+            "line two | line three | line four"
+        );
+        assert_eq!(tail_stderr(b"\n\n"), "no output");
+    }
 }

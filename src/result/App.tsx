@@ -37,7 +37,7 @@ function getStoredPinnedIds(): Set<string> {
 
 function getStoredTab(): Tab {
   const raw = window.localStorage.getItem(ACTIVE_TAB_KEY);
-  return raw === 'history' ? 'history' : 'saved';
+  return raw === 'saved' ? 'saved' : 'history';
 }
 
 export function App() {

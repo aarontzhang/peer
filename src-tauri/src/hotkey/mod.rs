@@ -286,3 +286,74 @@ fn status_for(keybind: &RecordingKeybind, availability: &HotkeyAvailability) -> 
         None => HotkeyStatus::unknown(keybind.clone()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        load_permission_mode, load_recording_keybind, save_permission_mode, save_recording_keybind,
+        status_for, HotkeyAvailability, PermissionMode, RecordingKeybind,
+    };
+    use tempfile::tempdir;
+
+    #[test]
+    fn settings_default_to_right_option_and_ask_mode() {
+        let dir = tempdir().unwrap();
+
+        assert_eq!(
+            load_recording_keybind(dir.path()),
+            RecordingKeybind::RightOption
+        );
+        assert_eq!(load_permission_mode(dir.path()), PermissionMode::Ask);
+    }
+
+    #[test]
+    fn settings_round_trip_keybind_and_permission_mode() {
+        let dir = tempdir().unwrap();
+        let keybind = RecordingKeybind::Chord {
+            mods: vec!["super".into(), "shift".into()],
+            code: "KeyK".into(),
+            label: "⌘+⇧+K".into(),
+        };
+
+        save_recording_keybind(dir.path(), &keybind).unwrap();
+        save_permission_mode(dir.path(), PermissionMode::Bypass).unwrap();
+
+        assert_eq!(load_recording_keybind(dir.path()), keybind);
+        assert_eq!(load_permission_mode(dir.path()), PermissionMode::Bypass);
+    }
+
+    #[test]
+    fn malformed_settings_fall_back_to_defaults() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("settings.json"), b"not json").unwrap();
+
+        assert_eq!(
+            load_recording_keybind(dir.path()),
+            RecordingKeybind::RightOption
+        );
+        assert_eq!(load_permission_mode(dir.path()), PermissionMode::Ask);
+    }
+
+    #[test]
+    fn status_uses_selected_hotkey_backend() {
+        let availability = HotkeyAvailability {
+            modifier_tap: Some(Err("Accessibility denied".into())),
+            chord: Some(Ok(())),
+        };
+
+        let right_option = status_for(&RecordingKeybind::RightOption, &availability);
+        assert!(!right_option.installed);
+        assert_eq!(right_option.reason.as_deref(), Some("Accessibility denied"));
+
+        let chord = status_for(
+            &RecordingKeybind::Chord {
+                mods: vec!["super".into()],
+                code: "KeyK".into(),
+                label: "⌘+K".into(),
+            },
+            &availability,
+        );
+        assert!(chord.installed);
+        assert_eq!(chord.reason, None);
+    }
+}

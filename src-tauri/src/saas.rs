@@ -507,8 +507,60 @@ fn loopback_callback_page() -> String {
 /// Tokens travel in the URL fragment — Supabase implicit flow keeps them
 /// out of any server log or `Referer` header, so we only ever see them here.
 pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
+    let expected = PENDING_STATE.lock().clone();
+    let outcome = parse_auth_deep_link(raw_url, expected.as_deref(), deep_link_scheme())?;
+    if outcome.consumes_pending_state() {
+        let _ = PENDING_STATE.lock().take();
+    }
+
+    match outcome {
+        AuthLinkOutcome::SignedIn(session) => {
+            write_session(&session)?;
+            let email = decode_email_from_jwt(&session.access_token);
+            let _ = app.emit("auth:changed", json!({ "signedIn": true, "email": email }));
+            let _ = crate::reveal_result_window(app, true);
+        }
+        AuthLinkOutcome::NoAccount => {
+            let _ = app.emit(
+                "auth:changed",
+                json!({
+                    "signedIn": false,
+                    "email": null,
+                    "reason": "no_account",
+                }),
+            );
+        }
+        AuthLinkOutcome::OAuthError(raw_msg) | AuthLinkOutcome::Rejected(raw_msg) => {
+            let _ = app.emit(
+                "auth:changed",
+                json!({ "signedIn": false, "email": null, "error": raw_msg }),
+            );
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug)]
+enum AuthLinkOutcome {
+    SignedIn(Session),
+    NoAccount,
+    OAuthError(String),
+    Rejected(String),
+}
+
+impl AuthLinkOutcome {
+    fn consumes_pending_state(&self) -> bool {
+        matches!(self, Self::SignedIn(_) | Self::Rejected(_))
+    }
+}
+
+fn parse_auth_deep_link(
+    raw_url: &str,
+    expected_nonce: Option<&str>,
+    expected_scheme: &str,
+) -> Result<AuthLinkOutcome> {
     let parsed = url::Url::parse(raw_url).context("parsing deep link URL")?;
-    if parsed.scheme() != deep_link_scheme() {
+    if parsed.scheme() != expected_scheme {
         return Err(anyhow!("unexpected deep link scheme: {}", parsed.scheme()));
     }
     let host_or_path = parsed.host_str().unwrap_or("").to_string() + parsed.path();
@@ -566,77 +618,41 @@ pub fn handle_deep_link(app: &AppHandle, raw_url: &str) -> Result<()> {
         tracing::warn!(error = %raw_msg, no_account = is_no_account, "OAuth callback returned error");
 
         if is_no_account {
-            let _ = app.emit(
-                "auth:changed",
-                json!({
-                    "signedIn": false,
-                    "email": null,
-                    "reason": "no_account",
-                }),
-            );
+            return Ok(AuthLinkOutcome::NoAccount);
         } else {
-            let _ = app.emit(
-                "auth:changed",
-                json!({ "signedIn": false, "email": null, "error": raw_msg }),
-            );
+            return Ok(AuthLinkOutcome::OAuthError(raw_msg));
         }
-        return Ok(());
     }
 
-    let expected = PENDING_STATE.lock().take();
-    match (expected.as_deref(), nonce_param.as_deref()) {
+    match (expected_nonce, nonce_param.as_deref()) {
         (Some(expected), Some(got)) if expected == got => {}
         _ => {
             tracing::warn!("deep link nonce mismatch; ignoring");
-            let _ = app.emit(
-                "auth:changed",
-                json!({
-                    "signedIn": false,
-                    "email": null,
-                    "error": "Sign-in nonce mismatch — open Settings and try again.",
-                }),
-            );
-            return Ok(());
+            return Ok(AuthLinkOutcome::Rejected(
+                "Sign-in nonce mismatch — open Settings and try again.".into(),
+            ));
         }
     }
 
     let Some(access_token) = access_token else {
         tracing::warn!("deep link missing access_token");
-        let _ = app.emit(
-            "auth:changed",
-            json!({
-                "signedIn": false,
-                "email": null,
-                "error": "Sign-in returned no tokens — try again.",
-            }),
-        );
-        return Ok(());
+        return Ok(AuthLinkOutcome::Rejected(
+            "Sign-in returned no tokens — try again.".into(),
+        ));
     };
     let Some(refresh_token) = refresh_token else {
         tracing::warn!("deep link missing refresh_token");
-        let _ = app.emit(
-            "auth:changed",
-            json!({
-                "signedIn": false,
-                "email": null,
-                "error": "Sign-in returned no tokens — try again.",
-            }),
-        );
-        return Ok(());
+        return Ok(AuthLinkOutcome::Rejected(
+            "Sign-in returned no tokens — try again.".into(),
+        ));
     };
 
     let computed_expires_at = expires_at.unwrap_or_else(|| now_secs() + expires_in.unwrap_or(3600));
-    let session = Session {
+    Ok(AuthLinkOutcome::SignedIn(Session {
         access_token,
         refresh_token,
         expires_at: computed_expires_at,
-    };
-    write_session(&session)?;
-
-    let email = decode_email_from_jwt(&session.access_token);
-    let _ = app.emit("auth:changed", json!({ "signedIn": true, "email": email }));
-    let _ = crate::reveal_result_window(app, true);
-    Ok(())
+    }))
 }
 
 pub fn sign_out(app: &AppHandle) -> Result<()> {
@@ -883,4 +899,77 @@ fn percent_encode(input: &str) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{decode_email_from_jwt, parse_auth_deep_link, AuthLinkOutcome};
+    use base64::Engine;
+    use serde_json::json;
+
+    fn jwt_with_email(email: &str) -> String {
+        let header = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(r#"{"alg":"none"}"#);
+        let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(json!({ "email": email }).to_string());
+        format!("{header}.{payload}.sig")
+    }
+
+    #[test]
+    fn deep_link_parser_accepts_valid_tokens_and_nonce() {
+        let access = jwt_with_email("user@example.com");
+        let raw = format!(
+            "peer-dev://auth?nonce=abc#access_token={access}&refresh_token=refresh&expires_at=12345"
+        );
+
+        let outcome = parse_auth_deep_link(&raw, Some("abc"), "peer-dev").unwrap();
+
+        let AuthLinkOutcome::SignedIn(session) = outcome else {
+            panic!("expected signed-in outcome");
+        };
+        assert_eq!(session.access_token, access);
+        assert_eq!(session.refresh_token, "refresh");
+        assert_eq!(session.expires_at, 12345);
+        assert_eq!(
+            decode_email_from_jwt(&session.access_token).as_deref(),
+            Some("user@example.com")
+        );
+    }
+
+    #[test]
+    fn deep_link_parser_maps_signup_disabled_to_no_account() {
+        let raw = "peer-dev://auth?nonce=abc#error=access_denied&error_code=signup_disabled&error_description=Signups%20not%20allowed";
+
+        let outcome = parse_auth_deep_link(raw, Some("abc"), "peer-dev").unwrap();
+
+        assert!(matches!(outcome, AuthLinkOutcome::NoAccount));
+        assert!(!outcome.consumes_pending_state());
+    }
+
+    #[test]
+    fn deep_link_parser_rejects_nonce_mismatch_and_missing_tokens() {
+        let access = jwt_with_email("user@example.com");
+        let mismatch = format!(
+            "peer-dev://auth?nonce=wrong#access_token={access}&refresh_token=refresh&expires_in=60"
+        );
+        let missing = "peer-dev://auth?nonce=abc#access_token=only-access";
+
+        let mismatch = parse_auth_deep_link(&mismatch, Some("abc"), "peer-dev").unwrap();
+        let missing = parse_auth_deep_link(missing, Some("abc"), "peer-dev").unwrap();
+
+        assert!(
+            matches!(mismatch, AuthLinkOutcome::Rejected(ref msg) if msg.contains("nonce mismatch"))
+        );
+        assert!(mismatch.consumes_pending_state());
+        assert!(matches!(missing, AuthLinkOutcome::Rejected(ref msg) if msg.contains("no tokens")));
+        assert!(missing.consumes_pending_state());
+    }
+
+    #[test]
+    fn deep_link_parser_rejects_unexpected_scheme_or_target() {
+        let bad_scheme = parse_auth_deep_link("peer://auth#x=1", Some("abc"), "peer-dev");
+        let bad_target = parse_auth_deep_link("peer-dev://settings#x=1", Some("abc"), "peer-dev");
+
+        assert!(bad_scheme.is_err());
+        assert!(bad_target.is_err());
+    }
 }

@@ -45,11 +45,18 @@ export function ConfirmDialog({
   const confirmClass = confirmDestructive
     ? 'btn btn--danger'
     : 'btn btn--neutral btn--neutralLight';
+  const titleId = 'confirm-dialog-title';
 
   return (
-    <div className="settings" role="dialog" aria-modal="true" onClick={() => !busy && onCancel()}>
+    <div
+      className="settings"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onClick={() => !busy && onCancel()}
+    >
       <div className="settings__panel confirm__panel" onClick={(e) => e.stopPropagation()}>
-        <h2 className="settings__title">{title}</h2>
+        <h2 className="settings__title" id={titleId}>{title}</h2>
         <p className="confirm__message">{message}</p>
         <div className="settings__actions">
           <button

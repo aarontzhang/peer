@@ -258,3 +258,93 @@ impl RecordingStatus {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{Db, Recording, RecordingStatus};
+    use chrono::Utc;
+    use tempfile::tempdir;
+
+    fn rec(id: &str, status: RecordingStatus) -> Recording {
+        Recording {
+            id: id.to_string(),
+            created_at: Utc::now(),
+            duration_ms: 1234,
+            video_path: format!("/tmp/{id}.mp4"),
+            status,
+            summary: Some(format!("{id} summary")),
+            body: None,
+            transcript: None,
+            thinking: None,
+            error: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn insert_list_get_update_and_delete_recordings() {
+        let dir = tempdir().unwrap();
+        let db = Db::new(dir.path().join("peer.db"));
+        db.init().await.unwrap();
+
+        let mut row = rec("one", RecordingStatus::Done);
+        db.insert_recording(&row).await.unwrap();
+
+        let listed = db.list_recordings(10).await.unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].id, "one");
+
+        row.body = Some("Generated prompt".into());
+        row.thinking = Some("Observed details".into());
+        db.update_recording(&row).await.unwrap();
+
+        let fetched = db.get_recording("one").await.unwrap().unwrap();
+        assert_eq!(fetched.body.as_deref(), Some("Generated prompt"));
+        assert_eq!(fetched.thinking.as_deref(), Some("Observed details"));
+
+        db.delete_recording("one").await.unwrap();
+        assert!(db.get_recording("one").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn init_sweeps_unrecoverable_in_flight_rows() {
+        let dir = tempdir().unwrap();
+        let db = Db::new(dir.path().join("peer.db"));
+        db.init().await.unwrap();
+
+        db.insert_recording(&rec("recording", RecordingStatus::Recording))
+            .await
+            .unwrap();
+        db.insert_recording(&rec("stopped", RecordingStatus::Stopped))
+            .await
+            .unwrap();
+        db.insert_recording(&rec("empty-processing", RecordingStatus::Processing))
+            .await
+            .unwrap();
+        let mut partial = rec("partial-processing", RecordingStatus::Processing);
+        partial.body = Some("Partial prompt".into());
+        db.insert_recording(&partial).await.unwrap();
+        db.insert_recording(&rec("canceled", RecordingStatus::Canceled))
+            .await
+            .unwrap();
+
+        db.init().await.unwrap();
+
+        assert!(db.get_recording("recording").await.unwrap().is_none());
+        assert!(db.get_recording("stopped").await.unwrap().is_none());
+        assert!(db
+            .get_recording("empty-processing")
+            .await
+            .unwrap()
+            .is_none());
+
+        let partial = db
+            .get_recording("partial-processing")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(partial.status, RecordingStatus::Failed);
+        assert_eq!(partial.error.as_deref(), Some("Interrupted"));
+
+        let canceled = db.get_recording("canceled").await.unwrap().unwrap();
+        assert_eq!(canceled.status, RecordingStatus::Canceled);
+    }
+}
