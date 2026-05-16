@@ -12,7 +12,7 @@
     "test:smoke:mac": "bash scripts/smoke-macos.sh",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "pnpm sidecar && set -a && . ./.env.local && set +a && tauri dev",
+    "tauri:dev": "pnpm sidecar && tauri dev",
     "tauri:build": "pnpm release:mac",
     "release:mac": "bash scripts/release-macos.sh",
     "sign:bundle": "bash scripts/release-macos.sh",

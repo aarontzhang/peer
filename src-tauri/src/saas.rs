@@ -28,6 +28,10 @@ const SESSION_ACCOUNT: &str = "peer-session";
 const LEGACY_DEVICE_TOKEN_ACCOUNT: &str = "peer-device-token";
 const DEFAULT_BACKEND_URL: &str = "https://peer-wheat.vercel.app";
 const DEFAULT_SUPABASE_URL: &str = "https://hmkpgxlfxwztficbuktj.supabase.co";
+// Supabase anon keys are public by design (shipped to every browser client),
+// so we bake the project's key in alongside the URL. Avoids requiring any
+// local env for dev — all real secrets live in the Vercel backend.
+const DEFAULT_SUPABASE_ANON_KEY: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhta3BneGxmeHd6dGZpY2J1a3RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxOTMxNzQsImV4cCI6MjA5Mzc2OTE3NH0.fGyHCwlttaAPWRwqsv8eHblwFAma38xyDcIZfOofuOs";
 const LOOPBACK_AUTH_ADDR: &str = "127.0.0.1:17643";
 const LOOPBACK_AUTH_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 
@@ -874,6 +878,7 @@ fn anon_key() -> Option<String> {
                 .map(str::to_string)
                 .filter(|s| !s.trim().is_empty())
         })
+        .or_else(|| Some(DEFAULT_SUPABASE_ANON_KEY.to_string()))
 }
 
 /// `peer-dev://` in debug builds keeps a co-installed prod /Applications/Peer.app

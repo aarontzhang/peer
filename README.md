@@ -22,13 +22,7 @@ pnpm install
 pnpm tauri:dev
 ```
 
-`tauri:dev` builds the Swift sidecar, sources `.env.local`, and starts Tauri. `.env.local` is enough to run end-to-end against the upstream model providers without signing in to the managed backend:
-
-```sh
-OPENAI_API_KEY=...
-ANTHROPIC_API_KEY=...
-PEER_BACKEND_URL=... # optional, points the app at a managed backend
-```
+`tauri:dev` builds the Swift sidecar and starts Tauri. The desktop app talks to the managed Vercel backend (`https://peer-wheat.vercel.app`) for all model calls — no local API keys are required. Sign in to a Peer account on first launch.
 
 The first run pulls Tauri 2 deps and compiles the Rust core (~60s the first time). Once the pill window appears, tap **Right Option** to start a recording, tap **Right Option** again to stop. You can switch the recording keybind (Right Option / Fn / a custom chord) in Settings.
 
@@ -44,7 +38,7 @@ If the sidecar binary is missing at runtime, capture falls back to `ffmpeg avfou
 
 This requires **full Xcode** (not just Command Line Tools) so that `xcrun --sdk macosx --show-sdk-platform-path` resolves. If `swift build` errors with `unable to lookup item 'PlatformPath'`, install Xcode from the App Store and run `sudo xcode-select -s /Applications/Xcode.app`.
 
-Production builds use a Peer account token stored in macOS Keychain and route model calls through the managed backend. Local OpenAI and Anthropic keys from `.env.local` (or pre-existing keychain entries) remain available as a development fallback when no account is signed in.
+All model calls — dev and production — route through the managed Vercel backend using a Peer account token stored in macOS Keychain. There is no local-keys fallback.
 
 ### Managed backend
 
