@@ -348,12 +348,45 @@ function FeedEmpty({ tab }: { tab: Tab }) {
     );
   }
   return (
-    <div className="feed-empty">
-      <div className="feed-empty__title">Show, don't tell.</div>
-      <div className="feed-empty__sub">
-        Click the orb on the floating pill to start recording. Peer turns your
-        screen + narration into a paste-ready instruction set for Claude Code.
-      </div>
+    <div className="feed-empty feed-empty--onboard">
+      <h2 className="feed-empty__title feed-empty__title--lg">
+        <span className="feed-empty__accent">Show</span>, don't tell.
+      </h2>
+      <p className="feed-empty__sub">
+        Tap the orb on the floating pill and narrate as you work. Peer turns your
+        screen into a paste-ready instruction set for Claude Code.
+      </p>
+      <ol className="onboard-steps" aria-label="How Peer works">
+        <li className="onboard-step" data-step="record">
+          <span className="onboard-step__chip" aria-hidden>1</span>
+          <span className="onboard-step__body">
+            <span className="onboard-step__title">
+              Press <kbd>⌥</kbd> and start doing
+            </span>
+            <span className="onboard-step__sub">
+              Talk through what you're doing.
+            </span>
+          </span>
+        </li>
+        <li className="onboard-step" data-step="process">
+          <span className="onboard-step__chip" aria-hidden>2</span>
+          <span className="onboard-step__body">
+            <span className="onboard-step__title">Peer finds the workflow</span>
+            <span className="onboard-step__sub">
+              Screen + voice become instructions.
+            </span>
+          </span>
+        </li>
+        <li className="onboard-step" data-step="paste">
+          <span className="onboard-step__chip" aria-hidden>3</span>
+          <span className="onboard-step__body">
+            <span className="onboard-step__title">Paste into Claude Code</span>
+            <span className="onboard-step__sub">
+              Auto-copied the moment it's ready.
+            </span>
+          </span>
+        </li>
+      </ol>
     </div>
   );
 }
