@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 400" width="660" height="400">
+  <!--
+    DMG installer background.
+    Window size: 660 x 400
+    App icon center:           (165, 205)  -> reserved square ~128x128 around it
+    Applications folder center:(495, 205)  -> reserved square ~128x128 around it
+    The arrow + copy in this file guide the user to drag the app to Applications.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#1a1d23"/>
+      <stop offset="100%" stop-color="#13161b"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#f5f7fb" stop-opacity="0.18"/>
+      <stop offset="55%"  stop-color="#f5f7fb" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#f5f7fb" stop-opacity="0.95"/>
+    </linearGradient>
+    <radialGradient id="aurora" cx="50%" cy="35%" r="60%">
+      <stop offset="0%"  stop-color="#f5f7fb" stop-opacity="0.06"/>
+      <stop offset="60%" stop-color="#f5f7fb" stop-opacity="0.00"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="660" height="400" fill="url(#bg)"/>
+  <rect width="660" height="400" fill="url(#aurora)"/>
+
+  <!-- Headline -->
+  <text x="330" y="64"
+        text-anchor="middle"
+        font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="22"
+        font-weight="600"
+        letter-spacing="-0.3"
+        fill="#f5f7fb">Install Peer</text>
+
+  <text x="330" y="92"
+        text-anchor="middle"
+        font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="13"
+        fill="#f5f7fb"
+        fill-opacity="0.55">Drag Peer into your Applications folder</text>
+
+  <!-- Arrow: shaft + head, sitting between the two icon slots at y=205 -->
+  <g transform="translate(0,205)">
+    <rect x="248" y="-4" width="148" height="8" rx="4" fill="url(#arrow)"/>
+    <path d="M 388 -18 L 416 0 L 388 18 Z" fill="#f5f7fb" fill-opacity="0.95"/>
+  </g>
+
+  <!-- Subtle footer hint -->
+  <text x="330" y="362"
+        text-anchor="middle"
+        font-family="ui-monospace, 'SF Mono', Menlo, Monaco, monospace"
+        font-size="10"
+        fill="#f5f7fb"
+        fill-opacity="0.32"
+        letter-spacing="1.2">PEER · MACOS · v0.2</text>
+</svg>

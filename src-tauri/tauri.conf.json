@@ -67,7 +67,13 @@
     "macOS": {
       "minimumSystemVersion": "13.0",
       "entitlements": "./entitlements.plist",
-      "infoPlist": "./Info.plist"
+      "infoPlist": "./Info.plist",
+      "dmg": {
+        "background": "./dmg/background.png",
+        "windowSize": { "width": 660, "height": 400 },
+        "appPosition": { "x": 165, "y": 205 },
+        "applicationFolderPosition": { "x": 495, "y": 205 }
+      }
     },
     "resources": [],
     "externalBin": ["bin/PeerCapture"]
