@@ -12,6 +12,7 @@
   ],
   "routes": [
     { "src": "/", "dest": "/site/index.html" },
+    { "src": "/install", "dest": "/site/install.html" },
     { "src": "/download/latest", "dest": "/api/download-latest.js" },
     { "src": "/site/(.*)", "dest": "/site/$1" },
     { "src": "/logos/(.*)", "dest": "/logos/$1" },
