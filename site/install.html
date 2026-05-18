@@ -13,7 +13,7 @@
 
   <meta http-equiv="Cache-Control" content="no-store">
   <link rel="stylesheet" href="/styles/tokens.css?v=2">
-  <link rel="stylesheet" href="/site/styles.css?v=30">
+  <link rel="stylesheet" href="/site/styles.css?v=32">
 </head>
 <body class="install-page">
   <header class="topbar">
@@ -32,7 +32,7 @@
       <div class="section__head section__head--center">
         <h1 id="install-title" class="section__title">Open the macOS beta.</h1>
         <p class="section__lede">
-          Your download should start automatically. Peer is unsigned until Apple Developer verification is ready, so macOS may ask you to confirm the first launch.
+          Your download should start automatically. Peer is unsigned until Apple Developer verification is ready, so macOS may ask you to approve the first launch and grant recording permissions in Privacy &amp; Security.
         </p>
       </div>
 
@@ -58,20 +58,17 @@
 
         <article class="install-card">
           <div class="install-card__visual" aria-hidden="true">
-            <div class="finder-mock">
+            <div class="finder-mock finder-mock--launch">
               <div class="finder-mock__sidebar"></div>
+              <div class="finder-mock__title">Applications</div>
               <div class="finder-mock__app">
                 <img src="/logos/straight.svg" alt="">
                 <span>Peer</span>
               </div>
-              <div class="context-menu">
-                <span>Open</span>
-                <span>Move to Trash</span>
-                <span>Get Info</span>
-              </div>
+              <div class="launch-click">Open</div>
             </div>
           </div>
-          <h2>Right-click Peer, then choose Open.</h2>
+          <h2>Double-click Peer in Applications.</h2>
         </article>
 
         <article class="install-card">
@@ -81,12 +78,81 @@
               <div class="gatekeeper-mock__title">"Peer" Not Opened</div>
               <div class="gatekeeper-mock__copy">macOS could not verify this beta.</div>
               <div class="gatekeeper-mock__buttons">
-                <span>Cancel</span>
-                <strong>Open</strong>
+                <strong>Done</strong>
               </div>
             </div>
           </div>
-          <h2>Confirm Open when macOS asks.</h2>
+          <h2>If macOS blocks Peer, click Done.</h2>
+        </article>
+
+        <article class="install-card">
+          <div class="install-card__visual" aria-hidden="true">
+            <div class="settings-mock">
+              <div class="settings-mock__chrome">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="settings-mock__title">Privacy &amp; Security</div>
+              <div class="settings-mock__row">
+                <div>
+                  <strong>Peer was blocked</strong>
+                  <span>from opening because it is not from an identified developer.</span>
+                </div>
+                <b>Open Anyway</b>
+              </div>
+            </div>
+          </div>
+          <h2>Open System Settings &gt; Privacy &amp; Security, scroll to Security, then click Open Anyway.</h2>
+        </article>
+
+        <article class="install-card">
+          <div class="install-card__visual" aria-hidden="true">
+            <div class="privacy-pane">
+              <div class="privacy-pane__nav">
+                <span></span>
+                <span></span>
+              </div>
+              <div class="privacy-pane__title">Screen &amp; System Audio Recording</div>
+              <div class="privacy-pane__copy">Allow apps below to record your screen and audio.</div>
+              <div class="privacy-row">
+                <div class="privacy-row__app">
+                  <img src="/logos/straight.svg" alt="">
+                  <span>Peer</span>
+                </div>
+                <b></b>
+              </div>
+            </div>
+          </div>
+          <h2>In Screen &amp; System Audio Recording, turn on Peer.</h2>
+        </article>
+
+        <article class="install-card">
+          <div class="install-card__visual" aria-hidden="true">
+            <div class="privacy-stack">
+              <div class="privacy-mini">
+                <div class="privacy-mini__title">Microphone</div>
+                <div class="privacy-row privacy-row--compact">
+                  <div class="privacy-row__app">
+                    <img src="/logos/straight.svg" alt="">
+                    <span>Peer</span>
+                  </div>
+                  <b></b>
+                </div>
+              </div>
+              <div class="privacy-mini">
+                <div class="privacy-mini__title">Accessibility</div>
+                <div class="privacy-row privacy-row--compact">
+                  <div class="privacy-row__app">
+                    <img src="/logos/straight.svg" alt="">
+                    <span>Peer</span>
+                  </div>
+                  <b></b>
+                </div>
+              </div>
+            </div>
+          </div>
+          <h2>Turn on Peer in Microphone and Accessibility, then reopen if asked.</h2>
         </article>
       </div>
 
