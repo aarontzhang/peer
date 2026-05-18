@@ -7,6 +7,10 @@ VERSION="$(node -p "require('./package.json').version")"
 ARCH="$(uname -m)"
 DMG_VERSIONED_PATH="${DMG_DIR}/Peer_${VERSION}_${ARCH}.dmg"
 DMG_LATEST_PATH="${DMG_DIR}/Peer.dmg"
+DMG_STAGING_DIR="${DMG_DIR}/staging"
+DMG_RW_PATH="${DMG_DIR}/Peer_${VERSION}_${ARCH}-rw.dmg"
+DMG_MOUNT="/Volumes/Peer"
+DMG_BACKGROUND="src-tauri/dmg/background.tiff"
 IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 TEAM_ID="${APPLE_TEAM_ID:-}"
 NOTARY_PROFILE="${APPLE_NOTARYTOOL_PROFILE:-}"
@@ -59,12 +63,52 @@ fi
 codesign --verify --deep --strict --verbose=2 "${APP_PATH}"
 
 mkdir -p "${DMG_DIR}"
-rm -f "${DMG_VERSIONED_PATH}" "${DMG_LATEST_PATH}"
+rm -rf "${DMG_STAGING_DIR}"
+rm -f "${DMG_VERSIONED_PATH}" "${DMG_LATEST_PATH}" "${DMG_RW_PATH}"
+mkdir -p "${DMG_STAGING_DIR}/.background"
+cp -R "${APP_PATH}" "${DMG_STAGING_DIR}/Peer.app"
+ln -s /Applications "${DMG_STAGING_DIR}/Applications"
+cp "${DMG_BACKGROUND}" "${DMG_STAGING_DIR}/.background/background.tiff"
+
 hdiutil create -volname "Peer" \
-  -srcfolder "${APP_PATH}" \
+  -srcfolder "${DMG_STAGING_DIR}" \
   -ov \
-  -format UDZO \
-  "${DMG_VERSIONED_PATH}"
+  -format UDRW \
+  "${DMG_RW_PATH}"
+
+if hdiutil info | grep -q "${DMG_MOUNT}"; then
+  hdiutil detach "${DMG_MOUNT}" >/dev/null
+fi
+
+hdiutil attach -readwrite -noverify -noautoopen "${DMG_RW_PATH}" >/dev/null
+
+osascript <<'APPLESCRIPT'
+tell application "Finder"
+  tell disk "Peer"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set bounds of container window to {100, 100, 760, 500}
+    set theViewOptions to the icon view options of container window
+    set arrangement of theViewOptions to not arranged
+    set icon size of theViewOptions to 96
+    set background picture of theViewOptions to file ".background:background.tiff"
+    set position of item "Peer.app" of container window to {165, 205}
+    set position of item "Applications" of container window to {495, 205}
+    update without registering applications
+    delay 1
+    close
+  end tell
+end tell
+APPLESCRIPT
+
+SetFile -a V "${DMG_MOUNT}/.background" || true
+sync
+hdiutil detach "${DMG_MOUNT}" >/dev/null
+hdiutil convert "${DMG_RW_PATH}" -format UDZO -imagekey zlib-level=9 -o "${DMG_VERSIONED_PATH}" >/dev/null
+rm -f "${DMG_RW_PATH}"
+rm -rf "${DMG_STAGING_DIR}"
 
 if [[ -n "${IDENTITY}" ]]; then
   codesign --force --timestamp --sign "${IDENTITY}" "${DMG_VERSIONED_PATH}"
