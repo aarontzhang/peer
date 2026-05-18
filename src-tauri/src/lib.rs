@@ -26,6 +26,8 @@ pub fn run() {
         .init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             // Forward any peer:// URL handed in on relaunch — without this,
             // a click while the app is already running just reactivates the

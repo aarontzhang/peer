@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { relaunch } from '@tauri-apps/plugin-process';
+import { check, type DownloadEvent } from '@tauri-apps/plugin-updater';
 import {
   ipc,
   type AccountStatus,
@@ -15,6 +17,15 @@ type Props = {
 
 const DEFAULT_KEYBIND: RecordingKeybind = { kind: 'rightOption' };
 
+type UpdateState =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'none' }
+  | { kind: 'downloading'; version: string; downloaded: number; total: number | null }
+  | { kind: 'installing'; version: string }
+  | { kind: 'relaunching'; version: string }
+  | { kind: 'error'; message: string };
+
 export function Settings({ open, onClose }: Props) {
   const [account, setAccount] = useState<AccountStatus | null>(null);
   const [pendingSignIn, setPendingSignIn] = useState(false);
@@ -28,6 +39,7 @@ export function Settings({ open, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<PermissionMode>('ask');
   const [initialMode, setInitialMode] = useState<PermissionMode>('ask');
+  const [updateState, setUpdateState] = useState<UpdateState>({ kind: 'idle' });
 
   useEffect(() => {
     if (open) {
@@ -46,6 +58,7 @@ export function Settings({ open, onClose }: Props) {
       setNoAccount(false);
       setCapturing(false);
       setCaptureError(null);
+      setUpdateState({ kind: 'idle' });
     }
   }, [open]);
 
@@ -169,9 +182,44 @@ export function Settings({ open, onClose }: Props) {
     setAccount(await ipc.getSession());
   };
 
+  const onCheckForUpdates = async () => {
+    setUpdateState({ kind: 'checking' });
+    try {
+      const update = await check();
+      if (!update) {
+        setUpdateState({ kind: 'none' });
+        return;
+      }
+
+      let downloaded = 0;
+      let total: number | null = null;
+      setUpdateState({ kind: 'downloading', version: update.version, downloaded, total });
+      await update.downloadAndInstall((event: DownloadEvent) => {
+        if (event.event === 'Started') {
+          total = event.data.contentLength ?? null;
+          setUpdateState({ kind: 'downloading', version: update.version, downloaded, total });
+        } else if (event.event === 'Progress') {
+          downloaded += event.data.chunkLength;
+          setUpdateState({ kind: 'downloading', version: update.version, downloaded, total });
+        } else {
+          setUpdateState({ kind: 'installing', version: update.version });
+        }
+      });
+      setUpdateState({ kind: 'relaunching', version: update.version });
+      await relaunch();
+    } catch (err) {
+      setUpdateState({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    }
+  };
+
   const changed = !keybindEqual(keybind, initialKeybind) || mode !== initialMode;
   const showHotkeyProblem =
     hotkey && keybindEqual(hotkey.keybind, keybind) && !hotkey.installed;
+  const updateBusy =
+    updateState.kind === 'checking' ||
+    updateState.kind === 'downloading' ||
+    updateState.kind === 'installing' ||
+    updateState.kind === 'relaunching';
 
   return (
     <div className="settings" role="dialog" aria-modal="true" onClick={onClose}>
@@ -319,6 +367,23 @@ export function Settings({ open, onClose }: Props) {
           </p>
         </section>
 
+        <section className="settings__section">
+          <div className="settings__sectionHead">
+            <h3 className="settings__sectionTitle">Updates</h3>
+          </div>
+          <div className="settings__row">
+            <button
+              className="btn btn--neutral"
+              type="button"
+              onClick={onCheckForUpdates}
+              disabled={updateBusy}
+            >
+              {updateBusy ? updateButtonLabel(updateState) : 'Check for updates'}
+            </button>
+          </div>
+          <UpdateStatus state={updateState} />
+        </section>
+
         <div className="settings__actions">
           <button className="btn btn--neutral btn--neutralDark" onClick={onClose} disabled={saving}>
             Cancel
@@ -334,6 +399,51 @@ export function Settings({ open, onClose }: Props) {
       </div>
     </div>
   );
+}
+
+function UpdateStatus({ state }: { state: UpdateState }) {
+  if (state.kind === 'idle') return null;
+  if (state.kind === 'checking') {
+    return <p className="settings__hint">Checking for updates...</p>;
+  }
+  if (state.kind === 'none') {
+    return <p className="settings__hint">Peer is up to date.</p>;
+  }
+  if (state.kind === 'downloading') {
+    const label = formatUpdateProgress(state.downloaded, state.total);
+    return (
+      <p className="settings__hint">
+        Downloading Peer {state.version}
+        {label ? ` (${label})` : ''}
+      </p>
+    );
+  }
+  if (state.kind === 'installing') {
+    return <p className="settings__hint">Installing Peer {state.version}...</p>;
+  }
+  if (state.kind === 'relaunching') {
+    return <p className="settings__hint">Relaunching Peer {state.version}...</p>;
+  }
+  return <p className="settings__error">{state.message}</p>;
+}
+
+function updateButtonLabel(state: UpdateState): string {
+  if (state.kind === 'checking') return 'Checking...';
+  if (state.kind === 'downloading') return 'Downloading...';
+  if (state.kind === 'installing') return 'Installing...';
+  if (state.kind === 'relaunching') return 'Relaunching...';
+  return 'Check for updates';
+}
+
+function formatUpdateProgress(downloaded: number, total: number | null): string {
+  if (!total || total <= 0) return formatBytes(downloaded);
+  return `${Math.min(100, Math.round((downloaded / total) * 100))}%`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function KeybindKeys({ keybind }: { keybind: RecordingKeybind }) {

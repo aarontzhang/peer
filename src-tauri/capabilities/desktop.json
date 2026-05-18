@@ -1,0 +1,13 @@
+{
+  "identifier": "desktop-capability",
+  "platforms": [
+    "macOS",
+    "windows",
+    "linux"
+  ],
+  "windows": ["result"],
+  "permissions": [
+    "process:allow-restart",
+    "updater:default"
+  ]
+}

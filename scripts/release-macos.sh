@@ -2,19 +2,45 @@
 set -euo pipefail
 
 APP_PATH="src-tauri/target/release/bundle/macos/Peer.app"
+APP_BUNDLE_DIR="$(dirname "${APP_PATH}")"
 DMG_DIR="src-tauri/target/release/bundle/dmg"
 VERSION="$(node -p "require('./package.json').version")"
 ARCH="$(uname -m)"
+case "${ARCH}" in
+  arm64) TAURI_ARCH="aarch64" ;;
+  x86_64) TAURI_ARCH="x86_64" ;;
+  *)
+    echo "Unsupported macOS updater architecture: ${ARCH}" >&2
+    exit 1
+    ;;
+esac
 DMG_VERSIONED_PATH="${DMG_DIR}/Peer_${VERSION}_${ARCH}.dmg"
 DMG_LATEST_PATH="${DMG_DIR}/Peer.dmg"
 DMG_STAGING_DIR="${DMG_DIR}/staging"
 DMG_RW_PATH="${DMG_DIR}/Peer_${VERSION}_${ARCH}-rw.dmg"
+UPDATER_ASSET_NAME="Peer_${VERSION}_${TAURI_ARCH}.app.tar.gz"
+UPDATER_TAR_PATH="${APP_BUNDLE_DIR}/${UPDATER_ASSET_NAME}"
+UPDATER_SIG_PATH="${UPDATER_TAR_PATH}.sig"
+UPDATER_LATEST_JSON="${APP_BUNDLE_DIR}/latest.json"
 DMG_MOUNT="/Volumes/Peer"
 DMG_BACKGROUND="src-tauri/dmg/background.tiff"
 IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 TEAM_ID="${APPLE_TEAM_ID:-}"
 NOTARY_PROFILE="${APPLE_NOTARYTOOL_PROFILE:-}"
 ALLOW_UNSIGNED="${PEER_ALLOW_UNSIGNED_RELEASE:-0}"
+UPDATER_PRIVATE_KEY_PATH="${TAURI_SIGNING_PRIVATE_KEY_PATH:-${HOME}/.tauri/peer-updater.key}"
+UPDATER_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+
+if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
+  if [[ ! -f "${UPDATER_PRIVATE_KEY_PATH}" ]]; then
+    echo "TAURI_SIGNING_PRIVATE_KEY_PATH is required for updater artifacts." >&2
+    echo "Generate one with: pnpm tauri signer generate --ci -w ~/.tauri/peer-updater.key" >&2
+    exit 1
+  fi
+  export TAURI_SIGNING_PRIVATE_KEY="$(cat "${UPDATER_PRIVATE_KEY_PATH}")"
+fi
+
+export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${UPDATER_PRIVATE_KEY_PASSWORD}"
 
 if [[ "${ALLOW_UNSIGNED}" != "1" ]]; then
   if [[ -z "${IDENTITY}" ]]; then
@@ -61,6 +87,40 @@ else
 fi
 
 codesign --verify --deep --strict --verbose=2 "${APP_PATH}"
+
+rm -f "${UPDATER_TAR_PATH}" "${UPDATER_SIG_PATH}" "${UPDATER_LATEST_JSON}"
+COPYFILE_DISABLE=1 tar -czf "${UPDATER_TAR_PATH}" -C "${APP_BUNDLE_DIR}" "Peer.app"
+if [[ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
+  pnpm tauri signer sign -p "${UPDATER_PRIVATE_KEY_PASSWORD}" "${UPDATER_TAR_PATH}"
+else
+  pnpm tauri signer sign -f "${TAURI_SIGNING_PRIVATE_KEY_PATH}" -p "${UPDATER_PRIVATE_KEY_PASSWORD}" "${UPDATER_TAR_PATH}"
+fi
+
+UPDATE_SIGNATURE="$(cat "${UPDATER_SIG_PATH}")"
+UPDATE_PUB_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+UPDATE_URL="https://github.com/aarontzhang/peer/releases/latest/download/${UPDATER_ASSET_NAME}"
+UPDATE_PLATFORM="darwin-${TAURI_ARCH}"
+VERSION="${VERSION}" \
+UPDATE_SIGNATURE="${UPDATE_SIGNATURE}" \
+UPDATE_PUB_DATE="${UPDATE_PUB_DATE}" \
+UPDATE_URL="${UPDATE_URL}" \
+UPDATE_PLATFORM="${UPDATE_PLATFORM}" \
+node --input-type=module > "${UPDATER_LATEST_JSON}" <<'NODE'
+const version = process.env.VERSION;
+const platform = process.env.UPDATE_PLATFORM;
+const payload = {
+  version,
+  notes: `Peer ${version}`,
+  pub_date: process.env.UPDATE_PUB_DATE,
+  platforms: {
+    [platform]: {
+      signature: process.env.UPDATE_SIGNATURE,
+      url: process.env.UPDATE_URL,
+    },
+  },
+};
+process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+NODE
 
 mkdir -p "${DMG_DIR}"
 rm -rf "${DMG_STAGING_DIR}"
@@ -129,3 +189,6 @@ cp "${DMG_VERSIONED_PATH}" "${DMG_LATEST_PATH}"
 
 echo "Built DMG at ${DMG_VERSIONED_PATH}"
 echo "Website upload asset at ${DMG_LATEST_PATH}"
+echo "Built updater bundle at ${UPDATER_TAR_PATH}"
+echo "Built updater signature at ${UPDATER_SIG_PATH}"
+echo "Upload updater manifest at ${UPDATER_LATEST_JSON}"

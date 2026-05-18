@@ -3,6 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Settings } from './Settings';
 import { emitTauriEvent, invoke, mockCommands } from '@/test/tauriMock';
+import { relaunch } from '@tauri-apps/plugin-process';
+import { check } from '@tauri-apps/plugin-updater';
+
+vi.mock('@tauri-apps/plugin-process', () => ({
+  relaunch: vi.fn(async () => {}),
+}));
+
+vi.mock('@tauri-apps/plugin-updater', () => ({
+  check: vi.fn(async () => null),
+}));
 
 const installedHotkey = {
   keybind: { kind: 'rightOption' as const },
@@ -101,6 +111,50 @@ describe('Settings interactions', () => {
       });
       expect(invoke).toHaveBeenCalledWith('set_permission_mode', { mode: 'bypass' });
       expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  it('checks for updates and shows when Peer is current', async () => {
+    const user = userEvent.setup();
+    vi.mocked(check).mockResolvedValueOnce(null);
+    mockCommands({
+      get_session: () => ({ signedIn: false, email: null }),
+      get_hotkey_status: () => installedHotkey,
+      get_permission_mode: () => 'ask',
+    });
+
+    renderSettings();
+
+    await user.click(await screen.findByRole('button', { name: 'Check for updates' }));
+
+    expect(check).toHaveBeenCalled();
+    expect(await screen.findByText('Peer is up to date.')).toBeInTheDocument();
+  });
+
+  it('downloads, installs, and relaunches an available update', async () => {
+    const user = userEvent.setup();
+    const downloadAndInstall = vi.fn(async (onEvent: (event: unknown) => void) => {
+      onEvent({ event: 'Started', data: { contentLength: 100 } });
+      onEvent({ event: 'Progress', data: { chunkLength: 100 } });
+      onEvent({ event: 'Finished' });
+    });
+    vi.mocked(check).mockResolvedValueOnce({
+      version: '0.2.2',
+      downloadAndInstall,
+    } as never);
+    mockCommands({
+      get_session: () => ({ signedIn: false, email: null }),
+      get_hotkey_status: () => installedHotkey,
+      get_permission_mode: () => 'ask',
+    });
+
+    renderSettings();
+
+    await user.click(await screen.findByRole('button', { name: 'Check for updates' }));
+
+    await waitFor(() => {
+      expect(downloadAndInstall).toHaveBeenCalled();
+      expect(relaunch).toHaveBeenCalled();
     });
   });
 });
