@@ -10,7 +10,7 @@ DMG_LATEST_PATH="${DMG_DIR}/Peer.dmg"
 DMG_STAGING_DIR="${DMG_DIR}/staging"
 DMG_RW_PATH="${DMG_DIR}/Peer_${VERSION}_${ARCH}-rw.dmg"
 DMG_MOUNT="/Volumes/Peer"
-DMG_BACKGROUND="src-tauri/dmg/background.png"
+DMG_BACKGROUND="src-tauri/dmg/background.tiff"
 IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 TEAM_ID="${APPLE_TEAM_ID:-}"
 NOTARY_PROFILE="${APPLE_NOTARYTOOL_PROFILE:-}"
@@ -68,7 +68,7 @@ rm -f "${DMG_VERSIONED_PATH}" "${DMG_LATEST_PATH}" "${DMG_RW_PATH}"
 mkdir -p "${DMG_STAGING_DIR}/.background"
 cp -R "${APP_PATH}" "${DMG_STAGING_DIR}/Peer.app"
 ln -s /Applications "${DMG_STAGING_DIR}/Applications"
-cp "${DMG_BACKGROUND}" "${DMG_STAGING_DIR}/.background/background.png"
+cp "${DMG_BACKGROUND}" "${DMG_STAGING_DIR}/.background/background.tiff"
 
 hdiutil create -volname "Peer" \
   -srcfolder "${DMG_STAGING_DIR}" \
@@ -93,7 +93,7 @@ tell application "Finder"
     set theViewOptions to the icon view options of container window
     set arrangement of theViewOptions to not arranged
     set icon size of theViewOptions to 96
-    set background picture of theViewOptions to file ".background:background.png"
+    set background picture of theViewOptions to file ".background:background.tiff"
     set position of item "Peer.app" of container window to {165, 205}
     set position of item "Applications" of container window to {495, 205}
     update without registering applications
