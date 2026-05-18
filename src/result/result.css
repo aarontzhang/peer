@@ -44,6 +44,7 @@ html, body {
 }
 
 .topbar__brand {
+  grid-column: 1;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -64,6 +65,7 @@ html, body {
 }
 
 .topbar__tabs {
+  grid-column: 2;
   justify-self: center;
   display: inline-flex;
   align-items: center;
@@ -110,6 +112,7 @@ html, body {
 .tab--active .tab__icon { opacity: 1; }
 
 .topbar__actions {
+  grid-column: 3;
   justify-self: end;
   display: flex;
   align-items: center;
@@ -176,6 +179,153 @@ html, body {
   max-width: 56ch;
   line-height: 1.55;
   text-wrap: balance;
+}
+
+/* ─── signed-out first run ─────────────────────────────────────────────── */
+.auth-gate {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 8px 24px 44px;
+}
+
+.auth-gate__panel {
+  width: min(100%, 640px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.auth-gate__mark {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  color: var(--color-fg);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, oklch(1 0 0 / 0.08), oklch(1 0 0 / 0.03));
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.10) inset,
+    0 18px 42px oklch(0 0 0 / 0.28);
+}
+.auth-gate__mark .topbar__brandOrb {
+  width: 40px;
+  height: 40px;
+}
+
+.auth-gate__copy {
+  display: grid;
+  gap: 14px;
+}
+.auth-gate__copy h1 {
+  margin: 0;
+  font-size: 38px;
+  font-weight: 650;
+  line-height: 1.1;
+  color: var(--color-fg);
+}
+.auth-gate__copy h1 span {
+  color: var(--color-accent);
+}
+.auth-gate__copy p {
+  margin: 0 auto;
+  max-width: 54ch;
+  color: var(--color-fg-muted);
+  font-size: 15.5px;
+  line-height: 1.55;
+}
+
+.auth-steps {
+  width: min(100%, 560px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.auth-step {
+  min-height: 108px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, oklch(1 0 0 / 0.065), oklch(1 0 0 / 0.025));
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.07) inset;
+}
+.auth-step__num {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.auth-step strong {
+  color: var(--color-fg);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.auth-gate__actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
+}
+.auth-gate__button {
+  min-width: 156px;
+  height: 42px;
+  padding: 0 22px;
+  font-size: 13.5px;
+}
+.auth-gate__button:disabled {
+  cursor: default;
+  opacity: 0.68;
+}
+.auth-gate__hint,
+.auth-gate__error {
+  margin: -8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.auth-gate__hint {
+  color: var(--color-fg-dim);
+}
+.auth-gate__error {
+  color: #ffb4a8;
+}
+
+@media (max-width: 640px) {
+  .auth-gate {
+    padding-inline: 18px;
+  }
+  .auth-steps {
+    grid-template-columns: 1fr;
+  }
+  .auth-step {
+    min-height: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  .auth-gate__copy h1 {
+    font-size: 32px;
+  }
 }
 
 /* ─── card ─────────────────────────────────────────────────────────────── */

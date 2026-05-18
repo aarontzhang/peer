@@ -17,12 +17,16 @@ const installedHotkey = {
   reason: null,
 };
 
-function mockAppCommands(recordings = [defaultRecording()]) {
+function mockAppCommands(
+  recordings = [defaultRecording()],
+  account = { signedIn: true, email: 'user@example.com' as string | null },
+) {
   let rows = recordings;
   mockCommands({
     list_recordings: () => rows,
     get_hotkey_status: () => installedHotkey,
-    get_session: () => ({ signedIn: false, email: null }),
+    get_session: () => account,
+    start_google_sign_in: () => 'https://supabase.example/auth',
     get_permission_mode: () => 'ask',
     retry_recording: () => undefined,
     delete_recording: ({ id }) => {
@@ -37,6 +41,21 @@ function mockAppCommands(recordings = [defaultRecording()]) {
 }
 
 describe('Result app interactions', () => {
+  it('prompts signed-out users to sign in before showing the app feed', async () => {
+    const user = userEvent.setup();
+    mockAppCommands([defaultRecording()], { signedIn: false, email: null });
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /Sign in, then record/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /History/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(invoke).toHaveBeenCalledWith('start_google_sign_in');
+    expect(screen.getByText('Complete sign-in in your browser.')).toBeInTheDocument();
+  });
+
   it('saves recordings into the Saved tab and opens/closes detail view', async () => {
     const user = userEvent.setup();
     mockAppCommands();
@@ -125,7 +144,7 @@ describe('Result app interactions', () => {
         installed: false,
         reason: 'Accessibility is disabled.',
       }),
-      get_session: () => ({ signedIn: false, email: null }),
+      get_session: () => ({ signedIn: true, email: 'user@example.com' }),
       get_permission_mode: () => 'ask',
     });
 

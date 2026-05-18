@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
+import {
+  ipc,
+  type AccountStatus,
+  type AuthChangedPayload,
+  type HotkeyStatus,
+  type Recording,
+} from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
 import { MessageCard } from './MessageCard';
 import { RecordingPage } from './RecordingPage';
@@ -55,6 +61,10 @@ export function App() {
   const autoTabSwitchedRecRef = useRef<string | null>(null);
 
   const [showSettings, setShowSettings] = useState(false);
+  const [account, setAccount] = useState<AccountStatus | null>(null);
+  const [pendingSignIn, setPendingSignIn] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const [noAccount, setNoAccount] = useState(false);
   const [hotkey, setHotkey] = useState<HotkeyStatus | null>(null);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(getStoredPinnedIds);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -107,10 +117,49 @@ export function App() {
 
   useEffect(() => {
     void refreshList();
+    void ipc.getSession()
+      .then(setAccount)
+      .catch(() => setAccount({ signedIn: false, email: null }));
     void ipc.getHotkeyStatus().then(setHotkey);
     const unsub = ipc.onHotkeyStatus(setHotkey);
     return () => { void unsub.then((fn) => fn()); };
   }, [refreshList]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    ipc
+      .onAuthChanged(async (payload: AuthChangedPayload) => {
+        setAccount(await ipc.getSession());
+        setPendingSignIn(false);
+        if (payload.reason === 'no_account') {
+          setNoAccount(true);
+          setSignInError(null);
+        } else if (payload.error) {
+          setSignInError(payload.error);
+          setNoAccount(false);
+        } else {
+          setSignInError(null);
+          setNoAccount(false);
+        }
+      })
+      .then((u) => {
+        unlisten = u;
+      });
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pendingSignIn) return;
+
+    const timeout = window.setTimeout(() => {
+      setPendingSignIn(false);
+      setSignInError('Sign-in timed out. Try again.');
+    }, 10 * 60 * 1000);
+
+    return () => window.clearTimeout(timeout);
+  }, [pendingSignIn]);
 
   // Pill events drive list refreshes.
   useEffect(() => {
@@ -185,6 +234,20 @@ export function App() {
   const showHotkeyWarning = hotkey !== null && !hotkey.installed;
 
   const detailOpen = detailForId !== null;
+  const signedIn = account?.signedIn === true;
+  const signedOut = account?.signedIn === false;
+
+  const onLogin = async () => {
+    setSignInError(null);
+    setNoAccount(false);
+    setPendingSignIn(true);
+    try {
+      await ipc.startGoogleSignIn();
+    } catch (err) {
+      setPendingSignIn(false);
+      setSignInError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   return (
     <div className="app">
@@ -203,28 +266,30 @@ export function App() {
             <BrandMark />
             <span className="topbar__brandName">Peer</span>
           </div>
-          <nav className="topbar__tabs" role="tablist" data-no-drag>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'history'}
-              className={`tab${tab === 'history' ? ' tab--active' : ''}`}
-              onClick={() => setTab('history')}
-            >
-              <span className="tab__icon" aria-hidden><HistoryIcon /></span>
-              <span>History</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'saved'}
-              className={`tab${tab === 'saved' ? ' tab--active' : ''}`}
-              onClick={() => setTab('saved')}
-            >
-              <span className="tab__icon" aria-hidden><SavedIcon /></span>
-              <span>Saved</span>
-            </button>
-          </nav>
+          {signedIn && (
+            <nav className="topbar__tabs" role="tablist" data-no-drag>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'history'}
+                className={`tab${tab === 'history' ? ' tab--active' : ''}`}
+                onClick={() => setTab('history')}
+              >
+                <span className="tab__icon" aria-hidden><HistoryIcon /></span>
+                <span>History</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'saved'}
+                className={`tab${tab === 'saved' ? ' tab--active' : ''}`}
+                onClick={() => setTab('saved')}
+              >
+                <span className="tab__icon" aria-hidden><SavedIcon /></span>
+                <span>Saved</span>
+              </button>
+            </nav>
+          )}
           <div className="topbar__actions" data-no-drag>
             <button
               type="button"
@@ -238,7 +303,19 @@ export function App() {
           </div>
         </header>
       )}
-      {!detailOpen && (
+      {!detailOpen && signedOut && (
+        <AuthGate
+          pendingSignIn={pendingSignIn}
+          signInError={signInError}
+          noAccount={noAccount}
+          onSignIn={onLogin}
+          onUseDifferentAccount={() => {
+            setNoAccount(false);
+            setSignInError(null);
+          }}
+        />
+      )}
+      {!detailOpen && signedIn && (
         <main className="feed" role="list" aria-label="Recordings">
           {visibleRecordings.length === 0 ? (
             <FeedEmpty tab={tab} />
@@ -274,7 +351,7 @@ export function App() {
           )}
         </main>
       )}
-      {detailForId !== null && (() => {
+      {signedIn && detailForId !== null && (() => {
         const rec = recordings.find((r) => r.id === detailForId) ?? null;
         if (!rec) return null;
         const liveBody = liveRef.current && liveRef.current.id === rec.id
@@ -333,6 +410,83 @@ export function App() {
         }}
       />
     </div>
+  );
+}
+
+function AuthGate({
+  pendingSignIn,
+  signInError,
+  noAccount,
+  onSignIn,
+  onUseDifferentAccount,
+}: {
+  pendingSignIn: boolean;
+  signInError: string | null;
+  noAccount: boolean;
+  onSignIn: () => void;
+  onUseDifferentAccount: () => void;
+}) {
+  return (
+    <main className="auth-gate" aria-label="Sign in">
+      <section className="auth-gate__panel">
+        <div className="auth-gate__mark" aria-hidden>
+          <BrandMark />
+        </div>
+        <div className="auth-gate__copy">
+          <h1>
+            <span>Sign in,</span> then record.
+          </h1>
+          <p>
+            Peer needs your beta account before it can record, analyze, or save
+            a workflow.
+          </p>
+        </div>
+
+        <div className="auth-steps" aria-label="Peer setup steps">
+          <div className="auth-step">
+            <span className="auth-step__num">1</span>
+            <strong>Sign in with Google.</strong>
+          </div>
+          <div className="auth-step">
+            <span className="auth-step__num">2</span>
+            <strong>Record with the floating pill.</strong>
+          </div>
+          <div className="auth-step">
+            <span className="auth-step__num">3</span>
+            <strong>Send it to generate the workflow.</strong>
+          </div>
+        </div>
+
+        <div className="auth-gate__actions">
+          {noAccount ? (
+            <button className="btn btn--neutralLight auth-gate__button" type="button" onClick={onUseDifferentAccount}>
+              Use a different account
+            </button>
+          ) : (
+            <button
+              className="btn btn--primary auth-gate__button"
+              type="button"
+              onClick={onSignIn}
+              disabled={pendingSignIn}
+            >
+              {pendingSignIn ? 'Waiting for browser...' : 'Sign in'}
+            </button>
+          )}
+        </div>
+
+        {pendingSignIn && !noAccount && (
+          <p className="auth-gate__hint">Complete sign-in in your browser.</p>
+        )}
+        {noAccount && (
+          <p className="auth-gate__hint">
+            This Google account is not on the beta yet.
+          </p>
+        )}
+        {signInError && !noAccount && (
+          <p className="auth-gate__error">{signInError}</p>
+        )}
+      </section>
+    </main>
   );
 }
 

@@ -34,14 +34,14 @@ export function Pill() {
   // thing without having to aim at the pill.
   const toggleRecording = () => {
     if (state === 'recording') {
-      void ipc.stopRecording();
+      void ipc.stopRecording().catch(() => {});
     } else if (state === 'idle' || state === 'done' || state === 'error') {
-      void ipc.startRecording();
+      void ipc.startRecording().catch(() => {});
     }
   };
 
-  const onCancel = () => { void ipc.cancelRecording(); };
-  const onSend = () => { void ipc.sendRecording(); };
+  const onCancel = () => { void ipc.cancelRecording().catch(() => {}); };
+  const onSend = () => { void ipc.sendRecording().catch(() => {}); };
 
   useEffect(() => {
     if (event.kind !== 'stopped') return;
@@ -51,13 +51,13 @@ export function Pill() {
       if (e.key === 'Enter') {
         e.preventDefault();
         e.stopPropagation();
-        void ipc.sendRecording();
+        void ipc.sendRecording().catch(() => {});
         return;
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         e.stopPropagation();
-        void ipc.cancelRecording();
+        void ipc.cancelRecording().catch(() => {});
       }
     };
 

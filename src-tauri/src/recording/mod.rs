@@ -16,6 +16,7 @@ use uuid::Uuid;
 use crate::db::{Recording, RecordingStatus};
 use crate::pipeline;
 use crate::reveal_result_window;
+use crate::saas;
 use crate::state::AppState;
 
 pub use capture::CaptureProcess;
@@ -23,6 +24,7 @@ pub use capture::CaptureProcess;
 // Hard cap as a safety net so a forgotten recording can't fill the disk.
 // Display shows elapsed only — no countdown.
 const MAX_DURATION_MS: u64 = 10 * 60 * 1000;
+const SIGN_IN_REQUIRED: &str = "SIGN_IN_REQUIRED: sign in before recording with Peer";
 
 #[derive(Default)]
 pub struct RecordingController;
@@ -93,7 +95,18 @@ pub fn emit(app: &AppHandle, event: &PillEvent) {
     let _ = app.emit("pill:state", event);
 }
 
+fn require_signed_in(app: &AppHandle) -> Result<()> {
+    if saas::account_status().signed_in {
+        return Ok(());
+    }
+
+    let _ = reveal_result_window(app, true);
+    Err(anyhow!(SIGN_IN_REQUIRED))
+}
+
 pub async fn start(app: AppHandle, state: Arc<AppState>) -> Result<String> {
+    require_signed_in(&app)?;
+
     if state.pipeline_in_flight.load(Ordering::Acquire) {
         return Err(anyhow!(
             "another recording is still processing — wait for it to finish before starting a new one"
@@ -321,6 +334,8 @@ pub async fn stop(app: AppHandle, state: Arc<AppState>) -> Result<()> {
 
 /// Confirm send: take the review recording and run the pipeline.
 pub async fn send(app: AppHandle, state: Arc<AppState>) -> Result<()> {
+    require_signed_in(&app)?;
+
     let phase = {
         let mut cur = state.current.lock();
         cur.take()
@@ -425,6 +440,8 @@ pub async fn shutdown(state: Arc<AppState>) {
 /// The video stays on disk after both cancel and a normal send specifically
 /// so the user can re-analyze without having to record again.
 pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<()> {
+    require_signed_in(&app)?;
+
     if state.pipeline_in_flight.load(Ordering::Acquire) {
         return Err(anyhow!(
             "another recording is still processing — wait for it to finish before retrying"
