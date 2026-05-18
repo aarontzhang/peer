@@ -731,8 +731,13 @@ kbd {
 }
 
 /* ─── Install guide ───────────────────────────────────────────────── */
-.install {
-  border-top: 1px solid var(--line);
+.install { border-top: 1px solid var(--line); }
+.install-page .install { border-top: 0; }
+.install--standalone {
+  min-height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .install-steps {
   display: grid;
@@ -756,6 +761,7 @@ kbd {
   padding: 22px;
   border-bottom: 1px solid var(--line);
 }
+.install-card h2,
 .install-card h3 {
   margin: 0;
   padding: 22px 24px 26px;
@@ -765,6 +771,13 @@ kbd {
   letter-spacing: -0.018em;
   line-height: 1.25;
   color: var(--text);
+}
+.install-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
 }
 
 .dmg-mock {
