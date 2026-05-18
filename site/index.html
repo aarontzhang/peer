@@ -14,7 +14,7 @@
 
   <meta http-equiv="Cache-Control" content="no-store">
   <link rel="stylesheet" href="/styles/tokens.css?v=2">
-  <link rel="stylesheet" href="/site/styles.css?v=28">
+  <link rel="stylesheet" href="/site/styles.css?v=29">
 </head>
 <body>
   <!-- Atmospheric light. Two soft colored blobs + a bottom warm glow simulate
@@ -219,6 +219,70 @@
             </span>
           </li>
         </ul>
+      </div>
+    </section>
+
+    <!-- INSTALL GUIDE =================================================== -->
+    <section class="section install" id="install" aria-labelledby="install-title">
+      <div class="section__head section__head--center">
+        <h2 id="install-title" class="section__title">Open the macOS beta.</h2>
+        <p class="section__lede">
+          Peer is an unsigned beta until Apple Developer verification is ready. macOS may ask you to confirm the first launch.
+        </p>
+      </div>
+
+      <div class="install-steps" aria-label="Peer install steps">
+        <article class="install-card">
+          <div class="install-card__visual" aria-hidden="true">
+            <div class="dmg-mock">
+              <div class="dmg-mock__title">Install Peer</div>
+              <div class="dmg-mock__hint">Drag Peer into your Applications folder</div>
+              <div class="dmg-mock__row">
+                <div class="dmg-icon dmg-icon--peer">
+                  <img src="/logos/straight.svg" alt="">
+                </div>
+                <div class="dmg-arrow"></div>
+                <div class="dmg-icon dmg-icon--apps">
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <h3>Drag Peer to Applications.</h3>
+        </article>
+
+        <article class="install-card">
+          <div class="install-card__visual" aria-hidden="true">
+            <div class="finder-mock">
+              <div class="finder-mock__sidebar"></div>
+              <div class="finder-mock__app">
+                <img src="/logos/straight.svg" alt="">
+                <span>Peer</span>
+              </div>
+              <div class="context-menu">
+                <span>Open</span>
+                <span>Move to Trash</span>
+                <span>Get Info</span>
+              </div>
+            </div>
+          </div>
+          <h3>Right-click Peer, then choose Open.</h3>
+        </article>
+
+        <article class="install-card">
+          <div class="install-card__visual" aria-hidden="true">
+            <div class="gatekeeper-mock">
+              <div class="gatekeeper-mock__icon">!</div>
+              <div class="gatekeeper-mock__title">"Peer" Not Opened</div>
+              <div class="gatekeeper-mock__copy">macOS could not verify this beta.</div>
+              <div class="gatekeeper-mock__buttons">
+                <span>Cancel</span>
+                <strong>Open</strong>
+              </div>
+            </div>
+          </div>
+          <h3>Confirm Open when macOS asks.</h3>
+        </article>
       </div>
     </section>
 
