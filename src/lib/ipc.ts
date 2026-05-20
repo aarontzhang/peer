@@ -56,6 +56,13 @@ export type HotkeyStatus = {
 
 export type PermissionMode = 'ask' | 'bypass';
 
+export type AutomationEvent =
+  | { kind: 'started'; id: string }
+  | { kind: 'step'; id: string; label: string; reasoning: string | null; step: number }
+  | { kind: 'done'; id: string; message: string | null }
+  | { kind: 'failed'; id: string; message: string }
+  | { kind: 'canceled'; id: string };
+
 export const ipc = {
   startRecording: () => invoke<string>('start_recording'),
   stopRecording: () => invoke<void>('stop_recording'),
@@ -77,6 +84,8 @@ export const ipc = {
   getPermissionMode: () => invoke<PermissionMode>('get_permission_mode'),
   setPermissionMode: (mode: PermissionMode) =>
     invoke<PermissionMode>('set_permission_mode', { mode }),
+  runAutomation: (id: string) => invoke<void>('run_automation', { id }),
+  cancelAutomation: () => invoke<void>('cancel_automation'),
 
   onPillEvent: (cb: (e: PillEvent) => void): Promise<UnlistenFn> =>
     listen<PillEvent>('pill:state', (e) => cb(e.payload)),
@@ -88,6 +97,8 @@ export const ipc = {
     listen<HotkeyStatus>('hotkey:status', (e) => cb(e.payload)),
   onAuthChanged: (cb: (s: AuthChangedPayload) => void): Promise<UnlistenFn> =>
     listen<AuthChangedPayload>('auth:changed', (e) => cb(e.payload)),
+  onAutomationEvent: (cb: (e: AutomationEvent) => void): Promise<UnlistenFn> =>
+    listen<AutomationEvent>('automation:state', (e) => cb(e.payload)),
 };
 
 /**

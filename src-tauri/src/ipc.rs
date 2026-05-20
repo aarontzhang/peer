@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, Manager, State};
 
+use crate::automation;
 use crate::db::Recording;
 use crate::hotkey::{self, HotkeyStatus, PermissionMode, RecordingKeybind};
 use crate::recording;
@@ -162,5 +163,22 @@ pub fn start_google_sign_in(app: AppHandle) -> Result<String, String> {
 #[tauri::command]
 pub fn sign_out(app: AppHandle) -> Result<(), String> {
     saas::sign_out(&app).map_err(err_to_string)
+}
+
+#[tauri::command]
+pub async fn run_automation(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), String> {
+    automation::start(app, state.inner().clone(), id)
+        .await
+        .map_err(err_to_string)
+}
+
+#[tauri::command]
+pub fn cancel_automation(state: State<'_, Arc<AppState>>) -> Result<(), String> {
+    automation::cancel(state.inner().clone());
+    Ok(())
 }
 

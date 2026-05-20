@@ -61,4 +61,4 @@ strip = true
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.25"
 core-foundation = "0.10"
-core-graphics = "0.25"
+core-graphics = { version = "0.25", features = ["highsierra"] }

@@ -25,6 +25,10 @@ pub struct AppState {
     /// user can't stack multiple automations. Cancel doesn't touch this flag
     /// — cancelling pre-send leaves a fresh slot available immediately.
     pub pipeline_in_flight: Arc<AtomicBool>,
+    /// Set while an automation loop (Run automation) is driving the desktop.
+    pub automation_in_flight: Arc<AtomicBool>,
+    /// Cooperative cancel flag the automation loop polls between steps.
+    pub automation_canceled: Arc<AtomicBool>,
     /// User-selected recording keybind, persisted in app data.
     pub recording_keybind: Arc<Mutex<RecordingKeybind>>,
     /// Permission mode that shapes the generated agent prompt.
@@ -66,6 +70,8 @@ impl AppState {
             bin_dir,
             current: Arc::new(Mutex::new(None)),
             pipeline_in_flight: Arc::new(AtomicBool::new(false)),
+            automation_in_flight: Arc::new(AtomicBool::new(false)),
+            automation_canceled: Arc::new(AtomicBool::new(false)),
             recording_keybind: Arc::new(Mutex::new(recording_keybind.clone())),
             permission_mode: Arc::new(Mutex::new(permission_mode)),
             hotkey_availability: Arc::new(Mutex::new(HotkeyAvailability::default())),

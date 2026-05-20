@@ -3,6 +3,7 @@ use std::{path::Path, sync::Arc};
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindow, WindowEvent};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
+mod automation;
 mod binpath;
 mod db;
 mod hotkey;
@@ -124,6 +125,8 @@ pub fn run() {
             ipc::set_permission_mode,
             ipc::move_pill,
             ipc::cursor_position,
+            ipc::run_automation,
+            ipc::cancel_automation,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Peer")
