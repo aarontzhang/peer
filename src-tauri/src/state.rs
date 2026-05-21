@@ -34,6 +34,9 @@ pub struct AppState {
     /// Live status of the selected recording hotkey. Updated from the hotkey
     /// module once setup either succeeds or fails.
     pub hotkey_status: Arc<Mutex<HotkeyStatus>>,
+    /// Set by the tray's Quit item so `RunEvent::ExitRequested` actually exits
+    /// instead of being suppressed for the pill-stays-alive behavior.
+    pub quitting: Arc<AtomicBool>,
 }
 
 impl AppState {
@@ -70,6 +73,7 @@ impl AppState {
             permission_mode: Arc::new(Mutex::new(permission_mode)),
             hotkey_availability: Arc::new(Mutex::new(HotkeyAvailability::default())),
             hotkey_status: Arc::new(Mutex::new(HotkeyStatus::unknown(recording_keybind))),
+            quitting: Arc::new(AtomicBool::new(false)),
         })
     }
 

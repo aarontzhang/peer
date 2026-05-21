@@ -1,7 +1,10 @@
+use std::sync::atomic::Ordering;
 use std::{path::Path, sync::Arc};
 
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindow, WindowEvent};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+
+mod tray;
 
 mod binpath;
 mod db;
@@ -86,6 +89,11 @@ pub fn run() {
 
             position_pill(&handle)?;
 
+            #[cfg(target_os = "macos")]
+            apply_pill_all_spaces(&handle);
+
+            tray::install(&handle, state.clone())?;
+
             hotkey::install(handle.clone(), state.clone());
 
             // Background DB init.
@@ -149,8 +157,17 @@ pub fn run() {
                 let _ = reveal_result_window(app, true);
             }
             RunEvent::ExitRequested { api, .. } => {
-                // Don't exit when no windows are visible — we live in the pill.
-                api.prevent_exit();
+                // The pill is the ambient surface, so closing the result window
+                // shouldn't quit the app. Only let the process actually exit
+                // when the user clicked the tray's Quit item, which sets the
+                // `quitting` flag.
+                let allow_exit = app
+                    .try_state::<Arc<AppState>>()
+                    .map(|s| s.quitting.load(Ordering::SeqCst))
+                    .unwrap_or(false);
+                if !allow_exit {
+                    api.prevent_exit();
+                }
             }
             _ => {}
         });
@@ -321,4 +338,84 @@ fn activate_app(app: &AppHandle) -> tauri::Result<()> {
         let ns_app = NSApp();
         ns_app.activateIgnoringOtherApps_(YES);
     })
+}
+
+/// Make the pill float in every Space and over fullscreen apps — matching
+/// the behavior of Wispr Flow, Granola, Bartender, and friends.
+///
+/// Tauri creates a regular `NSWindow` and `alwaysOnTop: true` only sets
+/// `NSFloatingWindowLevelKey` (3), which keeps the pill above siblings *within
+/// the current Space*. The moment the user switches Space (or focuses a
+/// fullscreen app, which lives in its own Space) the pill is left behind.
+///
+/// Four AppKit-level changes fix that:
+///
+/// 1. `styleMask |= NSWindowStyleMaskNonactivatingPanel` (1 << 7). Tells
+///    AppKit the window is a non-activating panel — it won't bring our app
+///    to front when clicked, and (crucially) `FullScreenAuxiliary` only
+///    behaves correctly on non-activating windows. Without this bit set,
+///    fullscreen Chrome / Slack / etc. paint *over* the pill instead of
+///    under it. The cocoa crate doesn't surface the constant so we set it
+///    via raw objc, OR'ing into the existing mask.
+/// 2. `collectionBehavior = canJoinAllSpaces | fullScreenAuxiliary
+///    | stationary`. canJoinAllSpaces mirrors the window into every Space;
+///    fullScreenAuxiliary opts in to the synthetic fullscreen Space;
+///    stationary pins it to screen coordinates instead of moving with the
+///    Space (matters when users drag the pill between displays).
+/// 3. `level = NSStatusWindowLevel` (25). Same tier menu-bar overlay apps
+///    use — above floating, below the system menu bar.
+/// 4. `hidesOnDeactivate = NO`. The pill should remain visible when the
+///    user switches apps; this is the default for regular NSWindows but
+///    NSPanels default to hiding, so make it explicit.
+#[cfg(target_os = "macos")]
+fn apply_pill_all_spaces(app: &AppHandle) {
+    use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
+    use cocoa::base::id;
+    use objc::{msg_send, sel, sel_impl};
+
+    // NSWindowStyleMaskNonactivatingPanel = 1 << 7. Not exposed by cocoa 0.25,
+    // so we OR the bit in via raw objc to preserve existing style flags
+    // (titled, closable, resizable, …).
+    const NS_WINDOW_STYLE_MASK_NONACTIVATING_PANEL: u64 = 1 << 7;
+
+    // Look up the NSWindow handle inside the main-thread closure — the raw
+    // `*mut Object` pointer is `!Send`, so capturing it from outside the
+    // closure won't compile. AppHandle is cheap to clone.
+    let app2 = app.clone();
+    let res = app.run_on_main_thread(move || unsafe {
+        let Some(win) = app2.get_webview_window("pill") else {
+            return;
+        };
+        let ns_window: id = match win.ns_window() {
+            Ok(ptr) => ptr as id,
+            Err(err) => {
+                tracing::warn!(?err, "pill ns_window() failed; skipping all-spaces setup");
+                return;
+            }
+        };
+
+        let current_mask: u64 = msg_send![ns_window, styleMask];
+        let new_mask = current_mask | NS_WINDOW_STYLE_MASK_NONACTIVATING_PANEL;
+        let _: () = msg_send![ns_window, setStyleMask: new_mask];
+
+        let behavior = NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
+            | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
+            | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary;
+        ns_window.setCollectionBehavior_(behavior);
+
+        // NSStatusWindowLevel == 25. Above floating (3) and above the
+        // synthetic fullscreen window level, but does not cover the menu bar.
+        ns_window.setLevel_(25);
+
+        // BOOL on macOS — pass the raw i8/u8 false. objc bridges this to NO.
+        let _: () = msg_send![ns_window, setHidesOnDeactivate: false];
+
+        tracing::info!(
+            ?new_mask,
+            "pill: non-activating panel + canJoinAllSpaces + fullScreenAuxiliary + stationary + level 25 applied"
+        );
+    });
+    if let Err(err) = res {
+        tracing::warn!(?err, "failed to apply pill all-spaces behavior");
+    }
 }

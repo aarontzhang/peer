@@ -23,7 +23,7 @@ tauri-build = { version = "2", features = [] }
 tempfile = "3"
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api"] }
+tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-png"] }
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-deep-link = "2"
@@ -62,3 +62,4 @@ strip = true
 cocoa = "0.25"
 core-foundation = "0.10"
 core-graphics = "0.25"
+objc = "0.2"
