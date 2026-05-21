@@ -3,11 +3,11 @@
 mod capture;
 
 use std::path::PathBuf;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
@@ -514,6 +514,218 @@ pub async fn retry(app: AppHandle, state: Arc<AppState>, id: String) -> Result<(
     });
 
     Ok(())
+}
+
+/// Bring in a pre-recorded video the user picked from disk and run the
+/// regular pipeline against it. Mirrors `retry` once the file is staged.
+///
+/// The entry gate is an atomic claim on `pipeline_in_flight`. Without
+/// that, two concurrent uploads (or upload + retry) could both pass a
+/// `load()` check while one is ffprobing/copying gigabytes; the claim
+/// closes that window and is released on any early failure.
+pub async fn upload(
+    app: AppHandle,
+    state: Arc<AppState>,
+    source_path: String,
+) -> Result<String> {
+    // Atomic claim — fails fast if anything else owns the worker slot.
+    if state
+        .pipeline_in_flight
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return Err(anyhow!(
+            "another recording is still processing — wait for it to finish before uploading"
+        ));
+    }
+    // From here on, any early return MUST release the claim. The pipeline
+    // spawn at the end transfers ownership of the flag to the spawned task.
+    let release_on_error = ReleaseFlag::new(state.pipeline_in_flight.clone());
+
+    {
+        let cur = state.current.lock();
+        if cur.is_some() {
+            return Err(anyhow!(
+                "a recording is in progress — stop or send it first"
+            ));
+        }
+    }
+    if !crate::saas::account_status().signed_in {
+        return Err(anyhow!("Sign in to use Peer — uploads require a Peer account"));
+    }
+
+    let source = PathBuf::from(&source_path);
+    if !tokio::fs::try_exists(&source).await.unwrap_or(false) {
+        return Err(anyhow!("the selected file no longer exists"));
+    }
+
+    // Probe up-front so a non-video file is rejected before we copy
+    // gigabytes. ffprobe also doubles as a container sniff — we don't
+    // trust the filename extension on its own.
+    let probe = crate::pipeline::ffprobe::probe(&source)
+        .await
+        .map_err(|e| anyhow!("couldn't read that file as a video: {e}"))?;
+    if probe.duration_secs <= 0.0 {
+        return Err(anyhow!(
+            "ffprobe reported zero-length video — pick a different file"
+        ));
+    }
+    let duration_ms = (probe.duration_secs * 1000.0).round().max(0.0) as u64;
+
+    let id = Uuid::new_v4().to_string();
+    let ext = source
+        .extension()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_ascii_lowercase())
+        .filter(|s| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric()))
+        .unwrap_or_else(|| "mp4".to_string());
+    let final_path = state.recordings_dir.join(format!("{id}.{ext}"));
+    let staging_path = state.recordings_dir.join(format!("{id}.{ext}.partial"));
+
+    // Row first, then copy → rename. The DB init sweep already handles
+    // 'processing' rows with no body by deleting them, so a crash here
+    // leaves a clean-ish state on next launch; the matching .partial
+    // sweep in `init_sweep_partials` mops up the orphan blob.
+    let row = Recording {
+        id: id.clone(),
+        created_at: Utc::now(),
+        duration_ms,
+        video_path: final_path.to_string_lossy().to_string(),
+        status: RecordingStatus::Processing,
+        summary: None,
+        body: None,
+        transcript: None,
+        thinking: None,
+        error: None,
+    };
+    state
+        .db()
+        .insert_recording(&row)
+        .await
+        .with_context(|| "registering uploaded recording in the database")?;
+
+    emit(
+        &app,
+        &PillEvent::Processing {
+            id: id.clone(),
+            label: "Copying video".into(),
+            progress: 0.02,
+        },
+    );
+
+    if let Err(err) = tokio::fs::copy(&source, &staging_path).await {
+        let _ = tokio::fs::remove_file(&staging_path).await;
+        fail_row(&state, &id, &format!("copying selected video: {err}")).await;
+        return Err(anyhow!("copying selected video: {err}"));
+    }
+
+    if let Err(err) = tokio::fs::rename(&staging_path, &final_path).await {
+        let _ = tokio::fs::remove_file(&staging_path).await;
+        fail_row(&state, &id, &format!("finalizing copy: {err}")).await;
+        return Err(anyhow!("finalizing copy: {err}"));
+    }
+
+    emit(
+        &app,
+        &PillEvent::Processing {
+            id: id.clone(),
+            label: "Preparing video".into(),
+            progress: 0.05,
+        },
+    );
+
+    let _ = reveal_result_window(&app, true);
+
+    let app2 = app.clone();
+    let state2 = state.clone();
+    let id2 = id.clone();
+    let target2 = final_path.clone();
+    // The spawned pipeline owns the flag from here on.
+    release_on_error.defuse();
+    tokio::spawn(async move {
+        let result = pipeline::run(
+            app2.clone(),
+            state2.clone(),
+            id2.clone(),
+            target2,
+            duration_ms,
+        )
+        .await;
+        state2.pipeline_in_flight.store(false, Ordering::Release);
+        match result {
+            Ok(()) => {
+                emit(&app2, &PillEvent::Done { id: id2.clone() });
+            }
+            Err(err) => {
+                tracing::error!(?err, recording_id=%id2, "upload pipeline failed");
+                let msg = format!("{err:#}");
+                if let Ok(Some(mut r)) = state2.db().get_recording(&id2).await {
+                    r.status = RecordingStatus::Failed;
+                    r.error = Some(msg.clone());
+                    let _ = state2.db().update_recording(&r).await;
+                }
+                emit(
+                    &app2,
+                    &PillEvent::Error {
+                        id: Some(id2),
+                        message: msg,
+                    },
+                );
+            }
+        }
+    });
+
+    Ok(id)
+}
+
+async fn fail_row(state: &Arc<AppState>, id: &str, message: &str) {
+    if let Ok(Some(mut rec)) = state.db().get_recording(id).await {
+        rec.status = RecordingStatus::Failed;
+        rec.error = Some(message.to_string());
+        let _ = state.db().update_recording(&rec).await;
+    }
+}
+
+/// RAII guard for `pipeline_in_flight`. Set the flag with
+/// `compare_exchange`, hand the guard to the stack frame; any early
+/// return clears the flag on drop. `defuse()` transfers ownership to
+/// the spawned pipeline task.
+struct ReleaseFlag {
+    flag: Arc<AtomicBool>,
+    armed: bool,
+}
+
+impl ReleaseFlag {
+    fn new(flag: Arc<AtomicBool>) -> Self {
+        Self { flag, armed: true }
+    }
+    fn defuse(mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for ReleaseFlag {
+    fn drop(&mut self) {
+        if self.armed {
+            self.flag.store(false, Ordering::Release);
+        }
+    }
+}
+
+/// Best-effort sweep of `*.partial` files in the recordings dir, called
+/// once on startup. A crash mid-upload-copy leaves these orphans; they
+/// have no DB row pointing to them and aren't useful for retry.
+pub async fn sweep_partial_uploads(state: Arc<AppState>) {
+    let mut entries = match tokio::fs::read_dir(&state.recordings_dir).await {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) == Some("partial") {
+            let _ = tokio::fs::remove_file(&path).await;
+        }
+    }
 }
 
 pub async fn cancel(app: AppHandle, state: Arc<AppState>) -> Result<()> {

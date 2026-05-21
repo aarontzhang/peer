@@ -25,6 +25,7 @@ tempfile = "3"
 [dependencies]
 tauri = { version = "2", features = ["macos-private-api"] }
 tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }

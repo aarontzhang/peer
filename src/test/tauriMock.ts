@@ -13,6 +13,11 @@ export const clipboard = {
   }),
 };
 
+export const dialog = {
+  nextPick: null as string | null,
+  open: vi.fn(async () => dialog.nextPick),
+};
+
 export const invoke = vi.fn(async (command: string, args?: Record<string, unknown>) => {
   const handler = commandHandlers.get(command);
   if (!handler) {
@@ -53,6 +58,8 @@ export function resetTauriMocks() {
   listen.mockClear();
   clipboard.text = '';
   clipboard.writeText.mockClear();
+  dialog.nextPick = null;
+  dialog.open.mockClear();
 }
 
 export function defaultRecording(overrides: Partial<{

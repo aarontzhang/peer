@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
+import { FabMenu } from './FabMenu';
 import { MessageCard } from './MessageCard';
 import { RecordingPage } from './RecordingPage';
 import { Settings } from './Settings';
@@ -61,6 +62,16 @@ export function App() {
   const [deleting, setDeleting] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [detailForId, setDetailForId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Auto-dismiss the upload error after a few seconds so it doesn't linger
+  // forever if the user moves on. Persistent failures are surfaced on the
+  // card itself via the recording's status/error fields.
+  useEffect(() => {
+    if (!uploadError) return;
+    const t = window.setTimeout(() => setUploadError(null), 5500);
+    return () => window.clearTimeout(t);
+  }, [uploadError]);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -186,6 +197,23 @@ export function App() {
 
   const detailOpen = detailForId !== null;
 
+  // Pipeline-or-capture-in-flight signal for the FAB. The Rust side is the
+  // source of truth — this is purely optimistic to dim the upload action
+  // before the user clicks. A few states map to "busy":
+  //   - recording / stopped → an active capture session
+  //   - processing          → the analysis pipeline is running
+  // Done / failed / canceled rows don't block.
+  const busy = useMemo(
+    () =>
+      recordings.some(
+        (r) =>
+          r.status === 'recording' ||
+          r.status === 'stopped' ||
+          r.status === 'processing',
+      ),
+    [recordings],
+  );
+
   return (
     <div className="app">
       {showHotkeyWarning && !detailOpen && (
@@ -305,6 +333,29 @@ export function App() {
           />
         );
       })()}
+      {!detailOpen && !showSettings && (
+        <FabMenu
+          busy={busy}
+          onUploadStarted={() => {
+            setTab('history');
+            setUploadError(null);
+          }}
+          onUploadError={(message) => setUploadError(message)}
+        />
+      )}
+      {uploadError && !detailOpen && (
+        <div className="upload-toast" role="status">
+          <span className="upload-toast__msg">{uploadError}</span>
+          <button
+            type="button"
+            className="upload-toast__close"
+            onClick={() => setUploadError(null)}
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <Settings
         open={showSettings}
         onClose={() => setShowSettings(false)}

@@ -1416,3 +1416,177 @@ html, body {
   color: var(--color-fg-muted);
 }
 .field__error { color: oklch(0.82 0.14 42); }
+
+/* ─── floating action button + add menu ───────────────────────────────── */
+/* Bottom-right corner of the result window. Sits above the feed and below
+   the settings/detail overlays. */
+.fab-stack {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+.fab-stack > * { pointer-events: auto; }
+
+.fab {
+  appearance: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  cursor: pointer;
+  /* Apple system blue with a soft top-light highlight + halo so it reads
+     as a discrete control on the dark vibrancy. */
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 60%),
+    linear-gradient(180deg, #2599ff 0%, #0a84ff 100%);
+  box-shadow:
+    0 6px 20px rgba(10, 132, 255, 0.42),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 0 0 1px rgba(10, 132, 255, 0.55);
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    box-shadow var(--dur-fast) var(--ease-spring),
+    background var(--dur-fast) var(--ease-spring);
+}
+.fab:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow:
+    0 10px 28px rgba(10, 132, 255, 0.52),
+    0 1px 0 rgba(255, 255, 255, 0.24) inset,
+    0 0 0 1px rgba(10, 132, 255, 0.7);
+}
+.fab:active { transform: scale(0.96); }
+.fab:disabled {
+  cursor: progress;
+  filter: saturate(0.85) brightness(0.9);
+}
+.fab:focus-visible {
+  outline: none;
+  box-shadow:
+    0 6px 20px rgba(10, 132, 255, 0.42),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 0 0 1px rgba(10, 132, 255, 0.55),
+    0 0 0 4px rgba(142, 197, 255, 0.32);
+}
+.fab__icon {
+  display: grid;
+  place-items: center;
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+.fab--open .fab__icon { transform: rotate(45deg); }
+.fab--busy .fab__icon { animation: none; }
+
+/* Translucent popover that floats above the FAB. Mirrors the macOS HUD
+   feel — same vibrancy recipe as the settings panel, just compact. */
+.fab-menu {
+  min-width: 232px;
+  background: oklch(0.20 0.006 82 / 0.92);
+  backdrop-filter: blur(28px) saturate(155%);
+  -webkit-backdrop-filter: blur(28px) saturate(155%);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 18px 56px oklch(0 0 0 / 0.42);
+  animation: fab-menu-in var(--dur-base) var(--ease-spring);
+  transform-origin: bottom right;
+}
+@keyframes fab-menu-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.fab-menu__item {
+  appearance: none;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--color-fg);
+  font: inherit;
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring);
+}
+.fab-menu__item:hover:not(:disabled) {
+  background: oklch(1 0 0 / 0.07);
+}
+.fab-menu__item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.fab-menu__icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.fab-menu__label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.fab-menu__title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-fg);
+}
+.fab-menu__sub {
+  font-size: 11.5px;
+  color: var(--color-fg-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* Transient error banner for IPC-level upload failures. Sits in the
+   bottom-left so it doesn't fight the FAB for the same corner. */
+.upload-toast {
+  position: absolute;
+  left: 22px;
+  bottom: 28px;
+  z-index: 4;
+  max-width: 360px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  background: oklch(0.20 0.006 82 / 0.94);
+  backdrop-filter: blur(28px) saturate(155%);
+  -webkit-backdrop-filter: blur(28px) saturate(155%);
+  border: 1px solid oklch(0.74 0.22 26 / 0.45);
+  border-radius: 12px;
+  box-shadow: 0 14px 42px oklch(0 0 0 / 0.36);
+  color: var(--color-fg);
+  font-size: 12.5px;
+  line-height: 1.45;
+  animation: fab-menu-in var(--dur-base) var(--ease-spring);
+}
+.upload-toast__msg { flex: 1; min-width: 0; }
+.upload-toast__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--color-fg-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.upload-toast__close:hover { color: var(--color-fg); }

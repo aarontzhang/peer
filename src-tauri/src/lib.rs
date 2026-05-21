@@ -45,6 +45,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let handle = app.handle().clone();
             let state = Arc::new(AppState::new(&handle)?);
@@ -88,12 +89,14 @@ pub fn run() {
 
             hotkey::install(handle.clone(), state.clone());
 
-            // Background DB init.
+            // Background DB init + orphan sweep. The .partial sweep cleans
+            // up any half-copied uploads left by a crashed previous run.
             let db_state = state.clone();
             tauri::async_runtime::spawn(async move {
                 if let Err(err) = db_state.db().init().await {
                     tracing::error!(?err, "db init failed");
                 }
+                recording::sweep_partial_uploads(db_state).await;
             });
 
             // Graceful shutdown on SIGTERM/SIGINT/SIGHUP. Without this, dev-mode
@@ -111,6 +114,7 @@ pub fn run() {
             ipc::cancel_recording,
             ipc::send_recording,
             ipc::retry_recording,
+            ipc::upload_recording,
             ipc::list_recordings,
             ipc::get_recording,
             ipc::delete_recording,

@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
-import { clipboard, invoke, listen, resetTauriMocks } from './tauriMock';
+import { clipboard, dialog, invoke, listen, resetTauriMocks } from './tauriMock';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke,
@@ -13,6 +13,10 @@ vi.mock('@tauri-apps/api/event', () => ({
 
 vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
   writeText: clipboard.writeText,
+}));
+
+vi.mock('@tauri-apps/plugin-dialog', () => ({
+  open: dialog.open,
 }));
 
 vi.mock('@tauri-apps/api/window', () => ({

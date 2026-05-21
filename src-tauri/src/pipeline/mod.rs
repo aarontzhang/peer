@@ -1,7 +1,7 @@
 //! Orchestrator: video → keyframes + transcript (parallel) → analysis (parallel) → aggregate.
 
 mod analyze;
-mod ffprobe;
+pub(crate) mod ffprobe;
 mod keyframes;
 mod transcribe;
 
