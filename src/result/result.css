@@ -1443,15 +1443,14 @@ html, body {
   place-items: center;
   color: #fff;
   cursor: pointer;
-  /* Apple system blue with a soft top-light highlight + halo so it reads
-     as a discrete control on the dark vibrancy. */
+  /* Apple system blue with a soft top-light highlight. Neutral drop
+     shadow only — no colored halo around the button. */
   background:
     radial-gradient(120% 100% at 50% 0%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 60%),
     linear-gradient(180deg, #2599ff 0%, #0a84ff 100%);
   box-shadow:
-    0 6px 20px rgba(10, 132, 255, 0.42),
-    0 1px 0 rgba(255, 255, 255, 0.18) inset,
-    0 0 0 1px rgba(10, 132, 255, 0.55);
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset;
   transition:
     transform var(--dur-fast) var(--ease-spring),
     box-shadow var(--dur-fast) var(--ease-spring),
@@ -1460,9 +1459,8 @@ html, body {
 .fab:hover {
   transform: translateY(-1px) scale(1.03);
   box-shadow:
-    0 10px 28px rgba(10, 132, 255, 0.52),
-    0 1px 0 rgba(255, 255, 255, 0.24) inset,
-    0 0 0 1px rgba(10, 132, 255, 0.7);
+    0 8px 18px rgba(0, 0, 0, 0.32),
+    0 1px 0 rgba(255, 255, 255, 0.24) inset;
 }
 .fab:active { transform: scale(0.96); }
 .fab:disabled {
@@ -1470,12 +1468,8 @@ html, body {
   filter: saturate(0.85) brightness(0.9);
 }
 .fab:focus-visible {
-  outline: none;
-  box-shadow:
-    0 6px 20px rgba(10, 132, 255, 0.42),
-    0 1px 0 rgba(255, 255, 255, 0.18) inset,
-    0 0 0 1px rgba(10, 132, 255, 0.55),
-    0 0 0 4px rgba(142, 197, 255, 0.32);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 .fab__icon {
   display: grid;
