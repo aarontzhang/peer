@@ -1416,3 +1416,97 @@ html, body {
   color: var(--color-fg-muted);
 }
 .field__error { color: oklch(0.82 0.14 42); }
+
+/* ─── sign-in gate ─────────────────────────────────────────────────────
+   Replaces the History/Saved UI when no Supabase session exists. Reuses
+   the same topbar shell so the drag region stays consistent. */
+.app--gate {
+  background: transparent;
+}
+.topbar--gate {
+  grid-template-columns: 1fr;
+  justify-content: center;
+}
+.topbar--gate .topbar__brand {
+  justify-self: center;
+}
+
+.auth-gate {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 12px 28px 60px;
+}
+
+.auth-gate__panel {
+  width: min(100%, 420px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.auth-gate__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--color-fg);
+}
+.auth-gate__accent { color: var(--color-accent); }
+
+.auth-gate__lede {
+  margin: 0;
+  max-width: 320px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+}
+
+.auth-gate__button {
+  margin-top: 6px;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 22px;
+  border: 1px solid var(--color-accent);
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font: inherit;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.auth-gate__button:hover:not([disabled]) {
+  transform: translateY(-1px);
+}
+.auth-gate__button[disabled] {
+  cursor: progress;
+  opacity: 0.7;
+  transform: none;
+}
+
+.auth-gate__hint {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-fg-muted);
+  max-width: 320px;
+}
+.auth-gate__error {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: oklch(0.82 0.14 42);
+  max-width: 320px;
+}

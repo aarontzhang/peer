@@ -94,6 +94,21 @@ pub fn emit(app: &AppHandle, event: &PillEvent) {
 }
 
 pub async fn start(app: AppHandle, state: Arc<AppState>) -> Result<String> {
+    // Auth gate: hotkey-triggered starts can fire before the user signs in.
+    // Surface the requirement here instead of letting the pipeline 401 later.
+    if !crate::saas::account_status().signed_in {
+        let msg = "Sign in to Peer before recording.".to_string();
+        emit(
+            &app,
+            &PillEvent::Error {
+                id: None,
+                message: msg.clone(),
+            },
+        );
+        let _ = crate::reveal_result_window(&app, true);
+        return Err(anyhow!(msg));
+    }
+
     if state.pipeline_in_flight.load(Ordering::Acquire) {
         return Err(anyhow!(
             "another recording is still processing — wait for it to finish before starting a new one"

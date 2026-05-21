@@ -31,10 +31,10 @@
       <img src="/logos/straight.svg" alt="" width="26" height="26">
       <span>Peer</span>
     </a>
-    <a class="nav-download" href="/install?download=1">
+    <button class="nav-download" type="button" data-open-download>
       <span class="btn-arrow" aria-hidden="true">↓</span>
       Download
-    </a>
+    </button>
   </header>
 
   <main>
@@ -92,10 +92,10 @@
         </p>
 
         <div class="hero__actions reveal" style="--d:360ms">
-          <a class="button button--primary button--lg" href="/install?download=1">
-            <span class="btn-arrow" aria-hidden="true">↓</span>
-            Download for macOS
-          </a>
+          <button class="button button--primary button--lg" type="button" data-open-contact>
+            <span class="btn-arrow btn-arrow--right" aria-hidden="true">→</span>
+            Contact sales
+          </button>
         </div>
       </div>
 
@@ -327,10 +327,10 @@
         to <span class="cta__hl">automate with AI.</span>
       </h2>
       <div class="cta__actions">
-        <a class="button button--primary button--lg" href="/install?download=1">
-          <span class="btn-arrow" aria-hidden="true">↓</span>
-          Download for macOS
-        </a>
+        <button class="button button--primary button--lg" type="button" data-open-contact>
+          <span class="btn-arrow btn-arrow--right" aria-hidden="true">→</span>
+          Contact sales
+        </button>
       </div>
     </section>
 
@@ -345,7 +345,217 @@
     </footer>
   </main>
 
+  <!-- CONTACT SALES MODAL ============================================== -->
+  <div class="lead-modal" id="contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title" hidden>
+    <div class="lead-modal__scrim" data-close-modal></div>
+    <div class="lead-modal__panel" role="document">
+      <button class="lead-modal__close" type="button" data-close-modal aria-label="Close">×</button>
+      <h2 id="contact-modal-title" class="lead-modal__title">Talk to the Peer team.</h2>
+      <p class="lead-modal__lede">Tell us a bit about what you'd like to automate. We reply within a business day.</p>
+      <form class="lead-form" data-lead-form data-source="contact_sales" novalidate>
+        <label class="lead-form__row">
+          <span class="lead-form__label">Name</span>
+          <input class="lead-form__input" type="text" name="name" autocomplete="name" required maxlength="120">
+        </label>
+        <label class="lead-form__row">
+          <span class="lead-form__label">Work email</span>
+          <input class="lead-form__input" type="email" name="email" autocomplete="email" required maxlength="320">
+        </label>
+        <label class="lead-form__row">
+          <span class="lead-form__label">Company</span>
+          <input class="lead-form__input" type="text" name="company" autocomplete="organization" maxlength="120">
+        </label>
+        <label class="lead-form__row">
+          <span class="lead-form__label">What would you like to automate?</span>
+          <textarea class="lead-form__input lead-form__input--area" name="useCase" rows="4" maxlength="4000"></textarea>
+        </label>
+        <label class="lead-form__honeypot" aria-hidden="true">
+          Website
+          <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </label>
+        <div class="lead-form__status" data-form-status aria-live="polite"></div>
+        <div class="lead-form__actions">
+          <button class="button button--ghost button--lg" type="button" data-close-modal>Cancel</button>
+          <button class="button button--primary button--lg" type="submit" data-form-submit>
+            <span class="btn-arrow btn-arrow--right" aria-hidden="true">→</span>
+            <span data-submit-label>Send</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- DOWNLOAD GATE MODAL ============================================== -->
+  <div class="lead-modal" id="download-modal" role="dialog" aria-modal="true" aria-labelledby="download-modal-title" hidden>
+    <div class="lead-modal__scrim" data-close-modal></div>
+    <div class="lead-modal__panel lead-modal__panel--compact" role="document">
+      <button class="lead-modal__close" type="button" data-close-modal aria-label="Close">×</button>
+      <h2 id="download-modal-title" class="lead-modal__title">Download the macOS beta.</h2>
+      <p class="lead-modal__lede">Drop your email and we'll send install instructions if you hit a snag.</p>
+      <form class="lead-form" data-lead-form data-source="download_gate" novalidate>
+        <label class="lead-form__row">
+          <span class="lead-form__label">Work email</span>
+          <input class="lead-form__input" type="email" name="email" autocomplete="email" required maxlength="320">
+        </label>
+        <label class="lead-form__honeypot" aria-hidden="true">
+          Website
+          <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </label>
+        <div class="lead-form__status" data-form-status aria-live="polite"></div>
+        <div class="lead-form__actions">
+          <button class="button button--ghost button--lg" type="button" data-close-modal>Cancel</button>
+          <button class="button button--primary button--lg" type="submit" data-form-submit>
+            <span class="btn-arrow" aria-hidden="true">↓</span>
+            <span data-submit-label>Continue to download</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
+    /* Lead modals — contact sales + download gate.
+       Both forms POST to /api/leads with a `source` field; the download
+       form additionally receives a `downloadUrl` in the response and
+       redirects through /install for the existing post-download flow. */
+    (() => {
+      const modals = document.querySelectorAll('.lead-modal');
+      if (modals.length === 0) return;
+
+      let lastFocus = null;
+
+      const openModal = (id) => {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        lastFocus = document.activeElement;
+        modal.hidden = false;
+        // Defer focus until after the modal has rendered, so the
+        // browser actually shifts focus into the panel.
+        requestAnimationFrame(() => {
+          const first = modal.querySelector('input, textarea, button');
+          if (first instanceof HTMLElement) first.focus();
+        });
+        document.documentElement.classList.add('lead-modal-open');
+      };
+
+      const closeModal = (modal) => {
+        modal.hidden = true;
+        document.documentElement.classList.remove('lead-modal-open');
+        const status = modal.querySelector('[data-form-status]');
+        if (status) status.textContent = '';
+        if (lastFocus instanceof HTMLElement) {
+          lastFocus.focus();
+          lastFocus = null;
+        }
+      };
+
+      document.querySelectorAll('[data-open-contact]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          openModal('contact-modal');
+        });
+      });
+
+      document.querySelectorAll('[data-open-download]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          openModal('download-modal');
+        });
+      });
+
+      modals.forEach((modal) => {
+        modal.querySelectorAll('[data-close-modal]').forEach((el) => {
+          el.addEventListener('click', () => closeModal(modal));
+        });
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        const open = Array.from(modals).find((m) => !m.hidden);
+        if (open) {
+          e.preventDefault();
+          closeModal(open);
+        }
+      });
+
+      document.querySelectorAll('[data-lead-form]').forEach((form) => {
+        if (!(form instanceof HTMLFormElement)) return;
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const modal = form.closest('.lead-modal');
+          const submit = form.querySelector('[data-form-submit]');
+          const label = form.querySelector('[data-submit-label]');
+          const status = form.querySelector('[data-form-status]');
+          const initialLabel = label ? label.textContent : '';
+
+          if (status) {
+            status.textContent = '';
+            status.classList.remove('lead-form__status--error');
+          }
+
+          const data = new FormData(form);
+          const payload = {
+            source: form.dataset.source || '',
+            name: String(data.get('name') || ''),
+            email: String(data.get('email') || ''),
+            company: String(data.get('company') || ''),
+            useCase: String(data.get('useCase') || ''),
+            website: String(data.get('website') || ''),
+          };
+
+          if (!payload.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email.trim())) {
+            if (status) {
+              status.textContent = 'Enter a valid email address.';
+              status.classList.add('lead-form__status--error');
+            }
+            return;
+          }
+
+          if (submit) submit.setAttribute('disabled', 'true');
+          if (label) label.textContent = 'Sending…';
+
+          try {
+            const res = await fetch('/api/leads', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(body.error || `Request failed (${res.status})`);
+            }
+
+            if (payload.source === 'download_gate') {
+              // Existing /install flow handles the actual download via iframe
+              // once the page loads with download=1 — keeps the post-download
+              // help instructions reachable.
+              window.location.href = '/install?download=1';
+              return;
+            }
+
+            if (status) {
+              status.textContent = "Thanks — we'll be in touch soon.";
+              status.classList.remove('lead-form__status--error');
+            }
+            form.reset();
+            if (label) label.textContent = 'Sent';
+            window.setTimeout(() => {
+              if (modal instanceof HTMLElement) closeModal(modal);
+              if (label) label.textContent = initialLabel;
+              if (submit) submit.removeAttribute('disabled');
+            }, 1800);
+          } catch (err) {
+            if (status) {
+              status.textContent = err instanceof Error ? err.message : 'Could not send. Try again.';
+              status.classList.add('lead-form__status--error');
+            }
+            if (label) label.textContent = initialLabel;
+            if (submit) submit.removeAttribute('disabled');
+          }
+        });
+      });
+    })();
+
     /* Reveal-on-scroll */
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) {

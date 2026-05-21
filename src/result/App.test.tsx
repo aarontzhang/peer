@@ -22,7 +22,7 @@ function mockAppCommands(recordings = [defaultRecording()]) {
   mockCommands({
     list_recordings: () => rows,
     get_hotkey_status: () => installedHotkey,
-    get_session: () => ({ signedIn: false, email: null }),
+    get_session: () => ({ signedIn: true, email: 'user@example.com' }),
     get_permission_mode: () => 'ask',
     retry_recording: () => undefined,
     delete_recording: ({ id }) => {
@@ -125,7 +125,7 @@ describe('Result app interactions', () => {
         installed: false,
         reason: 'Accessibility is disabled.',
       }),
-      get_session: () => ({ signedIn: false, email: null }),
+      get_session: () => ({ signedIn: true, email: 'user@example.com' }),
       get_permission_mode: () => 'ask',
     });
 
@@ -153,5 +153,56 @@ describe('Result app interactions', () => {
     await user.click(screen.getByRole('button', { name: 'Analyze the video' }));
 
     expect(invoke).toHaveBeenCalledWith('retry_recording', { id: 'rec-1' });
+  });
+});
+
+describe('Sign-in gate', () => {
+  it('renders the gate when the session reports signed-out', async () => {
+    mockCommands({
+      get_session: () => ({ signedIn: false, email: null }),
+      get_hotkey_status: () => installedHotkey,
+      get_permission_mode: () => 'ask',
+      list_recordings: () => [defaultRecording()],
+    });
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole('button', { name: 'Sign in with Google' }),
+    ).toBeInTheDocument();
+    // History UI should not render while gated.
+    expect(screen.queryByRole('tab', { name: /History/ })).not.toBeInTheDocument();
+  });
+
+  it('starts the Google sign-in flow on click and switches to the app after auth:changed', async () => {
+    const user = userEvent.setup();
+    let signedIn = false;
+    mockCommands({
+      get_session: () => ({ signedIn, email: signedIn ? 'user@example.com' : null }),
+      start_google_sign_in: () => {
+        // Real flow opens the browser; the test fires the event itself.
+        return 'https://example.com/oauth';
+      },
+      get_hotkey_status: () => installedHotkey,
+      get_permission_mode: () => 'ask',
+      list_recordings: () => [defaultRecording()],
+    });
+
+    render(<App />);
+
+    const button = await screen.findByRole('button', { name: 'Sign in with Google' });
+    await user.click(button);
+
+    expect(invoke).toHaveBeenCalledWith('start_google_sign_in');
+
+    signedIn = true;
+    act(() => {
+      emitTauriEvent('auth:changed', { signedIn: true, email: 'user@example.com' });
+    });
+
+    await screen.findByRole('tab', { name: /History/ });
+    expect(
+      screen.queryByRole('button', { name: 'Sign in with Google' }),
+    ).not.toBeInTheDocument();
   });
 });

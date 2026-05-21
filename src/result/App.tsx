@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import { ipc, type HotkeyStatus, type Recording } from '@/lib/ipc';
+import {
+  ipc,
+  type AccountStatus,
+  type AuthChangedPayload,
+  type HotkeyStatus,
+  type Recording,
+} from '@/lib/ipc';
 import { useGlobalKey } from '@/lib/keys';
 import { MessageCard } from './MessageCard';
 import { RecordingPage } from './RecordingPage';
@@ -41,6 +47,42 @@ function getStoredTab(): Tab {
 }
 
 export function App() {
+  const [account, setAccount] = useState<AccountStatus | null>(null);
+  const [authLoaded, setAuthLoaded] = useState(false);
+
+  // Authoritative read on mount, plus every auth:changed event. The deep-link
+  // callback may arrive before the React tree is mounted, so an event-only
+  // approach would miss the first signed-in state on cold start.
+  useEffect(() => {
+    let cancelled = false;
+    void ipc.getSession().then((s) => {
+      if (cancelled) return;
+      setAccount(s);
+      setAuthLoaded(true);
+    });
+    const unsub = ipc.onAuthChanged((payload: AuthChangedPayload) => {
+      void ipc.getSession().then((s) => {
+        setAccount(s);
+        setAuthLoaded(true);
+      });
+      // Suppress unused-variable warning while keeping the payload for future
+      // extensions (e.g. surfacing a no_account hint inline on the gate).
+      void payload;
+    });
+    return () => {
+      cancelled = true;
+      void unsub.then((fn) => fn());
+    };
+  }, []);
+
+  // Render nothing until we know whether the user is signed in. Avoids the
+  // History UI briefly flashing before the gate takes over.
+  if (!authLoaded) return null;
+  if (!account?.signedIn) return <SignInGate />;
+  return <AuthedApp />;
+}
+
+function AuthedApp() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [tab, setTab] = useState<Tab>(getStoredTab);
 
@@ -332,6 +374,96 @@ export function App() {
           }
         }}
       />
+    </div>
+  );
+}
+
+function SignInGate() {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [noAccount, setNoAccount] = useState(false);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void ipc
+      .onAuthChanged((payload: AuthChangedPayload) => {
+        setPending(false);
+        if (payload.reason === 'no_account') {
+          setNoAccount(true);
+          setError(null);
+        } else if (payload.error) {
+          setError(payload.error);
+          setNoAccount(false);
+        }
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+
+  // Auto-clear the pending state if the browser hop never returns.
+  useEffect(() => {
+    if (!pending) return;
+    const t = window.setTimeout(() => {
+      setPending(false);
+      setError('Sign-in timed out — try again.');
+    }, 10 * 60 * 1000);
+    return () => window.clearTimeout(t);
+  }, [pending]);
+
+  const onSignIn = async () => {
+    setError(null);
+    setNoAccount(false);
+    setPending(true);
+    try {
+      await ipc.startGoogleSignIn();
+    } catch (err) {
+      setPending(false);
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  return (
+    <div className="app app--gate">
+      <header className="topbar topbar--gate" data-tauri-drag-region>
+        <div className="topbar__brand">
+          <BrandMark />
+          <span className="topbar__brandName">Peer</span>
+        </div>
+      </header>
+      <main className="auth-gate" role="main">
+        <div className="auth-gate__panel">
+          <h1 className="auth-gate__title">
+            <span className="auth-gate__accent">Sign in</span> to use Peer.
+          </h1>
+          <p className="auth-gate__lede">
+            Peer needs an account before recording. Sign in with Google to get started.
+          </p>
+          {noAccount ? (
+            <div className="auth-gate__hint">
+              We couldn't find a Peer account for that Google profile yet. Reach
+              out to the team for access, or try another account.
+            </div>
+          ) : null}
+          {error && !noAccount ? <div className="auth-gate__error">{error}</div> : null}
+          <button
+            type="button"
+            className="auth-gate__button"
+            onClick={onSignIn}
+            disabled={pending}
+          >
+            {pending ? 'Waiting for browser…' : 'Sign in with Google'}
+          </button>
+          {pending ? (
+            <p className="auth-gate__hint">
+              Finish signing in in your browser — Peer will pick the session up automatically.
+            </p>
+          ) : null}
+        </div>
+      </main>
     </div>
   );
 }
